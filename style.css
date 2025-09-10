@@ -1,0 +1,321 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background-color: #f0f2f5;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.container {
+    width: 100%;
+    max-width: 1400px;
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    color: #1c1e21;
+    margin-bottom: 25px;
+}
+
+/* 탭 스타일 */
+.tabs {
+    display: flex;
+    border-bottom: 2px solid #dddfe2;
+    margin-bottom: 25px;
+}
+
+.tab-button {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-size: 16px;
+    font-weight: 600;
+    color: #606770;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab-button.active {
+    color: #1877f2;
+    border-bottom-color: #1877f2;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+form input,
+form textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #dddfe2;
+    border-radius: 6px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+form textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+form button {
+    background-color: #1877f2;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+form button:hover {
+    background-color: #166fe5;
+}
+
+.results-container {
+    margin-top: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* 유튜브 카드 스타일 - 이제 사용되지 않음 */
+.result-item {
+   display: none;
+}
+
+/* 썸네일 스타일 - 테이블용 */
+.youtube-table-thumbnail {
+    width: 128px; /* 16:9 비율 */
+    height: 72px;  /* 16:9 비율 */
+    object-fit: cover; /* 비율에 맞게 이미지 중앙을 잘라 표시 */
+    border-radius: 6px;
+    display: block;
+    vertical-align: middle;
+}
+
+.content-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-grow: 1;
+}
+
+.content-container h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #1c1e21;
+}
+
+.content-container a {
+    color: #1877f2;
+    text-decoration: none;
+    word-break: break-all;
+}
+
+.content-container a:hover {
+    text-decoration: underline;
+}
+
+.content-container p {
+    margin: 0;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* 수정 모드 스타일 */
+.edit-title-input, .edit-memo-textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+}
+
+.actions-container {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    display: flex;
+    gap: 8px;
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px 10px;
+    font-size: 14px;
+    border-radius: 4px;
+    color: white;
+    font-weight: 500;
+    transition: opacity 0.2s;
+}
+
+.edit-btn {
+    background-color: #42b72a;
+}
+
+.delete-btn {
+    background-color: #fa383e;
+}
+
+.action-btn:hover {
+    opacity: 0.8;
+}
+
+/* 일반 메모 테이블 스타일 */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed; /* 테이블 레이아웃 고정 */
+}
+
+.data-table th,
+.data-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #dddfe2;
+    text-align: left;
+    vertical-align: middle;
+    word-break: break-all; /* 긴 링크나 텍스트 자동 줄바꿈 */
+}
+
+.data-table th {
+    background-color: #f5f6f7;
+    font-weight: 600;
+}
+
+.data-table th:nth-child(1), .data-table td:first-child {
+    width: 50px;
+    text-align: center;
+}
+
+.data-table th:nth-child(3), .data-table td:nth-child(3) {
+    width: 120px;
+    text-align: center;
+}
+
+.data-table th:nth-child(4), .data-table td:last-child {
+    width: 120px;
+    text-align: center;
+}
+
+.data-table .actions-container {
+    position: static;
+    justify-content: center;
+}
+
+/* 플랫폼 뱃지 스타일 */
+.platform-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: white;
+    text-align: center;
+}
+
+.platform-youtube { background: #FF0000; }
+.platform-shorts { background: #e62117; }
+
+
+/* 일반 메모 스타일 */
+.memo-item {
+    padding: 20px;
+    border: 1px solid #dddfe2;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+    position: relative;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+#combined-memo-form {
+    margin-bottom: 20px;
+}
+
+#combined-memo-form textarea {
+    width: 100%;
+    min-height: 100px;
+    margin-bottom: 10px;
+}
+
+/* 종합 메모 카드 스타일 */
+#combined-results-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.combined-card {
+    padding: 20px;
+    border: 1px solid #dddfe2;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+    position: relative;
+    word-break: break-all;
+}
+
+.combined-card h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.combined-card .youtube-thumbnail {
+    width: 128px; /* 크기 고정 */
+    height: 72px;  /* 크기 고정 */
+    border-radius: 8px;
+    object-fit: cover;
+    display: block;
+    flex-shrink: 0; /* 컨테이너 크기가 줄어도 썸네일 크기 유지 */
+}
+
+/* 가로 배치를 위한 컨테이너 */
+.card-youtube-content {
+    display: flex;
+    gap: 15px;
+    align-items: flex-start;
+}
+.card-youtube-content .text-content {
+    flex: 1; /* 남은 공간 모두 차지 */
+}
+
+.combined-card .memo-content {
+    white-space: pre-wrap; /* 줄바꿈 유지 */
+    margin: 10px 0;
+}
+
+.combined-card .timestamp {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 10px;
+}

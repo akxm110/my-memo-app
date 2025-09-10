@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>비디오 & 메모 관리자</title>
+    <style>
+        body {
+            font-family: "Malgun Gothic", "맑은 고딕", sans-serif;
+            margin: 0;
+            background-color: #f8f9fa;
+        }
+        .header {
+            background-color: #fff;
+            padding: 10px 20px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-title {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .header-actions button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid #adb5bd;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .header-actions button:hover {
+            background-color: #e2e6ea;
+            border-color: #6c757d;
+        }
+        .tabs {
+            background-color: #fff;
+            padding: 0 20px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 15px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+        .tab.active {
+            border-bottom-color: #28a745;
+            font-weight: bold;
+        }
+        .container {
+            padding: 20px;
+        }
+        .input-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: grid;
+            gap: 15px;
+            align-items: flex-end;
+        }
+        #video-tab-content .input-section {
+             grid-template-columns: repeat(3, 1fr) auto;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .input-group label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .input-group input, .input-group button {
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            height: 38px;
+            box-sizing: border-box;
+        }
+         .input-group button {
+            background-color: #6c757d;
+            color: white;
+            cursor: pointer;
+        }
+        #add-btn {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 25px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-top: 20px;
+        }
+        #delete-all-btn, #memo-delete-all-btn, .fav-delete-all-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .lists-wrapper {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .items-list {
+            flex: 1;
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            min-width: 0;
+        }
+        .list-header, .list-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid #dee2e6;
+            min-height: 110px;
+        }
+        .list-item:last-child {
+            border-bottom: none;
+        }
+        .list-header {
+            font-weight: bold;
+            background-color: #f8f9fa;
+        }
+        .item-col {
+            padding: 0 10px;
+            box-sizing: border-box;
+            word-break: break-all;
+        }
+        .col-index { flex: 0 0 40px; text-align: center; }
+        #video-tab-content .col-title { flex: 1 1 25%; }
+        #video-tab-content .col-thumbnail { flex: 0 0 190px; text-align: center; }
+        #video-tab-content .col-memo { flex: 1 1 25%; }
+        .memo-link {
+            display: inline-block;
+            margin: 2px 4px 2px 0;
+            padding: 2px 8px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #0d6efd;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+        .memo-link:hover {
+            background-color: #dee2e6;
+            color: #0a58ca;
+        }
+        #video-tab-content .col-actions { flex: 0 0 160px; text-align: right; }
+
+        .thumbnail-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        .link-button {
+            padding: 3px 12px;
+            font-size: 12px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .link-button:hover {
+            background-color: #0056b3;
+        }
+        .thumbnail-container {
+            width: 170px;
+            height: 90px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+            background-color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .thumbnail-container img {
+            width: 100%;
+            height: 100%;
+            transition: transform 0.2s ease;
+            object-fit: cover;
+        }
+        .thumbnail-container img.is-short {
+            transform: scale(1.78);
+        }
+        .no-thumbnail {
+            width: 170px;
+            height: 90px;
+            background-color: #f0f0f0;
+            border: 1px dashed #ccc;
+            color: #999;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+        .action-buttons button {
+            margin-left: 5px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-edit { background-color: #007bff; border-color: #007bff; color: white; }
+        .btn-delete { background-color: #dc3545; border-color: #dc3545; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .memo-editor {
+            background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .memo-editor h2 { margin-top: 0; font-size: 18px; }
+        #memo-textarea {
+            width: 100%; height: 120px; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;
+            resize: vertical; box-sizing: border-box; font-family: inherit; font-size: 14px;
+        }
+        .memo-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+        #char-counter { font-size: 14px; color: #6c757d; }
+        #memo-add-btn {
+            background-color: #007bff; color: white; padding: 10px 20px; border: none;
+            border-radius: 4px; cursor: pointer; font-size: 16px;
+        }
+        #memo-list-container { margin-top: 20px; }
+        .memo-item {
+            background-color: #fff; padding: 15px; border-radius: 5px; margin-bottom: 10px;
+            border: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: flex-start;
+        }
+        .memo-content { white-space: pre-wrap; word-break: break-word; flex-grow: 1; }
+        .memo-item-actions button { margin-left: 8px; }
+        .dynamic-tab-content .input-section {
+            grid-template-columns: repeat(4, 1fr) auto 1fr;
+        }
+        .fav-add-btn {
+            background-color: #28a745; color: white; padding: 10px 25px; border: none; border-radius: 4px;
+            cursor: pointer; font-size: 16px; font-weight: bold; height: 38px;
+        }
+        .fav-list-container .col-title { flex: 1 1 25%; }
+        .fav-list-container .col-link { flex: 2 1 30%; }
+        .fav-list-container .col-thumbnail { flex: 0 0 190px; text-align: center; }
+        .fav-list-container .col-memo { flex: 1 1 20%; }
+        .fav-list-container .col-actions { flex: 0 0 160px; text-align: right; }
+        
+        .fav-image-preview-container {
+            padding-left: 15px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 5px;
+        }
+        .fav-image-preview { max-width: 170px; max-height: 90px; border-radius: 8px; object-fit: cover; }
+        .fav-image-clear-btn { font-size: 10px; cursor: pointer; display: none; }
+
+        .tab-management {
+            padding: 10px 20px; background-color: #e9ecef; display: flex;
+            gap: 10px; justify-content: flex-end;
+        }
+        .tab-management button {
+             padding: 5px 15px; border-radius: 4px; border: 1px solid #6c757d;
+             background-color: #fff; cursor: pointer;
+        }
+        .tab-management button:hover { background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-title">📋 비디오 & 메모 관리자</div>
+        <div class="header-actions">
+            <button id="export-data-btn">💾 내보내기</button>
+            <button id="import-data-btn">📂 가져오기</button>
+        </div>
+    </div>
+    <div class="tabs">
+        <div class="tab active" data-tab-target="#video-tab-content">🎬 비디오 관리</div>
+        <div class="tab" data-tab-target="#memo-tab-content">📝 메모장</div>
+    </div>
+    <div class="tab-management">
+        <button id="add-tab-btn">+ 탭 추가</button>
+        <button id="rename-tab-btn">✏️ 이름 변경</button>
+        <button id="delete-tab-btn">🗑️ 탭 삭제</button>
+    </div>
+
+    <div class="container">
+        <div id="video-tab-content" class="tab-content active">
+             <div class="input-section">
+                <div class="input-group">
+                    <label for="title-input">제목</label>
+                    <input type="text" id="title-input" placeholder="비디오 제목 입력">
+                </div>
+                <div class="input-group">
+                    <label for="link-input">비디오 링크</label>
+                    <input type="text" id="link-input" placeholder="YouTube, Shorts, Vimeo, TikTok 등 URL 입력">
+                </div>
+                <div class="input-group">
+                    <label for="memo-input">메모</label>
+                    <input type="text" id="memo-input" placeholder="메모 입력 (선택사항)">
+                </div>
+                <button id="add-btn">추가</button>
+            </div>
+            <div class="actions">
+                 <button id="delete-all-btn">전체 삭제</button>
+            </div>
+            <div class="lists-wrapper">
+                <div id="items-container-left" class="items-list">
+                    <div class="list-header">
+                        <div class="item-col col-index">#</div>
+                        <div class="item-col col-title">제목</div>
+                        <div class="item-col col-thumbnail">썸네일</div>
+                        <div class="item-col col-memo">메모</div>
+                        <div class="item-col col-actions" style="text-align:center">동작</div>
+                    </div>
+                </div>
+                <div id="items-container-right" class="items-list">
+                     <div class="list-header">
+                        <div class="item-col col-index">#</div>
+                        <div class="item-col col-title">제목</div>
+                        <div class="item-col col-thumbnail">썸네일</div>
+                        <div class="item-col col-memo">메모</div>
+                        <div class="item-col col-actions" style="text-align:center">동작</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="memo-tab-content" class="tab-content">
+            <div class="memo-editor">
+                <h2>새 메모 작성</h2>
+                <textarea id="memo-textarea" placeholder="메모를 입력하세요... (URL은 자동으로 링크로 변환됩니다)"></textarea>
+                <div class="memo-actions">
+                    <span id="char-counter">0자</span>
+                    <div><button id="memo-add-btn">메모 추가</button></div>
+                    <button id="memo-delete-all-btn">전체 삭제</button>
+                </div>
+            </div>
+            <div id="memo-list-container"></div>
+        </div>
+    </div>
+
+    <a id="download-anchor" style="position: absolute; top: -9999px; left: -9999px;"></a>
+
+    <script>
+        // --- COMMON ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            TabManager.init();
+            await loadItems();
+            loadMemos();
+            setupBackupAndRestore();
+        });
+
+        let currentObjectUrl = null;
+
+        function setupBackupAndRestore() {
+            const exportBtn = document.getElementById('export-data-btn');
+            const importBtn = document.getElementById('import-data-btn');
+
+            if (!exportBtn || !importBtn) {
+                console.error("Backup/Restore buttons not found!");
+                return;
+            }
+
+            exportBtn.addEventListener('click', exportData);
+            importBtn.addEventListener('click', () => {
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = '.json, .txt';
+                fileInput.style.display = 'none';
+                fileInput.onchange = importData;
+                document.body.appendChild(fileInput); // Add to DOM to ensure it works on all browsers
+                fileInput.click();
+                document.body.removeChild(fileInput);
+            });
+        }
+
+        async function exportData() {
+            try {
+                if (localStorage.length === 0) {
+                    alert('백업할 데이터가 없습니다.');
+                    return;
+                }
+
+                const backupData = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    backupData[key] = localStorage.getItem(key);
+                }
+                const dataStr = JSON.stringify(backupData, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                
+                const date = new Date();
+                const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                const filename = `memo-backup-${dateStr}.json`;
+
+                // Modern, reliable way: File System Access API
+                if (window.showSaveFilePicker) {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: filename,
+                        types: [{
+                            description: 'JSON Backup File',
+                            accept: { 'application/json': ['.json'] },
+                        }],
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                } else {
+                    // Fallback for older browsers
+                    if (currentObjectUrl) {
+                        URL.revokeObjectURL(currentObjectUrl);
+                    }
+                    currentObjectUrl = URL.createObjectURL(blob);
+                    
+                    const downloadAnchor = document.getElementById('download-anchor');
+                    downloadAnchor.href = currentObjectUrl;
+                    downloadAnchor.download = filename;
+                    downloadAnchor.click();
+                }
+
+            } catch (error) {
+                // AbortError occurs if the user closes the save dialog, which is not a real error.
+                if (error.name !== 'AbortError') {
+                    alert('데이터 내보내기 중 오류가 발생했습니다: ' + error.message);
+                    console.error(error);
+                }
+            }
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!confirm('데이터를 가져오면 현재 모든 내용이 덮어씌워집니다. 계속하시겠습니까?')) {
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const backupData = JSON.parse(e.target.result);
+                    // Basic validation
+                    if (typeof backupData !== 'object' || backupData === null) {
+                        throw new Error('Invalid backup file format.');
+                    }
+                    
+                    localStorage.clear();
+                    for (const key in backupData) {
+                        if (Object.hasOwnProperty.call(backupData, key)) {
+                            localStorage.setItem(key, backupData[key]);
+                        }
+                    }
+                    alert('데이터를 성공적으로 복원했습니다. 페이지를 새로고침합니다.');
+                    location.reload();
+                } catch (error) {
+                    alert('백업 파일을 불러오는 중 오류가 발생했습니다: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function initializeTabSwitching() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const target = document.querySelector(tab.dataset.tabTarget);
+                    if (!target) return;
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    target.classList.add('active');
+                });
+            });
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match]));
+        }
+
+        async function fetchThumbnailUrl(url) {
+            if (!url) return null;
+            const youtubeId = getYoutubeVideoId(url);
+            if (youtubeId) return `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
+            if (url.includes('tiktok.com')) {
+                try {
+                    const response = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
+                    if (response.ok) return (await response.json()).thumbnail_url;
+                } catch (error) { console.error('TikTok thumbnail fetch error:', error); }
+            }
+            return null;
+        }
+
+        function formatVideoMemo(text) {
+            if (!text) return '-';
+            const youtubeUrlRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)[^\s<]+)/g;
+            
+            let linkCount = 0;
+            const formattedText = escapeHTML(text).replace(youtubeUrlRegex, (url) => {
+                linkCount++;
+                return `<a href="${url}" target="_blank" class="memo-link">링크 ${linkCount}</a>`;
+            });
+
+            return formattedText.replace(/\n/g, '<br>');
+        }
+
+        function getYoutubeVideoId(url) {
+            const patterns = [/(?:v=)([^&]+)/, /(?:youtu\.be\/)([^?]+)/, /(?:youtube\.com\/embed\/)([^?]+)/, /(?:youtube\.com\/shorts\/)([^?]+)/];
+            for (const pattern of patterns) {
+                const match = url.match(pattern);
+                if (match && match[1]) return match[1];
+            }
+            return null;
+        }
+
+        // --- VIDEO MEMO LOGIC ---
+        const addBtn = document.getElementById('add-btn');
+        const deleteAllBtn = document.getElementById('delete-all-btn');
+        const itemsContainerLeft = document.getElementById('items-container-left');
+        const itemsContainerRight = document.getElementById('items-container-right');
+        const videoDataKey = 'videoMemoData';
+        let currentlyEditingItem = null;
+
+        addBtn.addEventListener('click', async () => {
+            if (currentlyEditingItem) {
+                await updateItem(currentlyEditingItem);
+            } else {
+                await addItem();
+            }
+        });
+        deleteAllBtn.addEventListener('click', () => {
+            if (confirm('모든 항목을 삭제하시겠습니까?')) {
+                itemsContainerLeft.querySelectorAll('.list-item').forEach(i => i.remove());
+                itemsContainerRight.querySelectorAll('.list-item').forEach(i => i.remove());
+                saveItems(); renumberItems();
+            }
+        });
+
+        function saveItems() {
+            const items = [];
+            document.querySelectorAll('#video-tab-content .list-item').forEach(el => {
+                items.push({
+                    title: el.querySelector('.col-title').textContent,
+                    link: el.querySelector('.link-button').href,
+                    memo: el.querySelector('.col-memo').dataset.rawMemo || ''
+                });
+            });
+            localStorage.setItem(videoDataKey, JSON.stringify(items));
+        }
+
+        async function loadItems() {
+            const items = JSON.parse(localStorage.getItem(videoDataKey) || '[]');
+            for (const item of items) {
+                await createItemDOM(item.title, item.link, item.memo);
+            }
+        }
+
+        function renumberItems() {
+            document.querySelectorAll('#video-tab-content .list-item').forEach((el, index) => {
+                el.querySelector('.col-index').textContent = index + 1;
+            });
+        }
+
+        async function createItemDOM(title, link, memo) {
+            if (document.querySelectorAll('#video-tab-content .list-item').length >= 20) return false;
+            const targetContainer = itemsContainerLeft.querySelectorAll('.list-item').length < 10 ? itemsContainerLeft : itemsContainerRight;
+            const itemElement = document.createElement('div');
+            itemElement.className = 'list-item';
+
+            const thumbnailUrl = await fetchThumbnailUrl(link);
+            const isShort = link.includes('/shorts/');
+            const thumbnailHTML = thumbnailUrl
+                ? `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${isShort ? 'is-short' : ''}"></div>`
+                : `<div class="no-thumbnail">N/A</div>`;
+
+            itemElement.innerHTML = `
+                <div class="item-col col-index"></div>
+                <div class="item-col col-title">${escapeHTML(title)}</div>
+                <div class="item-col col-thumbnail">
+                    <div class="thumbnail-wrapper">${thumbnailHTML}<a href="${escapeHTML(link)}" target="_blank" class="link-button">링크 보기</a></div>
+                </div>
+                <div class="item-col col-memo">${formatVideoMemo(memo)}</div>
+                <div class="item-col col-actions action-buttons">
+                    <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
+                </div>`;
+            targetContainer.appendChild(itemElement);
+            itemElement.querySelector('.col-memo').dataset.rawMemo = memo;
+
+            const img = itemElement.querySelector('.thumbnail-container img');
+            const youtubeId = getYoutubeVideoId(link);
+            if (img && youtubeId) {
+                img.onerror = function() {
+                    this.onerror = null; // Prevent infinite loops
+                    this.src = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+                };
+            }
+
+            itemElement.querySelector('.btn-delete').addEventListener('click', () => { itemElement.remove(); saveItems(); renumberItems(); });
+            itemElement.querySelector('.btn-edit').addEventListener('click', () => editItem(itemElement));
+            renumberItems();
+            return true;
+        }
+
+        async function addItem() {
+            const titleInput = document.getElementById('title-input'), linkInput = document.getElementById('link-input'), memoInput = document.getElementById('memo-input');
+            const title = titleInput.value.trim(), link = linkInput.value.trim(), memo = memoInput.value.trim();
+            if (!title || !link) return alert('제목과 링크를 입력해주세요.');
+            const success = await createItemDOM(title, link, memo);
+            if (success) {
+                saveItems();
+                titleInput.value = linkInput.value = memoInput.value = '';
+                titleInput.focus();
+            }
+        }
+        
+        function editItem(itemElement) {
+            document.getElementById('title-input').value = itemElement.querySelector('.col-title').textContent;
+            document.getElementById('link-input').value = itemElement.querySelector('.link-button').href;
+            const memo = itemElement.querySelector('.col-memo').dataset.rawMemo;
+            document.getElementById('memo-input').value = memo === '-' ? '' : memo;
+            addBtn.textContent = '수정 완료';
+            currentlyEditingItem = itemElement;
+            document.querySelector('.input-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function updateItem(itemElement) {
+            const title = document.getElementById('title-input').value.trim(), link = document.getElementById('link-input').value.trim(), memo = document.getElementById('memo-input').value.trim();
+            if (!title || !link) return alert('제목과 링크를 입력해주세요.');
+            itemElement.querySelector('.col-title').textContent = title;
+            itemElement.querySelector('.link-button').href = link;
+            itemElement.querySelector('.col-memo').innerHTML = formatVideoMemo(memo);
+            itemElement.querySelector('.col-memo').dataset.rawMemo = memo;
+            
+            const thumbnailUrl = await fetchThumbnailUrl(link);
+            const thumbnailWrapper = itemElement.querySelector('.thumbnail-wrapper');
+            const isShort = link.includes('/shorts/');
+
+            const thumbnailHTML = thumbnailUrl
+                ? `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${isShort ? 'is-short' : ''}"></div><a href="${escapeHTML(link)}" target="_blank" class="link-button">링크 보기</a>`
+                : `<div class="no-thumbnail">N/A</div><a href="${escapeHTML(link)}" target="_blank" class="link-button">링크 보기</a>`;
+            thumbnailWrapper.innerHTML = thumbnailHTML;
+
+            const newImg = thumbnailWrapper.querySelector('.thumbnail-container img');
+            const youtubeId = getYoutubeVideoId(link);
+            if (newImg && youtubeId) {
+                newImg.onerror = function() {
+                    this.onerror = null; // Prevent infinite loops
+                    this.src = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+                };
+            }
+
+            saveItems();
+            document.getElementById('title-input').value = document.getElementById('link-input').value = document.getElementById('memo-input').value = '';
+            addBtn.textContent = '추가';
+            currentlyEditingItem = null;
+        }
+
+        // --- PLAIN MEMO LOGIC ---
+        const memoTextarea = document.getElementById('memo-textarea'), memoAddBtn = document.getElementById('memo-add-btn');
+        const memoDeleteAllBtn = document.getElementById('memo-delete-all-btn'), memoListContainer = document.getElementById('memo-list-container');
+        const charCounter = document.getElementById('char-counter'), memoDataKey = 'plainMemosData';
+        let currentlyEditingMemo = null;
+        memoTextarea.addEventListener('input', () => charCounter.textContent = `${memoTextarea.value.length}자`);
+        memoAddBtn.addEventListener('click', () => { if (currentlyEditingMemo) updateMemo(currentlyEditingMemo); else addMemo(); });
+        memoDeleteAllBtn.addEventListener('click', () => { if (confirm('모든 메모를 삭제하시겠습니까?')) { memoListContainer.innerHTML = ''; saveMemos(); }});
+        function linkify(text) { return escapeHTML(text).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>'); }
+        function saveMemos() {
+            const memos = Array.from(memoListContainer.querySelectorAll('.memo-item')).map(el => el.dataset.rawText);
+            localStorage.setItem(memoDataKey, JSON.stringify(memos));
+        }
+        function loadMemos() { JSON.parse(localStorage.getItem(memoDataKey) || '[]').forEach(createMemoDOM); }
+        function createMemoDOM(text) {
+            const memoItem = document.createElement('div');
+            memoItem.className = 'memo-item'; memoItem.dataset.rawText = text;
+            memoItem.innerHTML = `<div class="memo-content">${linkify(text)}</div>
+                <div class="memo-item-actions action-buttons">
+                    <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
+                </div>`;
+            memoListContainer.prepend(memoItem);
+            memoItem.querySelector('.btn-delete').addEventListener('click', () => { memoItem.remove(); saveMemos(); });
+            memoItem.querySelector('.btn-edit').addEventListener('click', () => editMemo(memoItem));
+        }
+        function addMemo() {
+            const text = memoTextarea.value.trim();
+            if (text) { createMemoDOM(text); saveMemos(); memoTextarea.value = ''; charCounter.textContent = '0자'; }
+        }
+        function editMemo(memoItem) {
+            memoTextarea.value = memoItem.dataset.rawText;
+            memoAddBtn.textContent = '메모 수정';
+            currentlyEditingMemo = memoItem; memoTextarea.focus();
+        }
+        function updateMemo(memoItem) {
+            const newText = memoTextarea.value.trim();
+            if (newText) {
+                memoItem.dataset.rawText = newText;
+                memoItem.querySelector('.memo-content').innerHTML = linkify(newText);
+            } else { memoItem.remove(); }
+            saveMemos();
+            memoTextarea.value = ''; memoAddBtn.textContent = '메모 추가'; currentlyEditingMemo = null;
+        }
+
+        // --- DYNAMIC TAB MANAGER ---
+        const TabManager = {
+            tabsContainer: document.querySelector('.tabs'),
+            contentContainer: document.querySelector('.container'),
+            tabConfigKey: 'dynamicTabsConfig',
+            tabs: [],
+            init() {
+                this.loadTabs(); this.render();
+                document.getElementById('add-tab-btn').addEventListener('click', () => this.addTab());
+                document.getElementById('rename-tab-btn').addEventListener('click', () => this.renameTab());
+                document.getElementById('delete-tab-btn').addEventListener('click', () => this.deleteTab());
+            },
+            loadTabs() {
+                const saved = JSON.parse(localStorage.getItem(this.tabConfigKey));
+                this.tabs = saved && saved.length ? saved : [{ id: `tab-${Date.now()}`, name: '⭐ 즐겨찾기' }];
+            },
+            saveTabs() { localStorage.setItem(this.tabConfigKey, JSON.stringify(this.tabs)); },
+            render() {
+                this.tabsContainer.querySelectorAll('.dynamic-tab').forEach(t => t.remove());
+                this.contentContainer.querySelectorAll('.dynamic-tab-content').forEach(c => c.remove());
+                this.tabs.forEach(tabData => {
+                    const button = document.createElement('div');
+                    button.className = 'tab dynamic-tab';
+                    button.textContent = tabData.name;
+                    button.dataset.tabTarget = `#${tabData.id}`;
+                    this.tabsContainer.appendChild(button);
+                    const content = document.createElement('div');
+                    content.id = tabData.id;
+                    content.className = 'tab-content dynamic-tab-content';
+                    this.contentContainer.appendChild(content);
+                    new FavoritesTab(content, tabData.id);
+                });
+                initializeTabSwitching();
+            },
+            addTab() {
+                const name = prompt('새 탭 이름:');
+                if (name && name.trim()) {
+                    this.tabs.push({ id: `tab-${Date.now()}`, name: name.trim() });
+                    this.saveTabs(); this.render();
+                }
+            },
+            renameTab() {
+                const activeTabEl = this.tabsContainer.querySelector('.tab.active');
+                if (!activeTabEl || !activeTabEl.classList.contains('dynamic-tab')) {
+                    return alert('기본 탭은 이름을 변경할 수 없습니다.');
+                }
+                const oldName = activeTabEl.textContent.trim();
+                const tabId = activeTabEl.dataset.tabTarget.substring(1);
+
+                const tabData = this.tabs.find(t => t.id === tabId);
+                if (tabData) {
+                    const newName = prompt(`'${oldName}' 탭의 새 이름을 입력하세요:`, oldName);
+                    if (newName && newName.trim() && newName.trim() !== oldName) {
+                        tabData.name = newName.trim();
+                        this.saveTabs();
+                        this.render();
+                    }
+                } else {
+                    alert('오류: 해당 탭 정보를 찾을 수 없습니다.');
+                }
+            },
+            deleteTab() {
+                const activeTabEl = this.tabsContainer.querySelector('.tab.active');
+                if (!activeTabEl || !activeTabEl.classList.contains('dynamic-tab')) {
+                    return alert('기본 탭은 삭제할 수 없습니다.');
+                }
+                const tabName = activeTabEl.textContent.trim();
+                const tabId = activeTabEl.dataset.tabTarget.substring(1);
+
+                const tabIndex = this.tabs.findIndex(t => t.id === tabId);
+                if (tabIndex > -1) {
+                    if (confirm(`'${tabName}' 탭과 모든 데이터를 정말로 삭제하시겠습니까?`)) {
+                        localStorage.removeItem(`favoritesData-${tabId}`);
+                        this.tabs.splice(tabIndex, 1);
+                        this.saveTabs();
+                        this.render();
+                    }
+                } else {
+                    alert('오류: 해당 탭 정보를 찾을 수 없습니다.');
+                }
+            }
+        };
+
+        class FavoritesTab {
+            constructor(containerEl, tabId) {
+                this.container = containerEl; this.tabId = tabId; this.dataKey = `favoritesData-${this.tabId}`;
+                this.currentlyEditingFav = null; this.currentImage = null;
+                this.renderHTML(); this.bindElements(); this.addEventListeners(); this.loadFavorites();
+            }
+            renderHTML() {
+                this.container.innerHTML = `
+                    <div class="input-section">
+                        <div class="input-group"><label>제목</label><input type="text" class="fav-title-input" placeholder="제목 (이미지 붙여넣기)"></div>
+                        <div class="input-group"><label>링크</label><input type="text" class="fav-link-input" placeholder="링크 (선택)"></div>
+                        <div class="input-group"><label>메모</label><input type="text" class="fav-memo-input" placeholder="메모 (선택)"></div>
+                        <div class="input-group"><label>사진</label><button class="fav-image-upload-btn">파일 선택</button><input type="file" class="fav-image-input" accept="image/*" style="display:none;"></div>
+                        <div class="fav-image-preview-container"><img class="fav-image-preview"><span class="fav-image-clear-btn">X</span></div>
+                        <button class="fav-add-btn">추가</button>
+                    </div>
+                    <div class="actions"><button class="fav-delete-all-btn">전체 삭제</button></div>
+                    <div class="items-list fav-list-container">
+                        <div class="list-header">
+                            <div class="item-col col-index">#</div><div class="item-col col-title">제목</div><div class="item-col col-link">링크</div>
+                            <div class="item-col col-thumbnail">썸네일</div><div class="item-col col-memo">메모</div><div class="item-col col-actions">동작</div>
+                        </div>
+                    </div>`;
+            }
+            bindElements() {
+                this.titleInput = this.container.querySelector('.fav-title-input');
+                this.linkInput = this.container.querySelector('.fav-link-input');
+                this.memoInput = this.container.querySelector('.fav-memo-input');
+                this.addBtn = this.container.querySelector('.fav-add-btn');
+                this.deleteAllBtn = this.container.querySelector('.fav-delete-all-btn');
+                this.listContainer = this.container.querySelector('.fav-list-container');
+                this.imageInput = this.container.querySelector('.fav-image-input');
+                this.imageUploadBtn = this.container.querySelector('.fav-image-upload-btn');
+                this.imagePreview = this.container.querySelector('.fav-image-preview');
+                this.imageClearBtn = this.container.querySelector('.fav-image-clear-btn');
+            }
+            addEventListeners() {
+                this.addBtn.addEventListener('click', () => { if (this.currentlyEditingFav) this.updateFavorite(this.currentlyEditingFav); else this.addFavorite(); });
+                this.deleteAllBtn.addEventListener('click', () => { if (confirm('모든 즐겨찾기를 삭제하시겠습니까?')) { this.listContainer.querySelectorAll('.list-item').forEach(i => i.remove()); this.saveFavorites(); } });
+                this.imageUploadBtn.addEventListener('click', () => this.imageInput.click());
+                this.imageInput.addEventListener('change', e => e.target.files[0] && this.handleImageFile(e.target.files[0]));
+                this.titleInput.addEventListener('paste', e => {
+                    const file = Array.from(e.clipboardData.files).find(f => f.type.startsWith('image/'));
+                    if (file) { e.preventDefault(); this.handleImageFile(file); }
+                });
+                this.imageClearBtn.addEventListener('click', () => this.clearImagePreview());
+            }
+            handleImageFile(file) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    this.currentImage = e.target.result;
+                    this.imagePreview.src = this.currentImage;
+                    this.imageClearBtn.style.display = 'inline';
+                };
+                reader.readAsDataURL(file);
+            }
+            clearImagePreview() {
+                this.currentImage = null; this.imagePreview.src = ''; this.imageInput.value = ''; this.imageClearBtn.style.display = 'none';
+            }
+            saveFavorites() {
+                const favs = Array.from(this.listContainer.querySelectorAll('.list-item')).map(el => ({
+                    title: el.querySelector('.col-title').textContent,
+                    link: el.querySelector('.col-link a')?.href || '',
+                    memo: el.querySelector('.col-memo').dataset.fullMemo || '',
+                    image: el.querySelector('.thumbnail-container img')?.dataset.customImage || null
+                }));
+                localStorage.setItem(this.dataKey, JSON.stringify(favs));
+            }
+            loadFavorites() { JSON.parse(localStorage.getItem(this.dataKey) || '[]').forEach(fav => this.createFavoriteDOM(fav)); }
+            renumberFavorites() { this.listContainer.querySelectorAll('.list-item').forEach((el, i) => el.querySelector('.col-index').textContent = i + 1); }
+            async createFavoriteDOM(fav) {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'list-item';
+                const image = fav.image;
+                const link = fav.link;
+                let thumbnailHTML = '<div class="no-thumbnail">N/A</div>';
+                if (image) {
+                    thumbnailHTML = `<div class="thumbnail-container"><img src="${image}" data-custom-image="${image}"></div>`;
+                } else if (link) {
+                    const thumbnailUrl = await fetchThumbnailUrl(link);
+                    if (thumbnailUrl) thumbnailHTML = `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${link.includes('/shorts/') ? 'is-short' : ''}"></div>`;
+                }
+                const displayedMemo = fav.memo.length > 30 ? fav.memo.substring(0, 30) + '...' : fav.memo;
+                itemElement.innerHTML = `
+                    <div class="item-col col-index"></div>
+                    <div class="item-col col-title">${escapeHTML(fav.title)}</div>
+                    <div class="item-col col-link">${link ? `<a href="${escapeHTML(link)}" target="_blank">${escapeHTML(link)}</a>` : '-'}</div>
+                    <div class="item-col col-thumbnail">${thumbnailHTML}</div>
+                    <div class="item-col col-memo" data-full-memo="${escapeHTML(fav.memo)}">${escapeHTML(displayedMemo) || '-'}</div>
+                    <div class="item-col col-actions action-buttons"><button class="btn-edit">수정</button><button class="btn-delete">삭제</button></div>`;
+                this.listContainer.appendChild(itemElement);
+                itemElement.querySelector('.btn-delete').addEventListener('click', () => { itemElement.remove(); this.saveFavorites(); this.renumberFavorites(); });
+                itemElement.querySelector('.btn-edit').addEventListener('click', () => this.editFavorite(itemElement));
+                this.renumberFavorites();
+            }
+            addFavorite() {
+                const title = this.titleInput.value.trim();
+                if (!title) return alert('제목을 입력해주세요.');
+                const newFav = {
+                    title, link: this.linkInput.value.trim(), memo: this.memoInput.value.trim(), image: this.currentImage
+                };
+                this.createFavoriteDOM(newFav).then(() => {
+                    this.saveFavorites();
+                    this.titleInput.value = this.linkInput.value = this.memoInput.value = '';
+                    this.clearImagePreview();
+                    this.titleInput.focus();
+                });
+            }
+            editFavorite(itemElement) {
+                const fav = {
+                    title: itemElement.querySelector('.col-title').textContent,
+                    link: itemElement.querySelector('.col-link a')?.href || '',
+                    memo: itemElement.querySelector('.col-memo').dataset.fullMemo,
+                    image: itemElement.querySelector('.thumbnail-container img')?.dataset.customImage
+                };
+                this.titleInput.value = fav.title; this.linkInput.value = fav.link; this.memoInput.value = fav.memo;
+                if (fav.image) { this.currentImage = fav.image; this.imagePreview.src = fav.image; this.imageClearBtn.style.display = 'inline'; }
+                else { this.clearImagePreview(); }
+                this.addBtn.textContent = '수정 완료';
+                this.currentlyEditingFav = itemElement; this.titleInput.focus();
+            }
+            async updateFavorite(itemElement) {
+                const newFav = {
+                    title: this.titleInput.value.trim(), link: this.linkInput.value.trim(),
+                    memo: this.memoInput.value.trim(), image: this.currentImage
+                };
+                if (!newFav.title) return alert('제목을 입력해주세요.');
+                
+                await this.createFavoriteDOM(newFav);
+                itemElement.remove();
+                this.saveFavorites();
+
+                this.titleInput.value = this.linkInput.value = this.memoInput.value = '';
+                this.clearImagePreview();
+                this.addBtn.textContent = '추가';
+                this.currentlyEditingFav = null;
+            }
+        }
+    </script>
+</body>
+</html>
