@@ -526,32 +526,6 @@
             return str.replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match]));
         }
 
-        async function fetchThumbnailUrl(url) {
-            if (!url) return null;
-            const youtubeId = getYoutubeVideoId(url);
-            if (youtubeId) return `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
-            if (url.includes('tiktok.com')) {
-                try {
-                    const response = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
-                    if (response.ok) return (await response.json()).thumbnail_url;
-                } catch (error) { console.error('TikTok thumbnail fetch error:', error); }
-            }
-            return null;
-        }
-
-        function formatVideoMemo(text) {
-            if (!text) return '-';
-            const youtubeUrlRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)[^\s<]+)/g;
-            
-            let linkCount = 0;
-            const formattedText = escapeHTML(text).replace(youtubeUrlRegex, (url) => {
-                linkCount++;
-                return `<a href="${url}" target="_blank" class="memo-link">링크 ${linkCount}</a>`;
-            });
-
-            return formattedText.replace(/\n/g, '<br>');
-        }
-
         function getYoutubeVideoId(url) {
             if (!url) return null;
             const patterns = [/(?:v=)([^&]+)/, /(?:youtu\.be\/)([^?]+)/, /(?:youtube\.com\/embed\/)([^?]+)/, /(?:youtube\.com\/shorts\/)([^?]+)/];
@@ -562,18 +536,26 @@
             return null;
         }
 
-        function setThumbnailFallbacks(imgElement, youtubeId) {
+        function setThumbnailWithQualityCheck(imgElement, youtubeId) {
             if (!imgElement || !youtubeId) return;
-            imgElement.onerror = () => {
-                imgElement.src = `https://img.youtube.com/vi/${youtubeId}/sddefault.jpg`;
-                imgElement.onerror = () => {
-                    imgElement.src = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
-                    imgElement.onerror = () => {
-                        imgElement.src = `https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`;
-                        imgElement.onerror = null;
-                    };
-                };
+
+            const highResUrl = `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
+            const fallbackUrl = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+
+            const imgTester = new Image();
+            imgTester.onload = function() {
+                // Check if the loaded image is the tiny placeholder (120x90)
+                if (this.naturalWidth > 121) {
+                    imgElement.src = highResUrl;
+                } else {
+                    imgElement.src = fallbackUrl;
+                }
             };
+            // If even maxresdefault fails to load (e.g., network error), use the fallback.
+            imgTester.onerror = function() {
+                imgElement.src = fallbackUrl;
+            };
+            imgTester.src = highResUrl;
         }
 
         // --- VIDEO MEMO LOGIC (Refactored with Pagination) ---
@@ -755,13 +737,18 @@
                 
                 const itemElement = document.createElement('div');
                 itemElement.className = 'list-item';
-                
-                const thumbnailUrl = await fetchThumbnailUrl(link);
-                const isShort = link.includes('/shorts/');
-                const thumbnailHTML = thumbnailUrl
-                    ? `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${isShort ? 'is-short' : ''}"></div>`
-                    : `<div class="no-thumbnail">N/A</div>`;
 
+                const youtubeId = getYoutubeVideoId(link);
+                let thumbnailHTML;
+
+                if (youtubeId) {
+                    const isShort = link.includes('/shorts/');
+                    // Set an empty src initially; we will set it after attaching the quality check logic.
+                    thumbnailHTML = `<div class="thumbnail-container"><img class="${isShort ? 'is-short' : ''}"></div>`;
+                } else {
+                    thumbnailHTML = `<div class="no-thumbnail">N/A</div>`;
+                }
+                
                 itemElement.innerHTML = `
                     <div class="item-col col-index"></div>
                     <div class="item-col col-title">${escapeHTML(title)}</div>
@@ -775,9 +762,8 @@
                 targetContainer.appendChild(itemElement);
 
                 const img = itemElement.querySelector('.thumbnail-container img');
-                const youtubeId = getYoutubeVideoId(link);
                 if (img && youtubeId) {
-                    setThumbnailFallbacks(img, youtubeId);
+                    setThumbnailWithQualityCheck(img, youtubeId);
                 }
 
                 itemElement.querySelector('.btn-delete').addEventListener('click', () => this.deleteSingle(id));
@@ -1069,13 +1055,15 @@
                 const image = fav.image;
                 const link = fav.link;
                 let thumbnailHTML = '<div class="no-thumbnail">N/A</div>';
+                
                 if (image) {
                     thumbnailHTML = `<div class="thumbnail-container"><img src="${image}" data-custom-image="${image}"></div>`;
                 } else if (link) {
-                    const thumbnailUrl = await fetchThumbnailUrl(link);
-                    if (thumbnailUrl) {
+                    const youtubeId = getYoutubeVideoId(link);
+                    if (youtubeId) {
                         const isShort = link.includes('/shorts/');
-                        thumbnailHTML = `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${isShort ? 'is-short' : ''}"></div>`;
+                        // Set an empty src initially; we will set it after attaching the quality check logic.
+                        thumbnailHTML = `<div class="thumbnail-container"><img class="${isShort ? 'is-short' : ''}"></div>`;
                     }
                 }
                 const displayedMemo = fav.memo && fav.memo.length > 30 ? fav.memo.substring(0, 30) + '...' : fav.memo;
@@ -1090,8 +1078,8 @@
 
                 const img = itemElement.querySelector('.thumbnail-container img');
                 const youtubeId = getYoutubeVideoId(link);
-                if (img && youtubeId) {
-                    setThumbnailFallbacks(img, youtubeId);
+                if (img && youtubeId && !image) { // !image check to not override custom uploaded images
+                    setThumbnailWithQualityCheck(img, youtubeId);
                 }
 
                 itemElement.querySelector('.btn-delete').addEventListener('click', () => { itemElement.remove(); this.saveFavorites(); this.renumberFavorites(); });
