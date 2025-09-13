@@ -285,6 +285,41 @@
              background-color: #fff; cursor: pointer;
         }
         .tab-management button:hover { background-color: #f8f9fa; }
+        
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+            padding: 10px 0;
+        }
+        .pagination-btn {
+            padding: 8px 16px;
+            margin: 0 5px;
+            border: 1px solid #adb5bd;
+            background-color: #f8f9fa;
+            color: #212529;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .pagination-btn:hover:not(:disabled) {
+            background-color: #e2e6ea;
+            border-color: #6c757d;
+        }
+        .pagination-btn.active {
+            background-color: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+        .pagination-btn:disabled {
+            color: #6c757d;
+            cursor: not-allowed;
+            background-color: #e9ecef;
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
@@ -345,6 +380,7 @@
                     </div>
                 </div>
             </div>
+            <div id="video-pagination-container" class="pagination-container"></div>
         </div>
         <div id="memo-tab-content" class="tab-content">
             <div class="memo-editor">
@@ -366,8 +402,8 @@
         // --- COMMON ---
         document.addEventListener('DOMContentLoaded', async () => {
             TabManager.init();
-            await loadItems();
-            loadMemos();
+            await VideoMemoManager.init();
+            MemoManager.init();
             setupBackupAndRestore();
         });
 
@@ -389,7 +425,7 @@
                 fileInput.accept = '.json, .txt';
                 fileInput.style.display = 'none';
                 fileInput.onchange = importData;
-                document.body.appendChild(fileInput); // Add to DOM to ensure it works on all browsers
+                document.body.appendChild(fileInput);
                 fileInput.click();
                 document.body.removeChild(fileInput);
             });
@@ -414,20 +450,15 @@
                 const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
                 const filename = `memo-backup-${dateStr}.json`;
 
-                // Modern, reliable way: File System Access API
                 if (window.showSaveFilePicker) {
                     const handle = await window.showSaveFilePicker({
                         suggestedName: filename,
-                        types: [{
-                            description: 'JSON Backup File',
-                            accept: { 'application/json': ['.json'] },
-                        }],
+                        types: [{ description: 'JSON Backup File', accept: { 'application/json': ['.json'] } }],
                     });
                     const writable = await handle.createWritable();
                     await writable.write(blob);
                     await writable.close();
                 } else {
-                    // Fallback for older browsers
                     if (currentObjectUrl) {
                         URL.revokeObjectURL(currentObjectUrl);
                     }
@@ -438,9 +469,7 @@
                     downloadAnchor.download = filename;
                     downloadAnchor.click();
                 }
-
             } catch (error) {
-                // AbortError occurs if the user closes the save dialog, which is not a real error.
                 if (error.name !== 'AbortError') {
                     alert('데이터 내보내기 중 오류가 발생했습니다: ' + error.message);
                     console.error(error);
@@ -460,7 +489,6 @@
             reader.onload = function(e) {
                 try {
                     const backupData = JSON.parse(e.target.result);
-                    // Basic validation
                     if (typeof backupData !== 'object' || backupData === null) {
                         throw new Error('Invalid backup file format.');
                     }
@@ -494,6 +522,7 @@
         }
 
         function escapeHTML(str) {
+            if (typeof str !== 'string') return '';
             return str.replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match]));
         }
 
@@ -524,6 +553,7 @@
         }
 
         function getYoutubeVideoId(url) {
+            if (!url) return null;
             const patterns = [/(?:v=)([^&]+)/, /(?:youtu\.be\/)([^?]+)/, /(?:youtube\.com\/embed\/)([^?]+)/, /(?:youtube\.com\/shorts\/)([^?]+)/];
             for (const pattern of patterns) {
                 const match = url.match(pattern);
@@ -532,191 +562,351 @@
             return null;
         }
 
-        // --- VIDEO MEMO LOGIC ---
-        const addBtn = document.getElementById('add-btn');
-        const deleteAllBtn = document.getElementById('delete-all-btn');
-        const itemsContainerLeft = document.getElementById('items-container-left');
-        const itemsContainerRight = document.getElementById('items-container-right');
-        const videoDataKey = 'videoMemoData';
-        let currentlyEditingItem = null;
-
-        addBtn.addEventListener('click', async () => {
-            if (currentlyEditingItem) {
-                await updateItem(currentlyEditingItem);
-            } else {
-                await addItem();
-            }
-        });
-        deleteAllBtn.addEventListener('click', () => {
-            if (confirm('모든 항목을 삭제하시겠습니까?')) {
-                itemsContainerLeft.querySelectorAll('.list-item').forEach(i => i.remove());
-                itemsContainerRight.querySelectorAll('.list-item').forEach(i => i.remove());
-                saveItems(); renumberItems();
-            }
-        });
-
-        function saveItems() {
-            const items = [];
-            document.querySelectorAll('#video-tab-content .list-item').forEach(el => {
-                items.push({
-                    title: el.querySelector('.col-title').textContent,
-                    link: el.querySelector('.link-button').href,
-                    memo: el.querySelector('.col-memo').dataset.rawMemo || ''
-                });
-            });
-            localStorage.setItem(videoDataKey, JSON.stringify(items));
-        }
-
-        async function loadItems() {
-            const items = JSON.parse(localStorage.getItem(videoDataKey) || '[]');
-            for (const item of items) {
-                await createItemDOM(item.title, item.link, item.memo);
-            }
-        }
-
-        function renumberItems() {
-            document.querySelectorAll('#video-tab-content .list-item').forEach((el, index) => {
-                el.querySelector('.col-index').textContent = index + 1;
-            });
-        }
-
-        async function createItemDOM(title, link, memo) {
-            if (document.querySelectorAll('#video-tab-content .list-item').length >= 20) return false;
-            const targetContainer = itemsContainerLeft.querySelectorAll('.list-item').length < 10 ? itemsContainerLeft : itemsContainerRight;
-            const itemElement = document.createElement('div');
-            itemElement.className = 'list-item';
-
-            const thumbnailUrl = await fetchThumbnailUrl(link);
-            const isShort = link.includes('/shorts/');
-            const thumbnailHTML = thumbnailUrl
-                ? `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${isShort ? 'is-short' : ''}"></div>`
-                : `<div class="no-thumbnail">N/A</div>`;
-
-            itemElement.innerHTML = `
-                <div class="item-col col-index"></div>
-                <div class="item-col col-title">${escapeHTML(title)}</div>
-                <div class="item-col col-thumbnail">
-                    <div class="thumbnail-wrapper">${thumbnailHTML}<a href="${escapeHTML(link)}" target="_blank" class="link-button">링크 보기</a></div>
-                </div>
-                <div class="item-col col-memo">${formatVideoMemo(memo)}</div>
-                <div class="item-col col-actions action-buttons">
-                    <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
-                </div>`;
-            targetContainer.appendChild(itemElement);
-            itemElement.querySelector('.col-memo').dataset.rawMemo = memo;
-
-            const img = itemElement.querySelector('.thumbnail-container img');
-            const youtubeId = getYoutubeVideoId(link);
-            if (img && youtubeId) {
-                img.onerror = function() {
-                    this.onerror = null; // Prevent infinite loops
-                    this.src = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+        function setThumbnailFallbacks(imgElement, youtubeId) {
+            if (!imgElement || !youtubeId) return;
+            imgElement.onerror = () => {
+                imgElement.src = `https://img.youtube.com/vi/${youtubeId}/sddefault.jpg`;
+                imgElement.onerror = () => {
+                    imgElement.src = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+                    imgElement.onerror = () => {
+                        imgElement.src = `https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`;
+                        imgElement.onerror = null;
+                    };
                 };
-            }
-
-            itemElement.querySelector('.btn-delete').addEventListener('click', () => { itemElement.remove(); saveItems(); renumberItems(); });
-            itemElement.querySelector('.btn-edit').addEventListener('click', () => editItem(itemElement));
-            renumberItems();
-            return true;
+            };
         }
 
-        async function addItem() {
-            const titleInput = document.getElementById('title-input'), linkInput = document.getElementById('link-input'), memoInput = document.getElementById('memo-input');
-            const title = titleInput.value.trim(), link = linkInput.value.trim(), memo = memoInput.value.trim();
-            if (!title || !link) return alert('제목과 링크를 입력해주세요.');
-            const success = await createItemDOM(title, link, memo);
-            if (success) {
-                saveItems();
-                titleInput.value = linkInput.value = memoInput.value = '';
-                titleInput.focus();
-            }
-        }
-        
-        function editItem(itemElement) {
-            document.getElementById('title-input').value = itemElement.querySelector('.col-title').textContent;
-            document.getElementById('link-input').value = itemElement.querySelector('.link-button').href;
-            const memo = itemElement.querySelector('.col-memo').dataset.rawMemo;
-            document.getElementById('memo-input').value = memo === '-' ? '' : memo;
-            addBtn.textContent = '수정 완료';
-            currentlyEditingItem = itemElement;
-            document.querySelector('.input-section').scrollIntoView({ behavior: 'smooth' });
-        }
-
-        async function updateItem(itemElement) {
-            const title = document.getElementById('title-input').value.trim(), link = document.getElementById('link-input').value.trim(), memo = document.getElementById('memo-input').value.trim();
-            if (!title || !link) return alert('제목과 링크를 입력해주세요.');
-            itemElement.querySelector('.col-title').textContent = title;
-            itemElement.querySelector('.link-button').href = link;
-            itemElement.querySelector('.col-memo').innerHTML = formatVideoMemo(memo);
-            itemElement.querySelector('.col-memo').dataset.rawMemo = memo;
+        // --- VIDEO MEMO LOGIC (Refactored with Pagination) ---
+        const VideoMemoManager = {
+            addBtn: document.getElementById('add-btn'),
+            deleteAllBtn: document.getElementById('delete-all-btn'),
+            containerLeft: document.getElementById('items-container-left'),
+            containerRight: document.getElementById('items-container-right'),
+            paginationContainer: document.getElementById('video-pagination-container'),
+            titleInput: document.getElementById('title-input'),
+            linkInput: document.getElementById('link-input'),
+            memoInput: document.getElementById('memo-input'),
             
-            const thumbnailUrl = await fetchThumbnailUrl(link);
-            const thumbnailWrapper = itemElement.querySelector('.thumbnail-wrapper');
-            const isShort = link.includes('/shorts/');
+            dataKey: 'videoMemoData',
+            currentPageKey: 'videoCurrentPage',
+            
+            allMemos: [],
+            currentlyEditingId: null,
+            currentPage: 1,
+            itemsPerPage: 20,
 
-            const thumbnailHTML = thumbnailUrl
-                ? `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${isShort ? 'is-short' : ''}"></div><a href="${escapeHTML(link)}" target="_blank" class="link-button">링크 보기</a>`
-                : `<div class="no-thumbnail">N/A</div><a href="${escapeHTML(link)}" target="_blank" class="link-button">링크 보기</a>`;
-            thumbnailWrapper.innerHTML = thumbnailHTML;
+            async init() {
+                this.addBtn.addEventListener('click', () => this.handleAddOrUpdate());
+                this.deleteAllBtn.addEventListener('click', () => this.deleteAll());
+                await this.load();
+            },
 
-            const newImg = thumbnailWrapper.querySelector('.thumbnail-container img');
-            const youtubeId = getYoutubeVideoId(link);
-            if (newImg && youtubeId) {
-                newImg.onerror = function() {
-                    this.onerror = null; // Prevent infinite loops
-                    this.src = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+            async load() {
+                const items = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                let idCounter = Date.now();
+                let needsSave = false;
+                this.allMemos = items.map(item => {
+                    if (!item.id) {
+                        needsSave = true;
+                        return { ...item, id: idCounter++ };
+                    }
+                    return item;
+                });
+                if (needsSave) this.save();
+
+                const savedPage = parseInt(localStorage.getItem(this.currentPageKey) || '1');
+                const totalPages = this.getTotalPages();
+                this.currentPage = savedPage > totalPages ? totalPages : savedPage;
+                
+                await this.renderPage();
+            },
+
+            save() {
+                localStorage.setItem(this.dataKey, JSON.stringify(this.allMemos));
+            },
+            
+            saveCurrentPage() {
+                localStorage.setItem(this.currentPageKey, this.currentPage);
+            },
+
+            getTotalPages() {
+                return Math.ceil(this.allMemos.length / this.itemsPerPage) || 1;
+            },
+
+            async handleAddOrUpdate() {
+                if (this.currentlyEditingId) {
+                    await this.update();
+                } else {
+                    await this.add();
+                }
+            },
+
+            async add() {
+                const title = this.titleInput.value.trim();
+                const link = this.linkInput.value.trim();
+                const memo = this.memoInput.value.trim();
+                if (!title || !link) return alert('제목과 링크를 입력해주세요.');
+
+                const newItem = { id: Date.now(), title, link, memo };
+                this.allMemos.push(newItem);
+                this.save();
+                
+                this.currentPage = this.getTotalPages();
+                this.saveCurrentPage();
+                await this.renderPage();
+                
+                this.clearInputs();
+                this.titleInput.focus();
+            },
+
+            edit(id) {
+                const item = this.allMemos.find(item => item.id === id);
+                if (!item) return;
+
+                this.titleInput.value = item.title;
+                this.linkInput.value = item.link;
+                this.memoInput.value = item.memo || '';
+                
+                this.addBtn.textContent = '수정 완료';
+                this.currentlyEditingId = id;
+                document.querySelector('#video-tab-content .input-section').scrollIntoView({ behavior: 'smooth' });
+            },
+
+            async update() {
+                const itemIndex = this.allMemos.findIndex(item => item.id === this.currentlyEditingId);
+                if (itemIndex === -1) return;
+
+                const title = this.titleInput.value.trim();
+                const link = this.linkInput.value.trim();
+                const memo = this.memoInput.value.trim();
+                if (!title || !link) return alert('제목과 링크를 입력해주세요.');
+
+                this.allMemos[itemIndex] = { ...this.allMemos[itemIndex], title, link, memo };
+                this.save();
+                
+                await this.renderPage();
+                this.clearInputs();
+                this.addBtn.textContent = '추가';
+                this.currentlyEditingId = null;
+            },
+
+            deleteAll() {
+                if (this.allMemos.length > 0 && confirm('모든 비디오 메모를 삭제하시겠습니까?')) {
+                    this.allMemos = [];
+                    this.currentPage = 1;
+                    this.save();
+                    this.saveCurrentPage();
+                    this.renderPage();
+                }
+            },
+
+            deleteSingle(id) {
+                if (confirm('이 항목을 삭제하시겠습니까?')) {
+                    const itemIndex = this.allMemos.findIndex(item => item.id === id);
+                    if (itemIndex > -1) {
+                        this.allMemos.splice(itemIndex, 1);
+                        this.save();
+                        
+                        const totalPages = this.getTotalPages();
+                        if (this.currentPage > totalPages) {
+                           this.currentPage = totalPages;
+                           this.saveCurrentPage();
+                        }
+                        this.renderPage();
+                    }
+                }
+            },
+
+            clearInputs() {
+                this.titleInput.value = '';
+                this.linkInput.value = '';
+                this.memoInput.value = '';
+            },
+
+            async renderPage() {
+                const leftHeader = this.containerLeft.querySelector('.list-header').cloneNode(true);
+                const rightHeader = this.containerRight.querySelector('.list-header').cloneNode(true);
+                this.containerLeft.innerHTML = '';
+                this.containerRight.innerHTML = '';
+                this.containerLeft.appendChild(leftHeader);
+                this.containerRight.appendChild(rightHeader);
+
+                const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+                const endIndex = startIndex + this.itemsPerPage;
+                const pageItems = this.allMemos.slice(startIndex, endIndex);
+
+                for(let i = 0; i < pageItems.length; i++) {
+                    await this.createDOM(pageItems[i], i);
+                }
+                this.renumberItemsOnPage(startIndex);
+                this.renderPagination();
+            },
+
+            renumberItemsOnPage(startIndex) {
+                const allItems = [...this.containerLeft.querySelectorAll('.list-item'), ...this.containerRight.querySelectorAll('.list-item')];
+                allItems.forEach((el, index) => {
+                    el.querySelector('.col-index').textContent = startIndex + index + 1;
+                });
+            },
+
+            async createDOM(itemData, indexOnPage) {
+                const { id, title, link, memo } = itemData;
+                const targetContainer = indexOnPage < 10 ? this.containerLeft : this.containerRight;
+                
+                const itemElement = document.createElement('div');
+                itemElement.className = 'list-item';
+                
+                const thumbnailUrl = await fetchThumbnailUrl(link);
+                const isShort = link.includes('/shorts/');
+                const thumbnailHTML = thumbnailUrl
+                    ? `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${isShort ? 'is-short' : ''}"></div>`
+                    : `<div class="no-thumbnail">N/A</div>`;
+
+                itemElement.innerHTML = `
+                    <div class="item-col col-index"></div>
+                    <div class="item-col col-title">${escapeHTML(title)}</div>
+                    <div class="item-col col-thumbnail">
+                        <div class="thumbnail-wrapper">${thumbnailHTML}<a href="${escapeHTML(link)}" target="_blank" class="link-button">링크 보기</a></div>
+                    </div>
+                    <div class="item-col col-memo" data-raw-memo="${escapeHTML(memo)}">${formatVideoMemo(memo)}</div>
+                    <div class="item-col col-actions action-buttons">
+                        <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
+                    </div>`;
+                targetContainer.appendChild(itemElement);
+
+                const img = itemElement.querySelector('.thumbnail-container img');
+                const youtubeId = getYoutubeVideoId(link);
+                if (img && youtubeId) {
+                    setThumbnailFallbacks(img, youtubeId);
+                }
+
+                itemElement.querySelector('.btn-delete').addEventListener('click', () => this.deleteSingle(id));
+                itemElement.querySelector('.btn-edit').addEventListener('click', () => this.edit(id));
+            },
+
+            renderPagination() {
+                this.paginationContainer.innerHTML = '';
+                const totalPages = this.getTotalPages();
+                if (totalPages <= 1) return;
+
+                const createBtn = (text, action, disabled = false, isActive = false) => {
+                    const btn = document.createElement('button');
+                    btn.textContent = text;
+                    btn.className = `pagination-btn ${isActive ? 'active' : ''}`;
+                    btn.disabled = disabled;
+                    btn.addEventListener('click', action);
+                    this.paginationContainer.appendChild(btn);
                 };
-            }
 
-            saveItems();
-            document.getElementById('title-input').value = document.getElementById('link-input').value = document.getElementById('memo-input').value = '';
-            addBtn.textContent = '추가';
-            currentlyEditingItem = null;
-        }
+                createBtn('이전', () => {
+                    if (this.currentPage > 1) { this.currentPage--; this.saveCurrentPage(); this.renderPage(); }
+                }, this.currentPage === 1);
+
+                for (let i = 1; i <= totalPages; i++) {
+                    createBtn(i, () => {
+                        this.currentPage = i; this.saveCurrentPage(); this.renderPage();
+                    }, false, i === this.currentPage);
+                }
+
+                createBtn('다음', () => {
+                    if (this.currentPage < totalPages) { this.currentPage++; this.saveCurrentPage(); this.renderPage(); }
+                }, this.currentPage === totalPages);
+            }
+        };
 
         // --- PLAIN MEMO LOGIC ---
-        const memoTextarea = document.getElementById('memo-textarea'), memoAddBtn = document.getElementById('memo-add-btn');
-        const memoDeleteAllBtn = document.getElementById('memo-delete-all-btn'), memoListContainer = document.getElementById('memo-list-container');
-        const charCounter = document.getElementById('char-counter'), memoDataKey = 'plainMemosData';
-        let currentlyEditingMemo = null;
-        memoTextarea.addEventListener('input', () => charCounter.textContent = `${memoTextarea.value.length}자`);
-        memoAddBtn.addEventListener('click', () => { if (currentlyEditingMemo) updateMemo(currentlyEditingMemo); else addMemo(); });
-        memoDeleteAllBtn.addEventListener('click', () => { if (confirm('모든 메모를 삭제하시겠습니까?')) { memoListContainer.innerHTML = ''; saveMemos(); }});
-        function linkify(text) { return escapeHTML(text).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>'); }
-        function saveMemos() {
-            const memos = Array.from(memoListContainer.querySelectorAll('.memo-item')).map(el => el.dataset.rawText);
-            localStorage.setItem(memoDataKey, JSON.stringify(memos));
-        }
-        function loadMemos() { JSON.parse(localStorage.getItem(memoDataKey) || '[]').forEach(createMemoDOM); }
-        function createMemoDOM(text) {
-            const memoItem = document.createElement('div');
-            memoItem.className = 'memo-item'; memoItem.dataset.rawText = text;
-            memoItem.innerHTML = `<div class="memo-content">${linkify(text)}</div>
-                <div class="memo-item-actions action-buttons">
-                    <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
-                </div>`;
-            memoListContainer.prepend(memoItem);
-            memoItem.querySelector('.btn-delete').addEventListener('click', () => { memoItem.remove(); saveMemos(); });
-            memoItem.querySelector('.btn-edit').addEventListener('click', () => editMemo(memoItem));
-        }
-        function addMemo() {
-            const text = memoTextarea.value.trim();
-            if (text) { createMemoDOM(text); saveMemos(); memoTextarea.value = ''; charCounter.textContent = '0자'; }
-        }
-        function editMemo(memoItem) {
-            memoTextarea.value = memoItem.dataset.rawText;
-            memoAddBtn.textContent = '메모 수정';
-            currentlyEditingMemo = memoItem; memoTextarea.focus();
-        }
-        function updateMemo(memoItem) {
-            const newText = memoTextarea.value.trim();
-            if (newText) {
-                memoItem.dataset.rawText = newText;
-                memoItem.querySelector('.memo-content').innerHTML = linkify(newText);
-            } else { memoItem.remove(); }
-            saveMemos();
-            memoTextarea.value = ''; memoAddBtn.textContent = '메모 추가'; currentlyEditingMemo = null;
-        }
+        const MemoManager = {
+            textarea: document.getElementById('memo-textarea'),
+            addBtn: document.getElementById('memo-add-btn'),
+            deleteAllBtn: document.getElementById('memo-delete-all-btn'),
+            listContainer: document.getElementById('memo-list-container'),
+            charCounter: document.getElementById('char-counter'),
+            dataKey: 'plainMemosData',
+            currentlyEditingMemo: null,
+            
+            init() {
+                this.textarea.addEventListener('input', () => this.updateCharCount());
+                this.addBtn.addEventListener('click', () => this.handleAddOrUpdate());
+                this.deleteAllBtn.addEventListener('click', () => this.deleteAll());
+                this.load();
+            },
+
+            updateCharCount() {
+                this.charCounter.textContent = `${this.textarea.value.length}자`;
+            },
+            
+            linkify(text) {
+                return escapeHTML(text).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
+            },
+
+            save() {
+                const memos = Array.from(this.listContainer.querySelectorAll('.memo-item')).map(el => el.dataset.rawText);
+                localStorage.setItem(this.dataKey, JSON.stringify(memos));
+            },
+            
+            load() {
+                JSON.parse(localStorage.getItem(this.dataKey) || '[]').forEach(text => this.createDOM(text));
+            },
+            
+            createDOM(text) {
+                const memoItem = document.createElement('div');
+                memoItem.className = 'memo-item';
+                memoItem.dataset.rawText = text;
+                memoItem.innerHTML = `<div class="memo-content">${this.linkify(text)}</div>
+                    <div class="memo-item-actions action-buttons">
+                        <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
+                    </div>`;
+                this.listContainer.prepend(memoItem);
+                memoItem.querySelector('.btn-delete').addEventListener('click', () => { memoItem.remove(); this.save(); });
+                memoItem.querySelector('.btn-edit').addEventListener('click', () => this.edit(memoItem));
+            },
+            
+            handleAddOrUpdate() {
+                if (this.currentlyEditingMemo) {
+                    this.update(this.currentlyEditingMemo);
+                } else {
+                    this.add();
+                }
+            },
+
+            add() {
+                const text = this.textarea.value.trim();
+                if (text) {
+                    this.createDOM(text);
+                    this.save();
+                    this.textarea.value = '';
+                    this.updateCharCount();
+                }
+            },
+            
+            edit(memoItem) {
+                this.textarea.value = memoItem.dataset.rawText;
+                this.addBtn.textContent = '메모 수정';
+                this.currentlyEditingMemo = memoItem;
+                this.textarea.focus();
+            },
+            
+            update(memoItem) {
+                const newText = this.textarea.value.trim();
+                if (newText) {
+                    memoItem.dataset.rawText = newText;
+                    memoItem.querySelector('.memo-content').innerHTML = this.linkify(newText);
+                } else {
+                    memoItem.remove();
+                }
+                this.save();
+                this.textarea.value = '';
+                this.addBtn.textContent = '메모 추가';
+                this.currentlyEditingMemo = null;
+            },
+            
+            deleteAll() {
+                if (confirm('모든 메모를 삭제하시겠습니까?')) {
+                    this.listContainer.innerHTML = '';
+                    this.save();
+                }
+            }
+        };
 
         // --- DYNAMIC TAB MANAGER ---
         const TabManager = {
@@ -794,6 +984,8 @@
                         this.tabs.splice(tabIndex, 1);
                         this.saveTabs();
                         this.render();
+                        const firstTab = document.querySelector('.tab');
+                        if (firstTab) firstTab.click();
                     }
                 } else {
                     alert('오류: 해당 탭 정보를 찾을 수 없습니다.');
@@ -881,9 +1073,12 @@
                     thumbnailHTML = `<div class="thumbnail-container"><img src="${image}" data-custom-image="${image}"></div>`;
                 } else if (link) {
                     const thumbnailUrl = await fetchThumbnailUrl(link);
-                    if (thumbnailUrl) thumbnailHTML = `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${link.includes('/shorts/') ? 'is-short' : ''}"></div>`;
+                    if (thumbnailUrl) {
+                        const isShort = link.includes('/shorts/');
+                        thumbnailHTML = `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${isShort ? 'is-short' : ''}"></div>`;
+                    }
                 }
-                const displayedMemo = fav.memo.length > 30 ? fav.memo.substring(0, 30) + '...' : fav.memo;
+                const displayedMemo = fav.memo && fav.memo.length > 30 ? fav.memo.substring(0, 30) + '...' : fav.memo;
                 itemElement.innerHTML = `
                     <div class="item-col col-index"></div>
                     <div class="item-col col-title">${escapeHTML(fav.title)}</div>
@@ -892,6 +1087,13 @@
                     <div class="item-col col-memo" data-full-memo="${escapeHTML(fav.memo)}">${escapeHTML(displayedMemo) || '-'}</div>
                     <div class="item-col col-actions action-buttons"><button class="btn-edit">수정</button><button class="btn-delete">삭제</button></div>`;
                 this.listContainer.appendChild(itemElement);
+
+                const img = itemElement.querySelector('.thumbnail-container img');
+                const youtubeId = getYoutubeVideoId(link);
+                if (img && youtubeId) {
+                    setThumbnailFallbacks(img, youtubeId);
+                }
+
                 itemElement.querySelector('.btn-delete').addEventListener('click', () => { itemElement.remove(); this.saveFavorites(); this.renumberFavorites(); });
                 itemElement.querySelector('.btn-edit').addEventListener('click', () => this.editFavorite(itemElement));
                 this.renumberFavorites();
@@ -929,9 +1131,13 @@
                 };
                 if (!newFav.title) return alert('제목을 입력해주세요.');
                 
+                const itemIndex = Array.from(this.listContainer.children).indexOf(itemElement) -1;
+                
                 await this.createFavoriteDOM(newFav);
                 itemElement.remove();
+                
                 this.saveFavorites();
+                this.renumberFavorites();
 
                 this.titleInput.value = this.linkInput.value = this.memoInput.value = '';
                 this.clearImagePreview();
