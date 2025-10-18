@@ -339,6 +339,12 @@
         
         /* Editor Tab Styles */
         .editor-container { padding: 15px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .editor-title-input {
+            width: 100%; padding: 10px; font-size: 20px; font-weight: bold;
+            border: none; border-bottom: 2px solid #dee2e6; margin-bottom: 15px;
+            box-sizing: border-box; outline: none;
+        }
+        .editor-title-input:focus { border-bottom-color: #007bff; }
         .editor-toolbar {
             border-bottom: 1px solid #dee2e6; padding-bottom: 10px; margin-bottom: 10px;
             display: flex; gap: 5px; flex-wrap: wrap;
@@ -349,14 +355,42 @@
         }
         .editor-toolbar button:hover { background-color: #f0f0f0; }
         .editor-content {
-            border: 1px solid #dee2e6; min-height: 400px; padding: 15px;
+            border: 1px solid #dee2e6; min-height: 300px; padding: 15px;
             border-radius: 4px; outline: none; line-height: 1.6;
         }
+        .editor-content img { max-width: 100%; height: auto; border-radius: 4px; }
+        .editor-content blockquote {
+            margin: 1.5em 10px; padding: 0.5em 10px;
+            border-left: 5px solid #eee; color: #666;
+        }
+        .editor-content blockquote.quote-style-1 {
+            background: #f9f9f9; border-left-color: #007bff;
+            font-style: italic;
+        }
+
         .editor-actions { margin-top: 15px; text-align: right; }
         .editor-save-btn {
             background-color: #007bff; color: white; padding: 8px 18px;
             border: none; border-radius: 4px; cursor: pointer;
         }
+
+        .editor-posts-container { margin-top: 30px; }
+        .editor-post-item {
+            background-color: #fff; border: 1px solid #e9ecef;
+            border-radius: 6px; padding: 15px; margin-bottom: 10px;
+        }
+        .post-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #f1f3f5; padding-bottom: 10px; margin-bottom: 10px;
+        }
+        .post-title { font-size: 18px; font-weight: bold; }
+        .post-meta { font-size: 12px; color: #868e96; }
+        .post-content-preview {
+            max-height: 100px; overflow: hidden; color: #495057;
+            padding-bottom: 10px;
+        }
+        .post-actions button { margin-left: 8px; }
+
     </style>
 </head>
 <body>
@@ -931,15 +965,18 @@
                 this.container = containerEl;
                 this.tabId = tabId;
                 this.dataKey = `editorData-${this.tabId}`;
+                this.posts = [];
+                this.editingPostId = null;
                 this.renderHTML();
                 this.bindElements();
                 this.addEventListeners();
-                this.loadContent();
+                this.loadPosts();
             }
 
             renderHTML() {
                 this.container.innerHTML = `
                     <div class="editor-container">
+                        <input type="text" class="editor-title-input" placeholder="제목을 입력하세요...">
                         <div class="editor-toolbar">
                             <button data-command="bold" title="굵게"><b>B</b></button>
                             <button data-command="italic" title="기울임"><i>I</i></button>
@@ -948,24 +985,30 @@
                             <button data-command="insertOrderedList" title="순서 있는 목록">1.</button>
                             <button data-command="insertUnorderedList" title="순서 없는 목록">•</button>
                             <button data-command="formatBlock" data-value="h2" title="제목2">H2</button>
-                            <button data-command="formatBlock" data-value="blockquote" title="인용">"</button>
+                            <button data-command="formatBlock" data-value="blockquote" title="기본 인용">"</button>
+                            <button data-command="customQuote" data-value="quote-style-1" title="강조 인용">❞</button>
                             <button data-command="createLink" title="링크">🔗</button>
-                            <button data-command="insertImage" title="이미지">🖼️</button>
+                            <button data-command="insertLocalImage" title="이미지 첨부">🖼️</button>
                             <button data-command="justifyLeft" title="왼쪽 정렬">L</button>
                             <button data-command="justifyCenter" title="가운데 정렬">C</button>
                             <button data-command="justifyRight" title="오른쪽 정렬">R</button>
                         </div>
                         <div class="editor-content" contenteditable="true"></div>
+                        <input type="file" class="editor-image-input" accept="image/*" style="display:none;">
                         <div class="editor-actions">
                             <button class="editor-save-btn">저장</button>
                         </div>
-                    </div>`;
+                    </div>
+                    <div class="editor-posts-container"></div>`;
             }
 
             bindElements() {
+                this.titleInput = this.container.querySelector('.editor-title-input');
                 this.toolbar = this.container.querySelector('.editor-toolbar');
                 this.contentArea = this.container.querySelector('.editor-content');
                 this.saveBtn = this.container.querySelector('.editor-save-btn');
+                this.imageInput = this.container.querySelector('.editor-image-input');
+                this.postsContainer = this.container.querySelector('.editor-posts-container');
             }
             
             addEventListeners() {
@@ -975,27 +1018,154 @@
                     
                     const { command, value } = button.dataset;
                     
-                    if (command === 'createLink' || command === 'insertImage') {
-                        const url = prompt(`${command === 'createLink' ? 'URL' : '이미지 URL'}을 입력하세요:`);
+                    if (command === 'createLink') {
+                        const url = prompt('URL을 입력하세요:');
                         if (url) document.execCommand(command, false, url);
+                    } else if (command === 'insertLocalImage') {
+                        this.imageInput.click();
+                    } else if (command === 'customQuote') {
+                        this.applyCustomQuote(value);
                     } else {
                         document.execCommand(command, false, value || null);
                     }
                     this.contentArea.focus();
                 });
 
-                this.saveBtn.addEventListener('click', () => this.saveContent());
+                this.imageInput.addEventListener('change', e => {
+                    if (e.target.files && e.target.files[0]) {
+                        this.handleImageFile(e.target.files[0]);
+                    }
+                });
+
+                this.saveBtn.addEventListener('click', () => this.savePost());
+
+                this.postsContainer.addEventListener('click', e => {
+                    const target = e.target;
+                    const postItem = target.closest('.editor-post-item');
+                    if (!postItem) return;
+                    
+                    const postId = postItem.dataset.id;
+                    if (target.classList.contains('btn-edit')) {
+                        this.editPost(postId);
+                    } else if (target.classList.contains('btn-delete')) {
+                        this.deletePost(postId);
+                    }
+                });
             }
 
-            saveContent() {
-                const content = this.contentArea.innerHTML;
-                localStorage.setItem(this.dataKey, content);
-                alert(`'${TabManager.tabs.find(t=>t.id === this.tabId)?.name}' 탭의 내용이 저장되었습니다.`);
+            handleImageFile(file) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const base64Image = e.target.result;
+                    this.contentArea.focus();
+                    document.execCommand('insertImage', false, base64Image);
+                };
+                reader.readAsDataURL(file);
+                this.imageInput.value = '';
+            }
+
+            applyCustomQuote(styleClass) {
+                const selection = window.getSelection();
+                if (!selection.rangeCount) return;
+                const range = selection.getRangeAt(0);
+                const selectedText = range.toString();
+                if (!selectedText) return;
+
+                const blockquote = document.createElement('blockquote');
+                blockquote.className = styleClass;
+                blockquote.textContent = selectedText;
+                
+                range.deleteContents();
+                range.insertNode(blockquote);
             }
             
-            loadContent() {
-                const savedContent = localStorage.getItem(this.dataKey);
-                if (savedContent) this.contentArea.innerHTML = savedContent;
+            savePosts() {
+                 localStorage.setItem(this.dataKey, JSON.stringify(this.posts));
+            }
+            
+            loadPosts() {
+                const savedPosts = localStorage.getItem(this.dataKey);
+                this.posts = savedPosts ? JSON.parse(savedPosts) : [];
+                this.renderPosts();
+            }
+
+            renderPosts() {
+                this.postsContainer.innerHTML = '';
+                // newest first
+                [...this.posts].reverse().forEach(post => {
+                    const postEl = document.createElement('div');
+                    postEl.className = 'editor-post-item';
+                    postEl.dataset.id = post.id;
+                    
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = post.content;
+                    const previewText = tempDiv.textContent.substring(0, 100) + '...';
+
+                    postEl.innerHTML = `
+                        <div class="post-header">
+                           <div class="post-title">${escapeHTML(post.title)}</div>
+                           <div class="post-meta">${new Date(post.timestamp).toLocaleString()}</div>
+                        </div>
+                        <div class="post-content-preview">${escapeHTML(previewText)}</div>
+                        <div class="post-actions action-buttons">
+                           <button class="btn-edit" data-id="${post.id}">수정</button>
+                           <button class="btn-delete" data-id="${post.id}">삭제</button>
+                        </div>`;
+                    this.postsContainer.appendChild(postEl);
+                });
+            }
+
+            savePost() {
+                const title = this.titleInput.value.trim();
+                const content = this.contentArea.innerHTML;
+                if (!title) return alert('제목을 입력해주세요.');
+
+                if (this.editingPostId) {
+                    const postIndex = this.posts.findIndex(p => p.id == this.editingPostId);
+                    if (postIndex > -1) {
+                        this.posts[postIndex].title = title;
+                        this.posts[postIndex].content = content;
+                        this.posts[postIndex].timestamp = Date.now();
+                    }
+                } else {
+                    this.posts.push({
+                        id: Date.now(),
+                        title,
+                        content,
+                        timestamp: Date.now()
+                    });
+                }
+                
+                this.savePosts();
+                this.renderPosts();
+                this.clearEditor();
+            }
+            
+            editPost(postId) {
+                const post = this.posts.find(p => p.id == postId);
+                if (!post) return;
+                
+                this.editingPostId = postId;
+                this.titleInput.value = post.title;
+                this.contentArea.innerHTML = post.content;
+                this.saveBtn.textContent = "수정 완료";
+                this.container.querySelector('.editor-container').scrollIntoView({ behavior: 'smooth' });
+                this.titleInput.focus();
+            }
+
+            deletePost(postId) {
+                if (confirm('이 게시글을 정말 삭제하시겠습니까?')) {
+                    this.posts = this.posts.filter(p => p.id != postId);
+                    this.savePosts();
+                    this.renderPosts();
+                }
+            }
+            
+            clearEditor() {
+                this.editingPostId = null;
+                this.titleInput.value = '';
+                this.contentArea.innerHTML = '';
+                this.saveBtn.textContent = "저장";
             }
         }
         
@@ -1259,3 +1429,4 @@
     </script>
 </body>
 </html>
+
