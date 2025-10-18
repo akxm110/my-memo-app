@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>비디오 & 메모 관리자</title>
-    <style>
+    
+ <style>
         body {
             font-family: "Malgun Gothic", "맑은 고딕", sans-serif;
             margin: 0;
@@ -314,6 +315,94 @@
             cursor: not-allowed;
             opacity: 0.6;
         }
+
+        /* ▼▼▼ [업데이트] 휴대폰 반응형 레이아웃 ▼▼▼ */
+        @media (max-width: 768px) {
+            /* 1. 전체적인 여백 줄이기 */
+            .container {
+                padding: 10px;
+            }
+            .tab {
+                padding: 15px 10px; /* 탭 좌우 여백 줄이기 */
+            }
+            
+            /* 2. 입력 섹션(제목, 링크 등)을 세로로 쌓기 */
+            #video-tab-content .input-section,
+            .dynamic-tab-content .input-section {
+                grid-template-columns: 1fr; /* 모든 입력칸을 세로로 쌓음 */
+            }
+            .fav-image-preview-container {
+                 padding-left: 0;
+                 margin-top: 10px;
+                 justify-content: flex-start;
+            }
+
+            /* 3. 비디오 탭의 좌/우 리스트를 세로로 쌓기 */
+            .lists-wrapper {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            /* 4. 리스트 헤더 숨기기 (모바일에선 불필요) */
+            .list-header {
+                display: none;
+            }
+            
+            /* 5. 리스트 아이템(항목)을 카드 형태로 변경 */
+            .list-item {
+                flex-wrap: wrap; /* 항목들이 다음 줄로 넘어가도록 허용 */
+                min-height: 0;
+                padding: 15px;
+                gap: 10px 5px; /* 항목들 사이의 간격 (세로/가로) */
+            }
+            
+            .item-col {
+                padding: 0; /* 개별 패딩 제거 */
+                text-align: left !important; /* 모두 왼쪽 정렬 */
+                flex-grow: 1;
+            }
+            
+            /* 6. 항목 내부 정렬 */
+            .col-index {
+                display: none; /* 번호 숨기기 */
+            }
+            
+            /* 제목/링크는 한 줄을 다 차지하도록 */
+            .col-title,
+            .fav-list-container .col-link {
+                flex-basis: 100% !important;
+                font-size: 17px;
+                font-weight: bold;
+            }
+            
+            /* 썸네일과 메모는 가로로 나란히 */
+            .col-thumbnail {
+                flex-basis: 170px !important;
+                flex-grow: 0;
+                flex-shrink: 0;
+            }
+            .col-memo {
+                flex-basis: 100px !important; /* 썸네일 제외한 나머지 공간 */
+                align-self: center;
+                font-size: 14px;
+            }
+            
+            /* 동작 버튼은 맨 아래 한 줄을 다 차지하고 오른쪽 정렬 */
+            .col-actions {
+                flex-basis: 100% !important;
+                text-align: right !important;
+                margin-top: 10px;
+            }
+            
+            /* 썸네일 이미지 크기 조정 */
+            .thumbnail-container, .no-thumbnail {
+                width: 170px; /* 기존 크기 유지 */
+            }
+            .thumbnail-container img {
+                transform: none !important; /* 'shorts' 영상 스케일 원복 */
+            }
+        }
+        /* ▲▲▲ 반응형 레이아웃 끝 ▲▲▲ */
     </style>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
