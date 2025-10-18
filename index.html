@@ -459,7 +459,7 @@
     </div>
     <div class="tab-management">
         <button id="add-tab-btn">+ 탭 추가</button>
-        <button id="rename-tab-btn"✏️ 이름 변경</button>
+        <button id="rename-tab-btn">✏️ 이름 변경</button>
         <button id="delete-tab-btn">🗑️ 탭 삭제</button>
     </div>
 
@@ -535,10 +535,7 @@
     appId: "1:345865782837:web:a9147e6468ff400953937c"
   };
 
-
-  // Initialize Firebase
-  // (오류가 나던 const app = ... 줄 삭제됨)
-  // (불필요한 </script> 태그 삭제됨)
+  // (이전에 오류가 났던 <script> 태그 관련 문제들이 모두 해결되었습니다.)
 
         // Firebase 앱 초기화 및 데이터베이스 연결
         firebase.initializeApp(firebaseConfig);
@@ -657,7 +654,7 @@
                     alert('백업 파일을 불러오는 중 오류가 발생했습니다: ' + error.message);
                 }
             };
-            // [오류 수정] readText -> readAsText
+            // [오류 수정 2] reader.readText -> reader.readAsText
             reader.readAsText(file);
         }
 
@@ -1115,7 +1112,7 @@
                 this.tabsRef.on('value', (snapshot) => {
                     const saved = snapshot.val();
                     
-                    // [오류 수정] Firebase가 객체로 반환해도 배열로 변환
+                    // [오류 수정 1] Firebase가 객체로 반환해도 배열로 변환
                     if (Array.isArray(saved) && saved.length > 0) {
                         this.tabs = saved;
                     } else if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
