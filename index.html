@@ -412,22 +412,25 @@
           appId: "1:345865782837:web:a9147e6468ff400953937c"
         };
 
+
+
         // Firebase 앱 초기화 및 데이터베이스 연결
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.database(); // Realtime Database 사용
+        const db = firebase.database();
+        const rootRef = db.ref();
         // ▲▲▲ 2단계 완료 ▲▲▲
 
 
         document.addEventListener('DOMContentLoaded', () => {
-            TabManager.init();
-            initializeVideoTab();
-            loadMemos(); // Firebase용으로 수정된 함수가 호출됩니다.
-            setupBackupAndRestore();
+            TabManager.init(); // [수정됨] 탭 매니저(Firebase) 초기화
+            initializeVideoTab(); // [수정됨] 비디오 탭(Firebase) 초기화
+            loadMemos(); // [수정됨] 메모장(Firebase) 초기화
+            setupBackupAndRestore(); // [수정됨] 백업/복원(Firebase) 초기화
         });
 
         let currentObjectUrl = null;
 
-        // 백업/복원 기능 (LocalStorage + Firebase 메모)
+        // [수정됨] 백업/복원 (Firebase 전체 데이터 기반)
         function setupBackupAndRestore() {
             const exportBtn = document.getElementById('export-data-btn');
             const importBtn = document.getElementById('import-data-btn');
@@ -446,29 +449,28 @@
 
         async function exportData() {
             try {
-                // LocalStorage 백업
-                const backupData = {};
+                // Firebase root에서 모든 데이터 가져오기
+                const snapshot = await rootRef.once('value');
+                if (!snapshot.exists()) {
+                    return alert('백업할 데이터가 없습니다.');
+                }
+                const backupData = snapshot.val();
+
+                // LocalStorage에 남은 '옛날' 데이터도 혹시 모르니 백업
+                const localStorageBackup = {};
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
-                    if (key === 'plainMemosData') continue; // 이전 메모 데이터는 제외
-                    backupData[key] = localStorage.getItem(key);
+                    localStorageBackup[key] = localStorage.getItem(key);
                 }
-                
-                // Firebase 메모 데이터 백업
-                const memoSnapshot = await db.ref('plainMemos').once('value');
-                if (memoSnapshot.exists()) {
-                    backupData['firebasePlainMemos'] = memoSnapshot.val();
-                }
-
-                if (Object.keys(backupData).length === 0) {
-                    return alert('백업할 데이터가 없습니다.');
+                if (Object.keys(localStorageBackup).length > 0) {
+                     backupData['localStorage_backup'] = localStorageBackup;
                 }
 
                 const dataStr = JSON.stringify(backupData, null, 2);
                 const blob = new Blob([dataStr], { type: 'application/json' });
                 const date = new Date();
                 const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                const filename = `memo-backup-${dateStr}.json`;
+                const filename = `firebase-full-backup-${dateStr}.json`;
 
                 if (window.showSaveFilePicker) {
                     const handle = await window.showSaveFilePicker({
@@ -497,102 +499,135 @@
         function importData(event) {
             const file = event.target.files[0];
             if (!file) return;
-            if (!confirm('데이터를 가져오면 현재 모든 내용이 덮어씌워집니다. 계속하시겠습니까?')) return;
+            if (!confirm('데이터를 가져오면 Firebase의 모든 내용이 덮어씌워집니다. 계속하시겠습니까?')) return;
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
                     const backupData = JSON.parse(e.target.result);
                     if (typeof backupData !== 'object' || backupData === null) throw new Error('Invalid backup file format.');
                     
-                    // LocalStorage 데이터 복원
-                    localStorage.clear();
-                    for (const key in backupData) {
-                        if (Object.hasOwnProperty.call(backupData, key)) {
-                            if (key === 'firebasePlainMemos') continue; // Firebase 데이터는 스킵
-                            localStorage.setItem(key, backupData[key]);
+                    // LocalStorage 백업본이 있다면 복원
+                    if (backupData.localStorage_backup) {
+                        localStorage.clear();
+                        for (const key in backupData.localStorage_backup) {
+                            localStorage.setItem(key, backupData.localStorage_backup[key]);
                         }
+                        delete backupData.localStorage_backup; // Firebase에 쓰지 않도록 삭제
+                    } else {
+                         localStorage.clear(); // 백업에 LS 없으면 기존 LS도 비움
                     }
                     
-                    // Firebase 메모 데이터 복원
-                    const firebaseMemos = backupData.firebasePlainMemos || null;
-                    db.ref('plainMemos').set(firebaseMemos)
+                    // Firebase 데이터 복원
+                    rootRef.set(backupData)
                         .then(() => {
                             alert('데이터를 성공적으로 복원했습니다. 페이지를 새로고침합니다.');
                             location.reload();
                         })
                         .catch(err => {
-                            alert('Firebase 메모 복원 중 오류 발생: ' + err.message);
-                            location.reload();
+                            alert('Firebase 데이터 복원 중 오류 발생: ' + err.message);
                         });
 
                 } catch (error) {
                     alert('백업 파일을 불러오는 중 오류가 발생했습니다: ' + error.message);
                 }
             };
-            reader.readAsText(file);
+            reader.readText(file);
         }
 
-        // --- ★★★★★ 기존 '메모장' 데이터 이사 기능 ★★★★★ ---
-        // 이 함수는 기존 '개인 금고(LocalStorage)'의 메모를
-        // '공용 금고(Firebase)'로 복사하는 1회성 기능입니다.
-        function migrateOldMemosToFirebase() {
-            const oldMemoKey = 'plainMemosData'; // 이전 데이터가 저장된 키
-            const oldMemosJson = localStorage.getItem(oldMemoKey);
-            
-            if (!oldMemosJson) {
-                alert('이전 메모 데이터(plainMemosData)가 없습니다.\n데이터를 옮길 필요가 없습니다.');
+        // --- ★★★★★ '모든' 데이터 Firebase로 이사 기능 ★★★★★ ---
+        async function migrateAllLocalStorageToFirebase() {
+            if (!confirm("기존 '개인 금고(LocalStorage)'에 저장된 모든 데이터를 '공용 금고(Firebase)'로 복사하시겠습니까?\n\n- 메모장\n- 비디오 관리\n- 모든 즐겨찾기 탭 ('해외영상', '심리' 등)\n\n이 작업은 데이터가 있는 PC에서 딱 한 번만 실행해야 합니다.")) {
                 return;
             }
 
             try {
-                const oldMemos = JSON.parse(oldMemosJson);
-                if (!Array.isArray(oldMemos) || oldMemos.length === 0) {
-                    alert('이전 메모 데이터가 비어있습니다.');
-                    return;
-                }
-
-                if (!confirm(`총 ${oldMemos.length}개의 이전 '메모장' 데이터를 찾았습니다.\n이 데이터를 Firebase 공용 금고로 복사하시겠습니까?\n\n(이 작업은 한 번만 하시면 됩니다.)`)) {
-                    return;
-                }
-
-                const memoRef = db.ref('plainMemos');
-                let successCount = 0;
-                
-                // Firebase에 이미 데이터가 있는지 확인
-                memoRef.once('value', (snapshot) => {
-                    if (snapshot.exists()) {
-                        if (!confirm('경고: Firebase에 이미 메모가 있습니다.\n그래도 이전 데이터를 추가로 복사하시겠습니까?\n(메모가 중복될 수 있습니다!)')) {
-                            return;
-                        }
+                const snapshot = await rootRef.once('value');
+                if (snapshot.exists() && Object.keys(snapshot.val()).length > 0) {
+                    if (!confirm("경고: Firebase에 이미 데이터가 있습니다.\n그래도 '개인 금고'의 데이터를 덮어쓰시겠습니까?\n\n(참고: '메모장'은 중복 추가될 수 있습니다.)")) {
+                        return;
                     }
+                }
+                
+                alert("데이터 이사를 시작합니다. 완료될 때까지 잠시 기다려주세요...");
 
-                    // 마이그레이션(이사) 시작
-                    const migrationPromises = [];
-                    oldMemos.forEach(memoText => {
-                        if (typeof memoText === 'string' && memoText.trim() !== '') {
-                            migrationPromises.push(
-                                memoRef.push({
-                                    text: memoText,
-                                    createdAt: firebase.database.ServerValue.TIMESTAMP
-                                })
-                            );
-                            successCount++;
-                        }
-                    });
+                const migrationData = {};
+                let foundOldData = false;
 
-                    Promise.all(migrationPromises)
-                        .then(() => {
-                            alert(`이사 성공! ${successCount}개의 메모를 Firebase로 복사했습니다.\n\n이제 기존 데이터는 삭제하고 페이지를 새로고침합니다.`);
-                            localStorage.removeItem(oldMemoKey); // 이사 완료 후 '개인 금고' 정리
-                            location.reload(); // 새로고침해서 Firebase 데이터 보기
-                        })
-                        .catch(error => {
-                            alert('메모를 옮기는 중 오류가 발생했습니다: ' + error.message);
+                // 1. 메모장 (plainMemosData) 이사
+                const oldMemosJson = localStorage.getItem('plainMemosData');
+                if (oldMemosJson) {
+                    const oldMemos = JSON.parse(oldMemosJson);
+                    if (Array.isArray(oldMemos) && oldMemos.length > 0) {
+                        migrationData.plainMemos = {};
+                        oldMemos.forEach(text => {
+                            const newKey = db.ref().child('plainMemos').push().key;
+                            migrationData.plainMemos[newKey] = { text: text, createdAt: firebase.database.ServerValue.TIMESTAMP };
                         });
-                });
+                        foundOldData = true;
+                        console.log(`[이사] 메모장 ${oldMemos.length}개 찾음`);
+                    }
+                }
+
+                // 2. 비디오 관리 (videoMemoData) 이사
+                const oldVideosJson = localStorage.getItem('videoMemoData');
+                if (oldVideosJson) {
+                    const oldVideos = JSON.parse(oldVideosJson);
+                    if (Array.isArray(oldVideos) && oldVideos.length > 0) {
+                        migrationData.videoMemos = {};
+                        oldVideos.forEach(item => {
+                            const newKey = db.ref().child('videoMemos').push().key;
+                            migrationData.videoMemos[newKey] = item; // id, title, link, memo
+                        });
+                        foundOldData = true;
+                        console.log(`[이사] 비디오 ${oldVideos.length}개 찾음`);
+                    }
+                }
+
+                // 3. 탭 목록 (dynamicTabsConfig) 이사
+                const oldTabsJson = localStorage.getItem('dynamicTabsConfig');
+                if (oldTabsJson) {
+                    const oldTabs = JSON.parse(oldTabsJson);
+                    if (Array.isArray(oldTabs) && oldTabs.length > 0) {
+                        migrationData.dynamicTabsConfig = oldTabs;
+                        foundOldData = true;
+                        console.log(`[이사] 탭 목록 ${oldTabs.length}개 찾음`);
+
+                        // 4. 각 탭의 즐겨찾기 (favoritesData-...) 이사
+                        migrationData.favorites = {};
+                        oldTabs.forEach(tab => {
+                            const oldFavKey = `favoritesData-${tab.id}`;
+                            const oldFavJson = localStorage.getItem(oldFavKey);
+                            if (oldFavJson) {
+                                const oldFavs = JSON.parse(oldFavJson);
+                                if (Array.isArray(oldFavs) && oldFavs.length > 0) {
+                                    migrationData.favorites[tab.id] = {};
+                                    oldFavs.forEach(item => {
+                                        const newKey = db.ref().child('favorites').child(tab.id).push().key;
+                                        migrationData.favorites[tab.id][newKey] = item;
+                                    });
+                                    console.log(`[이사] 즐겨찾기 '${tab.name}' ${oldFavs.length}개 찾음`);
+                                }
+                            }
+                        });
+                    }
+                }
+
+                if (!foundOldData) {
+                    return alert("'개인 금고(LocalStorage)'에 이사할 데이터가 없습니다.");
+                }
+                
+                // Firebase에 'update'로 데이터 병합
+                await rootRef.update(migrationData);
+                
+                alert(`성공! '개인 금고'의 모든 데이터를 '공용 금고(Firebase)'로 복사했습니다.\n\n안전을 위해 기존 '개인 금고' 데이터는 삭제합니다.\n(백업이 필요하면 '내보내기'를 먼저 하세요.)\n\n페이지를 새로고침합니다.`);
+                
+                // 이사 완료 후 '개인 금고' 정리
+                localStorage.clear();
+                location.reload();
 
             } catch (error) {
-                alert('이전 메모 데이터를 읽는 중 오류가 발생했습니다: ' + error.message);
+                alert('데이터 이사 중 심각한 오류가 발생했습니다: ' + error.message);
+                console.error(error);
             }
         }
         // --- 데이터 이사 기능 끝 ---
@@ -659,38 +694,49 @@
             return null;
         }
 
-        // --- VIDEO MEMO LOGIC (LocalStorage - 동기화 안됨) ---
-        // (참고: 이 '비디오 관리' 탭은 Firebase와 동기화되지 않습니다.)
+        // --- [수정됨] VIDEO MEMO LOGIC (Firebase 버전) ---
         const addBtn = document.getElementById('add-btn');
         const deleteAllBtn = document.getElementById('delete-all-btn');
-        const videoDataKey = 'videoMemoData';
-        let currentlyEditingItem = null;
-        let allVideoItems = [];
+        const videoRef = db.ref('videoMemos');
+        let currentlyEditingItem = null; // 수정 중인 항목의 id (Date.now())
+        let allVideoItems = []; // Firebase 데이터의 로컬 캐시 (페이징용)
         let currentPage = 1;
         const itemsPerPage = 20;
 
         function initializeVideoTab() {
-            allVideoItems = JSON.parse(localStorage.getItem(videoDataKey) || '[]');
-            renderVideoPage();
-        }
-
-        addBtn.addEventListener('click', async () => {
-            if (currentlyEditingItem) await updateItem(currentlyEditingItem);
-            else await addItem();
-        });
-
-        deleteAllBtn.addEventListener('click', () => {
-            if (confirm('모든 비디오 항목을 삭제하시겠습니까?')) {
+            videoRef.orderByChild('id').on('value', (snapshot) => {
                 allVideoItems = [];
-                saveItems();
-                currentPage = 1;
+                snapshot.forEach(child => {
+                    allVideoItems.push({ 
+                        ...child.val(), 
+                        key: child.key // Firebase 고유 키 저장
+                    });
+                });
+                // allVideoItems.reverse(); // 최신순으로 하려면 주석 해제 (id가 timestamp)
+                
+                // 현재 페이지가 데이터 삭제 후 최대 페이지를 넘지 않도록 조정
+                const totalPages = Math.ceil(allVideoItems.length / itemsPerPage) || 1;
+                if (currentPage > totalPages) {
+                    currentPage = totalPages;
+                }
+                
                 renderVideoPage();
-            }
-        });
-        
-        function saveItems() {
-            localStorage.setItem(videoDataKey, JSON.stringify(allVideoItems));
+            });
+
+            addBtn.addEventListener('click', async () => {
+                if (currentlyEditingItem) await updateItem(currentlyEditingItem);
+                else await addItem();
+            });
+
+            deleteAllBtn.addEventListener('click', () => {
+                if (confirm('모든 비디오 항목을 삭제하시겠습니까?')) {
+                    videoRef.remove(); // Firebase에서 전체 삭제
+                    // on('value')가 자동으로 renderVideoPage() 호출
+                }
+            });
         }
+        
+        // saveItems() 함수는 Firebase 사용으로 불필요해짐
 
         function renderVideoPage() {
             const leftContainer = document.getElementById('items-container-left');
@@ -750,7 +796,7 @@
         async function createItemDOM(item, displayIndex, container) {
             const itemElement = document.createElement('div');
             itemElement.className = 'list-item';
-            itemElement.dataset.id = item.id;
+            itemElement.dataset.id = item.id; // 고유 ID (timestamp)
             
             const videoId = getYoutubeVideoId(item.link);
             const thumbnailUrl = await getReliableYoutubeThumbnailUrl(videoId);
@@ -778,11 +824,11 @@
         }
 
         function deleteItem(itemId) {
-            allVideoItems = allVideoItems.filter(item => item.id !== itemId);
-            saveItems();
-            const totalPages = Math.ceil(allVideoItems.length / itemsPerPage) || 1;
-            if (currentPage > totalPages) currentPage = totalPages;
-            renderVideoPage();
+            const itemToDelete = allVideoItems.find(item => item.id === itemId);
+            if (itemToDelete) {
+                videoRef.child(itemToDelete.key).remove();
+            }
+            // on('value')가 자동으로 renderVideoPage() 호출
         }
 
         async function addItem() {
@@ -790,13 +836,19 @@
             const title = titleInput.value.trim(), link = linkInput.value.trim(), memo = memoInput.value.trim();
             if (!title || !link) return alert('제목과 링크를 입력해주세요.');
             
-            const newItem = { id: Date.now(), title, link, memo };
-            allVideoItems.push(newItem);
-            saveItems();
-
-            currentPage = Math.ceil(allVideoItems.length / itemsPerPage);
-            renderVideoPage();
-
+            const newItem = { 
+                id: Date.now(), // 정렬 및 고유 ID로 사용
+                title, 
+                link, 
+                memo 
+            };
+            
+            videoRef.push(newItem); // Firebase에 추가
+            
+            // on('value')가 자동으로 리스트를 갱신
+            // 마지막 페이지로 이동하는 로직 추가
+            currentPage = Math.ceil((allVideoItems.length + 1) / itemsPerPage);
+            
             titleInput.value = linkInput.value = memoInput.value = '';
             titleInput.focus();
         }
@@ -815,17 +867,21 @@
         }
 
         async function updateItem(itemId) {
-            const itemIndex = allVideoItems.findIndex(item => item.id === itemId);
-            if (itemIndex === -1) return;
+            const itemToUpdate = allVideoItems.find(item => item.id === itemId);
+            if (!itemToUpdate) return;
 
             const title = document.getElementById('title-input').value.trim();
             const link = document.getElementById('link-input').value.trim();
             const memo = document.getElementById('memo-input').value.trim();
             if (!title || !link) return alert('제목과 링크를 입력해주세요.');
 
-            allVideoItems[itemIndex] = { ...allVideoItems[itemIndex], title, link, memo };
-            saveItems();
-            renderVideoPage();
+            // Firebase 데이터 업데이트
+            videoRef.child(itemToUpdate.key).update({ 
+                title: title, 
+                link: link, 
+                memo: memo 
+            });
+            // on('value')가 자동으로 renderVideoPage() 호출
 
             document.getElementById('title-input').value = '';
             document.getElementById('link-input').value = '';
@@ -834,123 +890,117 @@
             currentlyEditingItem = null;
         }
 
-        
-        // --- 3단계: '메모장' 코드 (Firebase Realtime Database 버전) 적용 완료 ---
+        // --- [수정됨] PLAIN MEMO LOGIC (Firebase 버전) ---
         const memoTextarea = document.getElementById('memo-textarea'), memoAddBtn = document.getElementById('memo-add-btn');
         const memoDeleteAllBtn = document.getElementById('memo-delete-all-btn'), memoListContainer = document.getElementById('memo-list-container');
         const charCounter = document.getElementById('char-counter');
-        const memoRef = db.ref('plainMemos'); // Firebase의 'plainMemos' 게시판을 사용
-        let currentlyEditingMemo = null; // 수정 중인 메모의 ID(key)
-        let currentlyEditingMemoElement = null; // 수정 중인 메모의 HTML 요소
-
+        const memoRef = db.ref('plainMemos');
+        let currentlyEditingMemo = null; // 수정 중인 메모의 Firebase key
+        
         memoTextarea.addEventListener('input', () => charCounter.textContent = `${memoTextarea.value.length}자`);
-        memoAddBtn.addEventListener('click', () => { if (currentlyEditingMemo) updateMemo(); else addMemo(); });
+        memoAddBtn.addEventListener('click', () => { if (currentlyEditingMemo) updateMemo(currentlyEditingMemo); else addMemo(); });
         memoDeleteAllBtn.addEventListener('click', () => { 
             if (confirm('모든 메모를 삭제하시겠습니까?')) { 
-                memoRef.remove(); // Firebase에서 'plainMemos' 전체 삭제
+                memoRef.remove(); 
             }
         });
         
         function linkify(text) { return escapeHTML(text).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>'); }
 
-        // [수정됨] Firebase에서 메모 불러오기 (실시간 동기화)
         function loadMemos() {
             memoRef.orderByChild('createdAt').on('value', (snapshot) => {
-                memoListContainer.innerHTML = ''; // 목록 비우기
+                memoListContainer.innerHTML = '';
                 snapshot.forEach((childSnapshot) => {
-                    const memoKey = childSnapshot.key; // Firebase가 만든 고유 ID
-                    const memoText = childSnapshot.val().text; // 저장된 텍스트
-                    if (memoText) {
-                        createMemoDOM(memoText, memoKey); // DOM 생성
+                    const memoKey = childSnapshot.key;
+                    const memoData = childSnapshot.val();
+                    if (memoData && memoData.text) {
+                        createMemoDOM(memoData.text, memoKey);
                     }
                 });
             });
         }
         
-        // [수정됨] Firebase용 DOM 생성
         function createMemoDOM(text, key) {
             const memoItem = document.createElement('div');
             memoItem.className = 'memo-item'; 
             memoItem.dataset.rawText = text;
-            memoItem.dataset.key = key; // Firebase 키 저장
+            memoItem.dataset.key = key; 
             memoItem.innerHTML = `<div class="memo-content">${linkify(text)}</div>
                 <div class="memo-item-actions action-buttons">
                     <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
                 </div>`;
-            memoListContainer.prepend(memoItem); // 새 메모를 맨 위에 추가
+            memoListContainer.prepend(memoItem);
             
-            // [수정됨] Firebase에서 삭제
             memoItem.querySelector('.btn-delete').addEventListener('click', () => {
                 if (confirm('메모를 삭제하시겠습니까?')) {
-                    memoRef.child(key).remove(); // ID(key)로 특정 메모만 삭제
+                    memoRef.child(key).remove();
                 }
             });
             
-            // [수정됨] 수정 상태로 변경
-            memoItem.querySelector('.btn-edit').addEventListener('click', () => editMemo(memoItem));
+            memoItem.querySelector('.btn-edit').addEventListener('click', () => editMemo(memoItem, key));
         }
 
-        // [수정됨] Firebase에 메모 추가
         function addMemo() {
             const text = memoTextarea.value.trim();
             if (text) { 
-                memoRef.push({ // Firebase에 새 데이터 추가
+                memoRef.push({
                     text: text,
-                    createdAt: firebase.database.ServerValue.TIMESTAMP // 정렬을 위한 시간 기록
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
                 });
-                // loadMemos의 on('value')가 자동으로 화면을 갱신해줍니다.
                 memoTextarea.value = ''; 
                 charCounter.textContent = '0자'; 
             }
         }
         
-        function editMemo(memoItem) {
+        function editMemo(memoItem, key) {
             memoTextarea.value = memoItem.dataset.rawText;
             memoAddBtn.textContent = '메모 수정';
-            currentlyEditingMemo = memoItem.dataset.key; // Firebase 키 저장
-            currentlyEditingMemoElement = memoItem;
+            currentlyEditingMemo = key;
             memoTextarea.focus();
         }
 
-        // [수정됨] Firebase 데이터 업데이트
-        function updateMemo() {
+        function updateMemo(key) {
             const newText = memoTextarea.value.trim();
-            if (currentlyEditingMemo) {
-                if (newText) {
-                    // Firebase에서 텍스트 업데이트
-                    memoRef.child(currentlyEditingMemo).update({ text: newText });
-                } else {
-                    // 텍스트가 비었으면 삭제
-                    memoRef.child(currentlyEditingMemo).remove();
-                }
+            if (newText) {
+                memoRef.child(key).update({ text: newText });
+            } else {
+                memoRef.child(key).remove();
             }
-            // 초기화
             memoTextarea.value = ''; 
             memoAddBtn.textContent = '메모 추가'; 
             currentlyEditingMemo = null;
-            currentlyEditingMemoElement = null;
         }
-        // --- 3단계 완료 ---
 
 
-        // --- DYNAMIC TAB MANAGER (LocalStorage - 동기화 안됨) ---
-        // (참고: 이 '즐겨찾기' 탭도 Firebase와 동기화되지 않습니다.)
+        // --- [수정됨] DYNAMIC TAB MANAGER (Firebase 버전) ---
         const TabManager = {
             tabsContainer: document.querySelector('.tabs'),
             contentContainer: document.querySelector('.container'),
-            tabConfigKey: 'dynamicTabsConfig',
+            tabsRef: db.ref('dynamicTabsConfig'),
             tabs: [],
             init() {
-                this.loadTabs(); this.render();
+                this.loadTabs(); // Firebase에서 탭 로드
                 document.getElementById('add-tab-btn').addEventListener('click', () => this.addTab());
                 document.getElementById('rename-tab-btn').addEventListener('click', () => this.renameTab());
                 document.getElementById('delete-tab-btn').addEventListener('click', () => this.deleteTab());
             },
             loadTabs() {
-                const saved = JSON.parse(localStorage.getItem(this.tabConfigKey));
-                this.tabs = saved && saved.length ? saved : [{ id: `tab-${Date.now()}`, name: '⭐ 즐겨찾기' }];
+                this.tabsRef.on('value', (snapshot) => {
+                    const saved = snapshot.val();
+                    this.tabs = saved && saved.length ? saved : [{ id: `tab-${Date.now()}`, name: '⭐ 즐겨찾기' }];
+                    
+                    // 탭이 하나도 없으면 기본값으로 초기화
+                    if (this.tabs.length === 0) {
+                         this.tabs = [{ id: `tab-${Date.now()}`, name: '⭐ 즐겨찾기' }];
+                         this.saveTabs(); // Firebase에 기본값 저장
+                    }
+                    
+                    this.render();
+                });
             },
-            saveTabs() { localStorage.setItem(this.tabConfigKey, JSON.stringify(this.tabs)); },
+            saveTabs() { 
+                this.tabsRef.set(this.tabs); 
+            },
             render() {
                 this.tabsContainer.querySelectorAll('.dynamic-tab').forEach(t => t.remove());
                 this.contentContainer.querySelectorAll('.dynamic-tab-content').forEach(c => c.remove());
@@ -964,7 +1014,7 @@
                     content.id = tabData.id;
                     content.className = 'tab-content dynamic-tab-content';
                     this.contentContainer.appendChild(content);
-                    new FavoritesTab(content, tabData.id);
+                    new FavoritesTab(content, tabData.id); // Firebase용 FavoritesTab 생성
                 });
                 initializeTabSwitching();
             },
@@ -972,7 +1022,7 @@
                 const name = prompt('새 탭 이름:');
                 if (name && name.trim()) {
                     this.tabs.push({ id: `tab-${Date.now()}`, name: name.trim() });
-                    this.saveTabs(); this.render();
+                    this.saveTabs(); // on('value')가 자동으로 render() 호출
                 }
             },
             renameTab() {
@@ -985,7 +1035,7 @@
                     const newName = prompt(`'${oldName}' 탭의 새 이름을 입력하세요:`, oldName);
                     if (newName && newName.trim() && newName.trim() !== oldName) {
                         tabData.name = newName.trim();
-                        this.saveTabs(); this.render();
+                        this.saveTabs();
                     }
                 } else alert('오류: 해당 탭 정보를 찾을 수 없습니다.');
             },
@@ -997,20 +1047,29 @@
                 const tabIndex = this.tabs.findIndex(t => t.id === tabId);
                 if (tabIndex > -1) {
                     if (confirm(`'${tabName}' 탭과 모든 데이터를 정말로 삭제하시겠습니까?`)) {
-                        localStorage.removeItem(`favoritesData-${tabId}`);
+                        // Firebase에서 탭의 '데이터' 삭제
+                        db.ref(`favorites/${tabId}`).remove();
+                        // Firebase에서 탭 '목록' 삭제
                         this.tabs.splice(tabIndex, 1);
                         this.saveTabs();
-                        this.render();
+                        // on('value')가 자동으로 render() 호출
                     }
                 } else alert('오류: 해당 탭 정보를 찾을 수 없습니다.');
             }
         };
 
+        // --- [수정됨] FavoritesTab CLASS (Firebase 버전) ---
         class FavoritesTab {
             constructor(containerEl, tabId) {
-                this.container = containerEl; this.tabId = tabId; this.dataKey = `favoritesData-${this.tabId}`;
-                this.currentlyEditingFav = null; this.currentImage = null;
-                this.renderHTML(); this.bindElements(); this.addEventListeners(); this.loadFavorites();
+                this.container = containerEl; 
+                this.tabId = tabId; 
+                this.favRef = db.ref(`favorites/${this.tabId}`); // Firebase 경로
+                this.currentlyEditingFav = null; // 수정 중인 항목의 Firebase key
+                this.currentImage = null;
+                this.renderHTML(); 
+                this.bindElements(); 
+                this.addEventListeners(); 
+                this.loadFavorites(); // Firebase에서 즐겨찾기 로드
             }
             renderHTML() {
                 this.container.innerHTML = `
@@ -1044,7 +1103,11 @@
             }
             addEventListeners() {
                 this.addBtn.addEventListener('click', () => { if (this.currentlyEditingFav) this.updateFavorite(this.currentlyEditingFav); else this.addFavorite(); });
-                this.deleteAllBtn.addEventListener('click', () => { if (confirm('모든 즐겨찾기를 삭제하시겠습니까?')) { this.listContainer.querySelectorAll('.list-item').forEach(i => i.remove()); this.saveFavorites(); } });
+                this.deleteAllBtn.addEventListener('click', () => { 
+                    if (confirm('모든 즐겨찾기를 삭제하시겠습니까?')) { 
+                        this.favRef.remove(); // Firebase에서 삭제
+                    } 
+                });
                 this.imageUploadBtn.addEventListener('click', () => this.imageInput.click());
                 this.imageInput.addEventListener('change', e => e.target.files[0] && this.handleImageFile(e.target.files[0]));
                 this.titleInput.addEventListener('paste', e => {
@@ -1065,20 +1128,26 @@
             clearImagePreview() {
                 this.currentImage = null; this.imagePreview.src = ''; this.imageInput.value = ''; this.imageClearBtn.style.display = 'none';
             }
-            saveFavorites() {
-                const favs = Array.from(this.listContainer.querySelectorAll('.list-item')).map(el => ({
-                    title: el.querySelector('.col-title').textContent,
-                    link: el.querySelector('.col-link a')?.href || '',
-                    memo: el.querySelector('.col-memo').dataset.fullMemo || '',
-                    image: el.querySelector('.thumbnail-container img')?.dataset.customImage || null
-                }));
-                localStorage.setItem(this.dataKey, JSON.stringify(favs));
+            
+            // saveFavorites() 함수는 Firebase 사용으로 불필요해짐
+
+            loadFavorites() { 
+                this.favRef.on('value', (snapshot) => {
+                    this.listContainer.querySelectorAll('.list-item').forEach(i => i.remove()); // 목록 비우기
+                    let index = 1;
+                    snapshot.forEach(child => {
+                        const key = child.key;
+                        const fav = child.val();
+                        this.createFavoriteDOM(fav, key, index++); // DOM 생성
+                    });
+                });
             }
-            loadFavorites() { JSON.parse(localStorage.getItem(this.dataKey) || '[]').forEach(fav => this.createFavoriteDOM(fav)); }
-            renumberFavorites() { this.listContainer.querySelectorAll('.list-item').forEach((el, i) => el.querySelector('.col-index').textContent = i + 1); }
-            async createFavoriteDOM(fav) {
+            
+            async createFavoriteDOM(fav, key, index) {
                 const itemElement = document.createElement('div');
                 itemElement.className = 'list-item';
+                itemElement.dataset.key = key; // Firebase 키 저장
+                
                 const image = fav.image;
                 const link = fav.link;
                 let thumbnailHTML = '<div class="no-thumbnail">N/A</div>';
@@ -1092,65 +1161,74 @@
                     }
                 }
                 const displayedMemo = fav.memo.length > 30 ? fav.memo.substring(0, 30) + '...' : fav.memo;
+                
                 itemElement.innerHTML = `
-                    <div class="item-col col-index"></div>
+                    <div class="item-col col-index">${index}</div>
                     <div class="item-col col-title">${escapeHTML(fav.title)}</div>
                     <div class="item-col col-link">${link ? `<a href="${escapeHTML(link)}" target="_blank">${escapeHTML(link)}</a>` : '-'}</div>
                     <div class="item-col col-thumbnail">${thumbnailHTML}</div>
                     <div class="item-col col-memo" data-full-memo="${escapeHTML(fav.memo)}">${escapeHTML(displayedMemo) || '-'}</div>
                     <div class="item-col col-actions action-buttons"><button class="btn-edit">수정</button><button class="btn-delete">삭제</button></div>`;
+                
                 this.listContainer.appendChild(itemElement);
-                itemElement.querySelector('.btn-delete').addEventListener('click', () => { itemElement.remove(); this.saveFavorites(); this.renumberFavorites(); });
-                itemElement.querySelector('.btn-edit').addEventListener('click', () => this.editFavorite(itemElement));
-                this.renumberFavorites();
+                
+                itemElement.querySelector('.btn-delete').addEventListener('click', () => {
+                    if (confirm('이 항목을 삭제하시겠습니까?')) {
+                        this.favRef.child(key).remove();
+                    }
+                });
+                itemElement.querySelector('.btn-edit').addEventListener('click', () => this.editFavorite(itemElement, fav, key));
             }
+            
             addFavorite() {
                 const title = this.titleInput.value.trim();
                 if (!title) return alert('제목을 입력해주세요.');
                 const newFav = {
-                    title, link: this.linkInput.value.trim(), memo: this.memoInput.value.trim(), image: this.currentImage
+                    title, 
+                    link: this.linkInput.value.trim(), 
+                    memo: this.memoInput.value.trim(), 
+                    image: this.currentImage
                 };
-                this.createFavoriteDOM(newFav).then(() => {
-                    this.saveFavorites();
-                    this.titleInput.value = this.linkInput.value = this.memoInput.value = '';
-                    this.clearImagePreview();
-                    this.titleInput.focus();
-                });
+                
+                this.favRef.push(newFav); // Firebase에 추가
+                // on('value')가 자동으로 DOM 갱신
+                
+                this.titleInput.value = this.linkInput.value = this.memoInput.value = '';
+                this.clearImagePreview();
+                this.titleInput.focus();
             }
-            editFavorite(itemElement) {
-                const fav = {
-                    title: itemElement.querySelector('.col-title').textContent,
-                    link: itemElement.querySelector('.col-link a')?.href || '',
-                    memo: itemElement.querySelector('.col-memo').dataset.fullMemo,
-                    image: itemElement.querySelector('.thumbnail-container img')?.dataset.customImage
-                };
-                this.titleInput.value = fav.title; this.linkInput.value = fav.link; this.memoInput.value = fav.memo;
-                if (fav.image) { this.currentImage = fav.image; this.imagePreview.src = fav.image; this.imageClearBtn.style.display = 'inline'; }
-                else { this.clearImagePreview(); }
+            
+            editFavorite(itemElement, fav, key) {
+                this.titleInput.value = fav.title; 
+                this.linkInput.value = fav.link; 
+                this.memoInput.value = fav.memo;
+                
+                if (fav.image) { 
+                    this.currentImage = fav.image; 
+                    this.imagePreview.src = fav.image; 
+                    this.imageClearBtn.style.display = 'inline'; 
+                }
+                else { 
+                    this.clearImagePreview(); 
+                }
+                
                 this.addBtn.textContent = '수정 완료';
-                this.currentlyEditingFav = itemElement; this.titleInput.focus();
+                this.currentlyEditingFav = key; // Firebase 키 저장
+                this.titleInput.focus();
             }
-            async updateFavorite(itemElement) {
+            
+            async updateFavorite(key) {
                 const newFav = {
-                    title: this.titleInput.value.trim(), link: this.linkInput.value.trim(),
-                    memo: this.memoInput.value.trim(), image: this.currentImage
+                    title: this.titleInput.value.trim(), 
+                    link: this.linkInput.value.trim(),
+                    memo: this.memoInput.value.trim(), 
+                    image: this.currentImage
                 };
                 if (!newFav.title) return alert('제목을 입력해주세요.');
                 
-                const parent = itemElement.parentNode;
-                const nextSibling = itemElement.nextSibling;
+                this.favRef.child(key).update(newFav); // Firebase 업데이트
+                // on('value')가 자동으로 DOM 갱신
                 
-                itemElement.remove();
-                await this.createFavoriteDOM(newFav);
-
-                const newElement = parent.lastChild; 
-                if (nextSibling) {
-                    parent.insertBefore(newElement, nextSibling);
-                }
-
-                this.saveFavorites();
-                this.renumberFavorites();
-
                 this.titleInput.value = this.linkInput.value = this.memoInput.value = '';
                 this.clearImagePreview();
                 this.addBtn.textContent = '추가';
