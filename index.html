@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>비디오 & 메모 관리자</title>
-
-<style>
+    <style>
         body {
             font-family: "Malgun Gothic", "맑은 고딕", sans-serif;
             margin: 0;
@@ -95,7 +94,7 @@
             background-color: #6c757d;
             color: white;
             cursor: pointer;
-         }
+        }
         #add-btn {
             background-color: #28a745;
             color: white;
@@ -111,7 +110,7 @@
             align-items: center;
             margin-top: 20px;
         }
-        #delete-all-btn, #memo-delete-all-btn, .fav-delete-all-btn {
+        #delete-all-btn, #memo-delete-all-btn, .fav-delete-all-btn, .notepad-delete-all-btn {
             background-color: #dc3545;
             color: white;
             border: none;
@@ -236,27 +235,27 @@
         .btn-delete { background-color: #dc3545; border-color: #dc3545; color: white; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .memo-editor {
+        .memo-editor, .notepad-editor {
             background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
-        .memo-editor h2 { margin-top: 0; font-size: 18px; }
-        #memo-textarea {
+        .memo-editor h2, .notepad-editor h2 { margin-top: 0; font-size: 18px; }
+        #memo-textarea, .notepad-textarea {
             width: 100%; height: 120px; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;
             resize: vertical; box-sizing: border-box; font-family: inherit; font-size: 14px;
         }
-        .memo-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
-        #char-counter { font-size: 14px; color: #6c757d; }
-        #memo-add-btn {
+        .memo-actions, .notepad-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+        #char-counter, .notepad-char-counter { font-size: 14px; color: #6c757d; }
+        #memo-add-btn, .notepad-add-btn {
             background-color: #007bff; color: white; padding: 10px 20px; border: none;
             border-radius: 4px; cursor: pointer; font-size: 16px;
         }
-        #memo-list-container { margin-top: 20px; }
-        .memo-item {
+        #memo-list-container, .notepad-list-container { margin-top: 20px; }
+        .memo-item, .notepad-item {
             background-color: #fff; padding: 15px; border-radius: 5px; margin-bottom: 10px;
             border: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: flex-start;
         }
-        .memo-content { white-space: pre-wrap; word-break: break-word; flex-grow: 1; }
-        .memo-item-actions button { margin-left: 8px; }
+        .memo-content, .notepad-content { white-space: pre-wrap; word-break: break-word; flex-grow: 1; }
+        .memo-item-actions button, .notepad-item-actions button { margin-left: 8px; }
         .dynamic-tab-content .input-section {
             grid-template-columns: repeat(4, 1fr) auto 1fr;
         }
@@ -315,135 +314,50 @@
             cursor: not-allowed;
             opacity: 0.6;
         }
-
-        /* ▼▼▼ [최종 수정] 휴대폰 반응형 레이아웃 (블로그 카드형) ▼▼▼ */
-        @media (max-width: 768px) {
-            /* 1. 전체적인 여백 줄이기 */
-            .container {
-                padding: 10px;
-            }
-            .tab {
-                padding: 15px 10px; /* 탭 좌우 여백 줄이기 */
-            }
-            .lists-wrapper {
-                margin-top: 10px; /* 리스트 상단 여백 줄이기 */
-            }
-            .memo-editor {
-                padding: 15px; /* 메모장 입력기 여백 줄이기 */
-            }
-
-            /* 2. 입력 섹션(제목, 링크 등)을 세로로 쌓기 */
-            #video-tab-content .input-section,
-            .dynamic-tab-content .input-section {
-                grid-template-columns: 1fr; /* 모든 입력칸을 세로로 쌓음 */
-            }
-            .fav-image-preview-container {
-                 padding-left: 0;
-                 margin-top: 10px;
-                 justify-content: flex-start;
-            }
-
-            /* 3. 비디오 탭의 좌/우 리스트를 세로로 쌓기 */
-            .lists-wrapper {
-                flex-direction: column;
-                gap: 10px;
-            }
-            
-            /* 4. 리스트 헤더 숨기기 (모바일에선 불필요) */
-            .list-header {
-                display: none;
-            }
-            
-            /* 5. 리스트 아이템(항목)을 카드 형태로 변경 */
-            .list-item {
-                flex-wrap: wrap; 
-                min-height: 0;
-                padding: 15px;
-                gap: 10px 5px; 
-            }
-            
-            .item-col {
-                padding: 0;
-                text-align: left !important;
-                flex-grow: 1;
-            }
-            
-            /* 6. 항목 내부 정렬 (블로그형으로 수정) */
-            .col-index {
-                display: none; /* 번호 숨기기 */
-            }
-            
-            /* 제목/링크는 한 줄을 다 차지하도록 */
-            .col-title,
-            .fav-list-container .col-link {
-                flex-basis: 100% !important;
-                font-size: 17px;
-                font-weight: bold;
-                line-height: 1.3;
-            }
-            
-            /* 썸네일이 한 줄을 다 차지하도록 (가운데 정렬) */
-            .col-thumbnail {
-                flex-basis: 100% !important; 
-                text-align: center !important; 
-            }
-            
-            /* 썸네일 컨테이너 (가로 꽉 차게 수정) */
-            .thumbnail-container, .no-thumbnail {
-                width: 100%; /* 170px -> 100% */
-                height: auto;
-                min-height: 150px; /* 썸네일 없는 경우 최소 높이 */
-                aspect-ratio: 16 / 9; /* 16:9 비율 유지 */
-            }
-            .thumbnail-container img {
-                transform: none !important; /* shorts 스케일 원복 */
-                width: 100%;
-                height: 100%; /* object-fit: cover 이므로 100% */
-            }
-            
-            /* '링크 보기' 버튼 (썸네일 아래) */
-            .link-button {
-                display: inline-block;
-                margin-top: 8px;
-            }
-            
-            /* 메모가 한 줄을 다 차지하도록 */
-            .col-memo {
-                flex-basis: 100% !important; 
-                margin-top: 10px; /* 썸네일과 간격 */
-                font-size: 14px;
-                line-height: 1.5;
-            }
-            
-            /* 동작 버튼은 맨 아래 한 줄을 다 차지하고 오른쪽 정렬 */
-            .col-actions {
-                flex-basis: 100% !important;
-                text-align: right !important;
-                margin-top: 15px;
-            }
-
-            /* 메모장 탭 UI 조정 */
-            .memo-actions {
-                flex-wrap: wrap; /* 버튼들 줄바꿈 허용 */
-                gap: 10px;
-                justify-content: flex-end; /* 오른쪽 정렬 */
-            }
-            .memo-actions span#char-counter {
-                flex-basis: 100%; /* 글자 수는 왼쪽 정렬 */
-                text-align: left;
-            }
-
-            /* 페이지네이션 버튼 여백 줄이기 */
-            .page-btn {
-                padding: 6px 10px;
-            }
+        
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); display: flex;
+            justify-content: center; align-items: center; z-index: 1000;
         }
-        /* ▲▲▲ 반응형 레이아웃 끝 ▲▲▲ */
+        .modal-content {
+            background-color: #fff; padding: 30px; border-radius: 8px;
+            width: 90%; max-width: 400px; text-align: center;
+        }
+        .modal-content h2 { margin-top: 0; }
+        .modal-options { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
+        .modal-options button {
+            padding: 12px; font-size: 16px; border-radius: 6px;
+            border: 1px solid #ccc; background-color: #f8f9fa; cursor: pointer;
+        }
+        .modal-options button:hover { background-color: #e9ecef; }
+        #modal-close-btn {
+            margin-top: 10px; background-color: #6c757d; color: white;
+            border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;
+        }
+        
+        /* Editor Tab Styles */
+        .editor-container { padding: 15px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .editor-toolbar {
+            border-bottom: 1px solid #dee2e6; padding-bottom: 10px; margin-bottom: 10px;
+            display: flex; gap: 5px; flex-wrap: wrap;
+        }
+        .editor-toolbar button {
+            background: #fff; border: 1px solid #ccc; border-radius: 4px;
+            width: 32px; height: 32px; cursor: pointer; font-family: 'Times New Roman', serif;
+        }
+        .editor-toolbar button:hover { background-color: #f0f0f0; }
+        .editor-content {
+            border: 1px solid #dee2e6; min-height: 400px; padding: 15px;
+            border-radius: 4px; outline: none; line-height: 1.6;
+        }
+        .editor-actions { margin-top: 15px; text-align: right; }
+        .editor-save-btn {
+            background-color: #007bff; color: white; padding: 8px 18px;
+            border: none; border-radius: 4px; cursor: pointer;
+        }
     </style>
-    
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    
 </head>
 <body>
     <div class="header">
@@ -459,7 +373,7 @@
     </div>
     <div class="tab-management">
         <button id="add-tab-btn">+ 탭 추가</button>
-        <button id="rename-tab-btn"✏️ 이름 변경</button>
+        <button id="rename-tab-btn">✏️ 이름 변경</button>
         <button id="delete-tab-btn">🗑️ 탭 삭제</button>
     </div>
 
@@ -520,38 +434,33 @@
             <div id="memo-list-container"></div>
         </div>
     </div>
+    
+    <!-- Add Tab Modal -->
+    <div id="add-tab-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>새 탭 유형 선택</h2>
+            <p>어떤 종류의 탭을 추가하시겠습니까?</p>
+            <div class="modal-options">
+                <button data-tab-type="favorites">⭐ 즐겨찾기 (기존)</button>
+                <button data-tab-type="notepad">📝 메모장</button>
+                <button data-tab-type="editor">✍️ 글쓰기</button>
+            </div>
+            <button id="modal-close-btn">취소</button>
+        </div>
+    </div>
 
     <a id="download-anchor" style="position: absolute; top: -9999px; left: -9999px;"></a>
 
     <script>
-        // ▼▼▼ 2단계: 여기에 Firebase 설정값을 붙여넣으세요 ▼▼▼
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyDV9wWRsEiS0pAsl1Xw9ee1fQ5Yf9N5mto",
-    authDomain: "my-memo-app-6311c.firebaseapp.com",
-    projectId: "my-memo-app-6311c",
-    storageBucket: "my-memo-app-6311c.firebasestorage.app",
-    messagingSenderId: "345865782837",
-    appId: "1:345865782837:web:a9147e6468ff400953937c"
-  };
-
-        // Firebase 앱 초기화 및 데이터베이스 연결
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        const rootRef = db.ref();
-        // ▲▲▲ 2단계 완료 ▲▲▲
-
-
         document.addEventListener('DOMContentLoaded', () => {
-            TabManager.init(); 
-            initializeVideoTab(); 
-            loadMemos(); 
-            setupBackupAndRestore(); 
+            TabManager.init();
+            initializeVideoTab();
+            loadMemos();
+            setupBackupAndRestore();
         });
 
         let currentObjectUrl = null;
 
-        // --- [최종 수정됨] 백업/복원 (잘못된 키 필터링) ---
         function setupBackupAndRestore() {
             const exportBtn = document.getElementById('export-data-btn');
             const importBtn = document.getElementById('import-data-btn');
@@ -570,48 +479,17 @@
 
         async function exportData() {
             try {
-                // Firebase root에서 모든 데이터 가져오기
-                const snapshot = await rootRef.once('value');
-                const backupData = snapshot.exists() ? snapshot.val() : {};
-
-                // [★수정★] LocalStorage에 남은 '옛날' 데이터도 '알고 있는' 키만 백업
-                const localStorageBackup = {};
-                const knownOldKeys = ['plainMemosData', 'videoMemoData', 'dynamicTabsConfig']; 
-                
-                // 1. 알려진 옛날 키 백업
-                for (const key of knownOldKeys) {
-                    const data = localStorage.getItem(key);
-                    if (data) {
-                        localStorageBackup[key] = data;
-                    }
+                if (localStorage.length === 0) return alert('백업할 데이터가 없습니다.');
+                const backupData = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    backupData[key] = localStorage.getItem(key);
                 }
-                
-                // 2. 옛날 즐겨찾기 탭(favoritesData-...) 백업
-                const oldTabsJson = localStorage.getItem('dynamicTabsConfig');
-                if (oldTabsJson) {
-                    try {
-                        const oldTabs = JSON.parse(oldTabsJson);
-                        if (Array.isArray(oldTabs)) {
-                            oldTabs.forEach(tab => {
-                                const favKey = `favoritesData-${tab.id}`;
-                                const favData = localStorage.getItem(favKey);
-                                if (favData) {
-                                    localStorageBackup[favKey] = favData;
-                                }
-                            });
-                        }
-                    } catch (e) { console.warn("Old tabs config in LS is corrupted.", e); }
-                }
-
-                if (Object.keys(localStorageBackup).length > 0) {
-                     backupData['localStorage_backup'] = localStorageBackup;
-                }
-
                 const dataStr = JSON.stringify(backupData, null, 2);
                 const blob = new Blob([dataStr], { type: 'application/json' });
                 const date = new Date();
                 const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                const filename = `firebase-full-backup-${dateStr}.json`;
+                const filename = `memo-backup-${dateStr}.json`;
 
                 if (window.showSaveFilePicker) {
                     const handle = await window.showSaveFilePicker({
@@ -640,158 +518,31 @@
         function importData(event) {
             const file = event.target.files[0];
             if (!file) return;
-            if (!confirm('데이터를 가져오면 Firebase의 모든 내용이 덮어씌워집니다. 계속하시겠습니까?')) return;
+            if (!confirm('데이터를 가져오면 현재 모든 내용이 덮어씌워집니다. 계속하시겠습니까?')) return;
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
                     const backupData = JSON.parse(e.target.result);
                     if (typeof backupData !== 'object' || backupData === null) throw new Error('Invalid backup file format.');
-                    
-                    // 1. LocalStorage 백업본이 있다면 먼저 복원
-                    if (backupData.localStorage_backup) {
-                        localStorage.clear();
-                        for (const key in backupData.localStorage_backup) {
-                            localStorage.setItem(key, backupData.localStorage_backup[key]);
-                        }
-                        // Firebase에 쓰지 않도록 삭제
-                        delete backupData.localStorage_backup; 
-                    } else {
-                         localStorage.clear(); 
+                    localStorage.clear();
+                    for (const key in backupData) {
+                        if (Object.hasOwnProperty.call(backupData, key)) localStorage.setItem(key, backupData[key]);
                     }
-                    
-                    // 2. [★수정★] Firebase에 쓸 데이터만 골라내기
-                    // (firebase:host:... 같은 잘못된 키를 걸러내기 위함)
-                    const validKeys = ['plainMemos', 'videoMemos', 'dynamicTabsConfig', 'favorites'];
-                    const cleanData = {};
-
-                    // backupData에 validKeys에 해당하는 데이터가 있으면 cleanData로 복사
-                    for (const key of validKeys) {
-                        if (backupData[key] !== undefined) {
-                            cleanData[key] = backupData[key];
-                        }
-                    }
-                    
-                    // 3. Firebase 데이터 복원 (정리된 데이터만 덮어쓰기)
-                    rootRef.set(cleanData)
-                        .then(() => {
-                            alert('데이터를 성공적으로 복원했습니다. 페이지를 새로고침합니다.');
-                            location.reload();
-                        })
-                        .catch(err => {
-                            alert('Firebase 데이터 복원 중 오류 발생: ' + (err.message || err));
-                        });
-
+                    alert('데이터를 성공적으로 복원했습니다. 페이지를 새로고침합니다.');
+                    location.reload();
                 } catch (error) {
-                    alert('백업 파일을 불러오는 중 오류가 발생했습니다: ' + (error.message || error));
+                    alert('백업 파일을 불러오는 중 오류가 발생했습니다: ' + error.message);
                 }
             };
-            // [오류 수정 2] reader.readText -> readAsText
             reader.readAsText(file);
         }
-
-        // --- ★★★★★ '모든' 데이터 Firebase로 이사 기능 ★★★★★ ---
-        async function migrateAllLocalStorageToFirebase() {
-            if (!confirm("기존 '개인 금고(LocalStorage)'에 저장된 모든 데이터를 '공용 금고(Firebase)'로 복사하시겠습니까?\n\n- 메모장\n- 비디오 관리\n- 모든 즐겨찾기 탭 ('해외영상', '심리' 등)\n\n이 작업은 데이터가 있는 PC에서 딱 한 번만 실행해야 합니다.")) {
-                return;
-            }
-
-            try {
-                const snapshot = await rootRef.once('value');
-                if (snapshot.exists() && Object.keys(snapshot.val()).length > 0) {
-                    if (!confirm("경고: Firebase에 이미 데이터가 있습니다.\n그래도 '개인 금고'의 데이터를 덮어쓰시겠습니까?\n\n(참고: '메모장'은 중복 추가될 수 있습니다.)")) {
-                        return;
-                    }
-                }
-                
-                alert("데이터 이사를 시작합니다. 완료될 때까지 잠시 기다려주세요...");
-
-                const migrationData = {};
-                let foundOldData = false;
-
-                // 1. 메모장 (plainMemosData) 이사
-                const oldMemosJson = localStorage.getItem('plainMemosData');
-                if (oldMemosJson) {
-                    const oldMemos = JSON.parse(oldMemosJson);
-                    if (Array.isArray(oldMemos) && oldMemos.length > 0) {
-                        migrationData.plainMemos = {};
-                        oldMemos.forEach(text => {
-                            const newKey = db.ref().child('plainMemos').push().key;
-                            migrationData.plainMemos[newKey] = { text: text, createdAt: firebase.database.ServerValue.TIMESTAMP };
-                        });
-                        foundOldData = true;
-                        console.log(`[이사] 메모장 ${oldMemos.length}개 찾음`);
-                    }
-                }
-
-                // 2. 비디오 관리 (videoMemoData) 이사
-                const oldVideosJson = localStorage.getItem('videoMemoData');
-                if (oldVideosJson) {
-                    const oldVideos = JSON.parse(oldVideosJson);
-                    if (Array.isArray(oldVideos) && oldVideos.length > 0) {
-                        migrationData.videoMemos = {};
-                        oldVideos.forEach(item => {
-                            const newKey = db.ref().child('videoMemos').push().key;
-                            migrationData.videoMemos[newKey] = item; // id, title, link, memo
-                        });
-                        foundOldData = true;
-                        console.log(`[이사] 비디오 ${oldVideos.length}개 찾음`);
-                    }
-                }
-
-                // 3. 탭 목록 (dynamicTabsConfig) 이사
-                const oldTabsJson = localStorage.getItem('dynamicTabsConfig');
-                if (oldTabsJson) {
-                    const oldTabs = JSON.parse(oldTabsJson);
-                    if (Array.isArray(oldTabs) && oldTabs.length > 0) {
-                        migrationData.dynamicTabsConfig = oldTabs;
-                        foundOldData = true;
-                        console.log(`[이사] 탭 목록 ${oldTabs.length}개 찾음`);
-
-                        // 4. 각 탭의 즐겨찾기 (favoritesData-...) 이사
-                        migrationData.favorites = {};
-                        oldTabs.forEach(tab => {
-                            const oldFavKey = `favoritesData-${tab.id}`;
-                            const oldFavJson = localStorage.getItem(oldFavKey);
-                            if (oldFavJson) {
-                                const oldFavs = JSON.parse(oldFavJson);
-                                if (Array.isArray(oldFavs) && oldFavs.length > 0) {
-                                    migrationData.favorites[tab.id] = {};
-                                    oldFavs.forEach(item => {
-                                        const newKey = db.ref().child('favorites').child(tab.id).push().key;
-                                        migrationData.favorites[tab.id][newKey] = item;
-                                    });
-                                    console.log(`[이사] 즐겨찾기 '${tab.name}' ${oldFavs.length}개 찾음`);
-                                }
-                            }
-                        });
-                    }
-                }
-
-                if (!foundOldData) {
-                    return alert("'개인 금고(LocalStorage)'에 이사할 데이터가 없습니다.");
-                }
-                
-                // Firebase에 'update'로 데이터 병합
-                await rootRef.update(migrationData);
-                
-                alert(`성공! '개인 금고'의 모든 데이터를 '공용 금고(Firebase)'로 복사했습니다.\n\n안전을 위해 기존 '개인 금고' 데이터는 삭제합니다.\n(백업이 필요하면 '내보내기'를 먼저 하세요.)\n\n페이지를 새로고침합니다.`);
-                
-                // 이사 완료 후 '개인 금고' 정리
-                localStorage.clear();
-                location.reload();
-
-            } catch (error) {
-                alert('데이터 이사 중 심각한 오류가 발생했습니다: ' + error.message);
-                console.error(error);
-            }
-        }
-        // --- 데이터 이사 기능 끝 ---
-
 
         function initializeTabSwitching() {
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.addEventListener('click', () => {
-                    const target = document.querySelector(tab.dataset.tabTarget);
+                    const targetSelector = tab.dataset.tabTarget;
+                    if (!targetSelector) return;
+                    const target = document.querySelector(targetSelector);
                     if (!target) return;
                     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -849,49 +600,37 @@
             return null;
         }
 
-        // --- [수정됨] VIDEO MEMO LOGIC (Firebase 버전) ---
+        // --- VIDEO MEMO LOGIC ---
         const addBtn = document.getElementById('add-btn');
         const deleteAllBtn = document.getElementById('delete-all-btn');
-        const videoRef = db.ref('videoMemos');
-        let currentlyEditingItem = null; // 수정 중인 항목의 id (Date.now())
-        let allVideoItems = []; // Firebase 데이터의 로컬 캐시 (페이징용)
+        const videoDataKey = 'videoMemoData';
+        let currentlyEditingItem = null;
+        let allVideoItems = [];
         let currentPage = 1;
         const itemsPerPage = 20;
 
         function initializeVideoTab() {
-            videoRef.orderByChild('id').on('value', (snapshot) => {
-                allVideoItems = [];
-                snapshot.forEach(child => {
-                    allVideoItems.push({ 
-                        ...child.val(), 
-                        key: child.key // Firebase 고유 키 저장
-                    });
-                });
-                // allVideoItems.reverse(); // 최신순으로 하려면 주석 해제 (id가 timestamp)
-                
-                // 현재 페이지가 데이터 삭제 후 최대 페이지를 넘지 않도록 조정
-                const totalPages = Math.ceil(allVideoItems.length / itemsPerPage) || 1;
-                if (currentPage > totalPages) {
-                    currentPage = totalPages;
-                }
-                
-                renderVideoPage();
-            });
-
-            addBtn.addEventListener('click', async () => {
-                if (currentlyEditingItem) await updateItem(currentlyEditingItem);
-                else await addItem();
-            });
-
-            deleteAllBtn.addEventListener('click', () => {
-                if (confirm('모든 비디오 항목을 삭제하시겠습니까?')) {
-                    videoRef.remove(); // Firebase에서 전체 삭제
-                    // on('value')가 자동으로 renderVideoPage() 호출
-                }
-            });
+            allVideoItems = JSON.parse(localStorage.getItem(videoDataKey) || '[]');
+            renderVideoPage();
         }
+
+        addBtn.addEventListener('click', async () => {
+            if (currentlyEditingItem) await updateItem(currentlyEditingItem);
+            else await addItem();
+        });
+
+        deleteAllBtn.addEventListener('click', () => {
+            if (confirm('모든 비디오 항목을 삭제하시겠습니까?')) {
+                allVideoItems = [];
+                saveItems();
+                currentPage = 1;
+                renderVideoPage();
+            }
+        });
         
-        // saveItems() 함수는 Firebase 사용으로 불필요해짐
+        function saveItems() {
+            localStorage.setItem(videoDataKey, JSON.stringify(allVideoItems));
+        }
 
         function renderVideoPage() {
             const leftContainer = document.getElementById('items-container-left');
@@ -951,7 +690,7 @@
         async function createItemDOM(item, displayIndex, container) {
             const itemElement = document.createElement('div');
             itemElement.className = 'list-item';
-            itemElement.dataset.id = item.id; // 고유 ID (timestamp)
+            itemElement.dataset.id = item.id;
             
             const videoId = getYoutubeVideoId(item.link);
             const thumbnailUrl = await getReliableYoutubeThumbnailUrl(videoId);
@@ -979,11 +718,11 @@
         }
 
         function deleteItem(itemId) {
-            const itemToDelete = allVideoItems.find(item => item.id === itemId);
-            if (itemToDelete) {
-                videoRef.child(itemToDelete.key).remove();
-            }
-            // on('value')가 자동으로 renderVideoPage() 호출
+            allVideoItems = allVideoItems.filter(item => item.id !== itemId);
+            saveItems();
+            const totalPages = Math.ceil(allVideoItems.length / itemsPerPage) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            renderVideoPage();
         }
 
         async function addItem() {
@@ -991,19 +730,13 @@
             const title = titleInput.value.trim(), link = linkInput.value.trim(), memo = memoInput.value.trim();
             if (!title || !link) return alert('제목과 링크를 입력해주세요.');
             
-            const newItem = { 
-                id: Date.now(), // 정렬 및 고유 ID로 사용
-                title, 
-                link, 
-                memo 
-            };
-            
-            videoRef.push(newItem); // Firebase에 추가
-            
-            // on('value')가 자동으로 리스트를 갱신
-            // 마지막 페이지로 이동하는 로직 추가
-            currentPage = Math.ceil((allVideoItems.length + 1) / itemsPerPage);
-            
+            const newItem = { id: Date.now(), title, link, memo };
+            allVideoItems.push(newItem);
+            saveItems();
+
+            currentPage = Math.ceil(allVideoItems.length / itemsPerPage);
+            renderVideoPage();
+
             titleInput.value = linkInput.value = memoInput.value = '';
             titleInput.focus();
         }
@@ -1022,21 +755,17 @@
         }
 
         async function updateItem(itemId) {
-            const itemToUpdate = allVideoItems.find(item => item.id === itemId);
-            if (!itemToUpdate) return;
+            const itemIndex = allVideoItems.findIndex(item => item.id === itemId);
+            if (itemIndex === -1) return;
 
             const title = document.getElementById('title-input').value.trim();
             const link = document.getElementById('link-input').value.trim();
             const memo = document.getElementById('memo-input').value.trim();
             if (!title || !link) return alert('제목과 링크를 입력해주세요.');
 
-            // Firebase 데이터 업데이트
-            videoRef.child(itemToUpdate.key).update({ 
-                title: title, 
-                link: link, 
-                memo: memo 
-            });
-            // on('value')가 자동으로 renderVideoPage() 호출
+            allVideoItems[itemIndex] = { ...allVideoItems[itemIndex], title, link, memo };
+            saveItems();
+            renderVideoPage();
 
             document.getElementById('title-input').value = '';
             document.getElementById('link-input').value = '';
@@ -1045,122 +774,80 @@
             currentlyEditingItem = null;
         }
 
-        // --- [수정됨] PLAIN MEMO LOGIC (Firebase 버전) ---
+        // --- PLAIN MEMO LOGIC (ORIGINAL TAB) ---
         const memoTextarea = document.getElementById('memo-textarea'), memoAddBtn = document.getElementById('memo-add-btn');
         const memoDeleteAllBtn = document.getElementById('memo-delete-all-btn'), memoListContainer = document.getElementById('memo-list-container');
-        const charCounter = document.getElementById('char-counter');
-        const memoRef = db.ref('plainMemos');
-        let currentlyEditingMemo = null; // 수정 중인 메모의 Firebase key
-        
+        const charCounter = document.getElementById('char-counter'), memoDataKey = 'plainMemosData';
+        let currentlyEditingMemo = null;
         memoTextarea.addEventListener('input', () => charCounter.textContent = `${memoTextarea.value.length}자`);
         memoAddBtn.addEventListener('click', () => { if (currentlyEditingMemo) updateMemo(currentlyEditingMemo); else addMemo(); });
-        memoDeleteAllBtn.addEventListener('click', () => { 
-            if (confirm('모든 메모를 삭제하시겠습니까?')) { 
-                memoRef.remove(); 
-            }
-        });
-        
+        memoDeleteAllBtn.addEventListener('click', () => { if (confirm('모든 메모를 삭제하시겠습니까?')) { memoListContainer.innerHTML = ''; saveMemos(); }});
         function linkify(text) { return escapeHTML(text).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>'); }
-
-        function loadMemos() {
-            memoRef.orderByChild('createdAt').on('value', (snapshot) => {
-                memoListContainer.innerHTML = '';
-                snapshot.forEach((childSnapshot) => {
-                    const memoKey = childSnapshot.key;
-                    const memoData = childSnapshot.val();
-                    if (memoData && memoData.text) {
-                        createMemoDOM(memoData.text, memoKey);
-                    }
-                });
-            });
+        function saveMemos() {
+            const memos = Array.from(memoListContainer.querySelectorAll('.memo-item')).map(el => el.dataset.rawText);
+            localStorage.setItem(memoDataKey, JSON.stringify(memos));
         }
-        
-        function createMemoDOM(text, key) {
+        function loadMemos() { JSON.parse(localStorage.getItem(memoDataKey) || '[]').forEach(createMemoDOM); }
+        function createMemoDOM(text) {
             const memoItem = document.createElement('div');
-            memoItem.className = 'memo-item'; 
-            memoItem.dataset.rawText = text;
-            memoItem.dataset.key = key; 
+            memoItem.className = 'memo-item'; memoItem.dataset.rawText = text;
             memoItem.innerHTML = `<div class="memo-content">${linkify(text)}</div>
                 <div class="memo-item-actions action-buttons">
                     <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
                 </div>`;
             memoListContainer.prepend(memoItem);
-            
-            memoItem.querySelector('.btn-delete').addEventListener('click', () => {
-                if (confirm('메모를 삭제하시겠습니까?')) {
-                    memoRef.child(key).remove();
-                }
-            });
-            
-            memoItem.querySelector('.btn-edit').addEventListener('click', () => editMemo(memoItem, key));
+            memoItem.querySelector('.btn-delete').addEventListener('click', () => { memoItem.remove(); saveMemos(); });
+            memoItem.querySelector('.btn-edit').addEventListener('click', () => editMemo(memoItem));
         }
-
         function addMemo() {
             const text = memoTextarea.value.trim();
-            if (text) { 
-                memoRef.push({
-                    text: text,
-                    createdAt: firebase.database.ServerValue.TIMESTAMP
-                });
-                memoTextarea.value = ''; 
-                charCounter.textContent = '0자'; 
-            }
+            if (text) { createMemoDOM(text); saveMemos(); memoTextarea.value = ''; charCounter.textContent = '0자'; }
         }
-        
-        function editMemo(memoItem, key) {
+        function editMemo(memoItem) {
             memoTextarea.value = memoItem.dataset.rawText;
             memoAddBtn.textContent = '메모 수정';
-            currentlyEditingMemo = key;
-            memoTextarea.focus();
+            currentlyEditingMemo = memoItem; memoTextarea.focus();
         }
-
-        function updateMemo(key) {
+        function updateMemo(memoItem) {
             const newText = memoTextarea.value.trim();
             if (newText) {
-                memoRef.child(key).update({ text: newText });
-            } else {
-                memoRef.child(key).remove();
-            }
-            memoTextarea.value = ''; 
-            memoAddBtn.textContent = '메모 추가'; 
-            currentlyEditingMemo = null;
+                memoItem.dataset.rawText = newText;
+                memoItem.querySelector('.memo-content').innerHTML = linkify(newText);
+            } else { memoItem.remove(); }
+            saveMemos();
+            memoTextarea.value = ''; memoAddBtn.textContent = '메모 추가'; currentlyEditingMemo = null;
         }
 
-
-        // --- [수정됨] DYNAMIC TAB MANAGER (Firebase 버전) ---
+        // --- DYNAMIC TAB MANAGER ---
         const TabManager = {
             tabsContainer: document.querySelector('.tabs'),
             contentContainer: document.querySelector('.container'),
-            tabsRef: db.ref('dynamicTabsConfig'),
+            tabConfigKey: 'dynamicTabsConfig',
             tabs: [],
             init() {
-                this.loadTabs(); // Firebase에서 탭 로드
+                this.loadTabs(); this.render();
                 document.getElementById('add-tab-btn').addEventListener('click', () => this.addTab());
                 document.getElementById('rename-tab-btn').addEventListener('click', () => this.renameTab());
                 document.getElementById('delete-tab-btn').addEventListener('click', () => this.deleteTab());
-            },
-            loadTabs() {
-                this.tabsRef.on('value', (snapshot) => {
-                    const saved = snapshot.val();
-                    
-                    // [오류 수정 1] Firebase가 객체로 반환해도 배열로 변환
-                    if (Array.isArray(saved) && saved.length > 0) {
-                        this.tabs = saved;
-                    } else if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
-                        // Firebase가 객체로 반환한 경우 (예: {0: {...}, 2: {...}})
-                        this.tabs = Object.values(saved);
-                    } else {
-                        // 데이터가 아예 없거나 빈 배열인 경우
-                        this.tabs = [{ id: `tab-${Date.now()}`, name: '⭐ 즐겨찾기' }];
-                        this.saveTabs(); // Firebase에 기본값 저장
+                
+                const modal = document.getElementById('add-tab-modal');
+                modal.querySelector('#modal-close-btn').addEventListener('click', () => modal.style.display = 'none');
+                modal.querySelector('.modal-options').addEventListener('click', (e) => {
+                    if (e.target.tagName === 'BUTTON') {
+                        const tabType = e.target.dataset.tabType;
+                        this._createTab(tabType);
                     }
-                    
-                    this.render();
                 });
             },
-            saveTabs() { 
-                this.tabsRef.set(this.tabs); 
+            loadTabs() {
+                 const saved = JSON.parse(localStorage.getItem(this.tabConfigKey));
+                if (saved && saved.length > 0) {
+                    this.tabs = saved.map(tab => ({ ...tab, type: tab.type || 'favorites' }));
+                } else {
+                    this.tabs = []; // Start with no dynamic tabs by default
+                }
             },
+            saveTabs() { localStorage.setItem(this.tabConfigKey, JSON.stringify(this.tabs)); },
             render() {
                 this.tabsContainer.querySelectorAll('.dynamic-tab').forEach(t => t.remove());
                 this.contentContainer.querySelectorAll('.dynamic-tab-content').forEach(c => c.remove());
@@ -1174,15 +861,31 @@
                     content.id = tabData.id;
                     content.className = 'tab-content dynamic-tab-content';
                     this.contentContainer.appendChild(content);
-                    new FavoritesTab(content, tabData.id); // Firebase용 FavoritesTab 생성
+
+                    const type = tabData.type || 'favorites';
+                    switch(type) {
+                        case 'notepad': new NotepadTab(content, tabData.id); break;
+                        case 'editor': new EditorTab(content, tabData.id); break;
+                        case 'favorites': default: new FavoritesTab(content, tabData.id); break;
+                    }
                 });
                 initializeTabSwitching();
             },
             addTab() {
-                const name = prompt('새 탭 이름:');
+                 document.getElementById('add-tab-modal').style.display = 'flex';
+            },
+             _createTab(type) {
+                const defaultNames = {
+                    favorites: '⭐ 새 즐겨찾기',
+                    notepad: '📝 새 메모장',
+                    editor: '✍️ 새 문서'
+                };
+                const name = prompt('새 탭의 이름을 입력하세요:', defaultNames[type]);
                 if (name && name.trim()) {
-                    this.tabs.push({ id: `tab-${Date.now()}`, name: name.trim() });
-                    this.saveTabs(); // on('value')가 자동으로 render() 호출
+                    this.tabs.push({ id: `tab-${Date.now()}`, name: name.trim(), type: type });
+                    this.saveTabs();
+                    this.render();
+                    document.getElementById('add-tab-modal').style.display = 'none';
                 }
             },
             renameTab() {
@@ -1195,7 +898,7 @@
                     const newName = prompt(`'${oldName}' 탭의 새 이름을 입력하세요:`, oldName);
                     if (newName && newName.trim() && newName.trim() !== oldName) {
                         tabData.name = newName.trim();
-                        this.saveTabs();
+                        this.saveTabs(); this.render();
                     }
                 } else alert('오류: 해당 탭 정보를 찾을 수 없습니다.');
             },
@@ -1207,29 +910,203 @@
                 const tabIndex = this.tabs.findIndex(t => t.id === tabId);
                 if (tabIndex > -1) {
                     if (confirm(`'${tabName}' 탭과 모든 데이터를 정말로 삭제하시겠습니까?`)) {
-                        // Firebase에서 탭의 '데이터' 삭제
-                        db.ref(`favorites/${tabId}`).remove();
-                        // Firebase에서 탭 '목록' 삭제
+                        const type = this.tabs[tabIndex].type || 'favorites';
+                        localStorage.removeItem(`${type}Data-${tabId}`); // remove associated data
+                        
                         this.tabs.splice(tabIndex, 1);
                         this.saveTabs();
-                        // on('value')가 자동으로 render() 호출
+                        
+                         // Switch to the first tab before re-rendering
+                        const firstTab = document.querySelector('.tab');
+                        if (firstTab) firstTab.click();
+
+                        this.render();
                     }
                 } else alert('오류: 해당 탭 정보를 찾을 수 없습니다.');
             }
         };
 
-        // --- [수정됨] FavoritesTab CLASS (Firebase 버전) ---
+        class EditorTab {
+            constructor(containerEl, tabId) {
+                this.container = containerEl;
+                this.tabId = tabId;
+                this.dataKey = `editorData-${this.tabId}`;
+                this.renderHTML();
+                this.bindElements();
+                this.addEventListeners();
+                this.loadContent();
+            }
+
+            renderHTML() {
+                this.container.innerHTML = `
+                    <div class="editor-container">
+                        <div class="editor-toolbar">
+                            <button data-command="bold" title="굵게"><b>B</b></button>
+                            <button data-command="italic" title="기울임"><i>I</i></button>
+                            <button data-command="underline" title="밑줄"><u>U</u></button>
+                            <button data-command="strikeThrough" title="취소선"><s>S</s></button>
+                            <button data-command="insertOrderedList" title="순서 있는 목록">1.</button>
+                            <button data-command="insertUnorderedList" title="순서 없는 목록">•</button>
+                            <button data-command="formatBlock" data-value="h2" title="제목2">H2</button>
+                            <button data-command="formatBlock" data-value="blockquote" title="인용">"</button>
+                            <button data-command="createLink" title="링크">🔗</button>
+                            <button data-command="insertImage" title="이미지">🖼️</button>
+                            <button data-command="justifyLeft" title="왼쪽 정렬">L</button>
+                            <button data-command="justifyCenter" title="가운데 정렬">C</button>
+                            <button data-command="justifyRight" title="오른쪽 정렬">R</button>
+                        </div>
+                        <div class="editor-content" contenteditable="true"></div>
+                        <div class="editor-actions">
+                            <button class="editor-save-btn">저장</button>
+                        </div>
+                    </div>`;
+            }
+
+            bindElements() {
+                this.toolbar = this.container.querySelector('.editor-toolbar');
+                this.contentArea = this.container.querySelector('.editor-content');
+                this.saveBtn = this.container.querySelector('.editor-save-btn');
+            }
+            
+            addEventListeners() {
+                this.toolbar.addEventListener('click', e => {
+                    const button = e.target.closest('button');
+                    if (!button) return;
+                    
+                    const { command, value } = button.dataset;
+                    
+                    if (command === 'createLink' || command === 'insertImage') {
+                        const url = prompt(`${command === 'createLink' ? 'URL' : '이미지 URL'}을 입력하세요:`);
+                        if (url) document.execCommand(command, false, url);
+                    } else {
+                        document.execCommand(command, false, value || null);
+                    }
+                    this.contentArea.focus();
+                });
+
+                this.saveBtn.addEventListener('click', () => this.saveContent());
+            }
+
+            saveContent() {
+                const content = this.contentArea.innerHTML;
+                localStorage.setItem(this.dataKey, content);
+                alert(`'${TabManager.tabs.find(t=>t.id === this.tabId)?.name}' 탭의 내용이 저장되었습니다.`);
+            }
+            
+            loadContent() {
+                const savedContent = localStorage.getItem(this.dataKey);
+                if (savedContent) this.contentArea.innerHTML = savedContent;
+            }
+        }
+        
+        class NotepadTab {
+             constructor(containerEl, tabId) {
+                this.container = containerEl;
+                this.tabId = tabId;
+                this.dataKey = `notepadData-${this.tabId}`;
+                this.currentlyEditingMemo = null;
+                this.renderHTML();
+                this.bindElements();
+                this.addEventListeners();
+                this.loadMemos();
+            }
+
+            renderHTML() {
+                this.container.innerHTML = `
+                <div class="notepad-editor">
+                    <h2>새 메모 작성</h2>
+                    <textarea class="notepad-textarea" placeholder="메모를 입력하세요..."></textarea>
+                    <div class="notepad-actions">
+                        <span class="notepad-char-counter">0자</span>
+                        <div><button class="notepad-add-btn">메모 추가</button></div>
+                        <button class="notepad-delete-all-btn">전체 삭제</button>
+                    </div>
+                </div>
+                <div class="notepad-list-container"></div>`;
+            }
+
+            bindElements() {
+                this.textarea = this.container.querySelector('.notepad-textarea');
+                this.addBtn = this.container.querySelector('.notepad-add-btn');
+                this.deleteAllBtn = this.container.querySelector('.notepad-delete-all-btn');
+                this.listContainer = this.container.querySelector('.notepad-list-container');
+                this.charCounter = this.container.querySelector('.notepad-char-counter');
+            }
+
+            addEventListeners() {
+                this.textarea.addEventListener('input', () => this.charCounter.textContent = `${this.textarea.value.length}자`);
+                this.addBtn.addEventListener('click', () => {
+                    if (this.currentlyEditingMemo) this.updateMemo(this.currentlyEditingMemo);
+                    else this.addMemo();
+                });
+                this.deleteAllBtn.addEventListener('click', () => {
+                    if (confirm('이 탭의 모든 메모를 삭제하시겠습니까?')) {
+                        this.listContainer.innerHTML = '';
+                        this.saveMemos();
+                    }
+                });
+            }
+
+            saveMemos() {
+                const memos = Array.from(this.listContainer.querySelectorAll('.notepad-item')).map(el => el.dataset.rawText);
+                localStorage.setItem(this.dataKey, JSON.stringify(memos));
+            }
+
+            loadMemos() {
+                const memos = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                memos.forEach(text => this.createMemoDOM(text));
+            }
+
+            createMemoDOM(text) {
+                const memoItem = document.createElement('div');
+                memoItem.className = 'notepad-item';
+                memoItem.dataset.rawText = text;
+                memoItem.innerHTML = `<div class="notepad-content">${linkify(text)}</div>
+                    <div class="notepad-item-actions action-buttons">
+                        <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
+                    </div>`;
+                this.listContainer.prepend(memoItem);
+                memoItem.querySelector('.btn-delete').addEventListener('click', () => { memoItem.remove(); this.saveMemos(); });
+                memoItem.querySelector('.btn-edit').addEventListener('click', () => this.editMemo(memoItem));
+            }
+
+            addMemo() {
+                const text = this.textarea.value.trim();
+                if (text) {
+                    this.createMemoDOM(text);
+                    this.saveMemos();
+                    this.textarea.value = '';
+                    this.charCounter.textContent = '0자';
+                }
+            }
+
+            editMemo(memoItem) {
+                this.textarea.value = memoItem.dataset.rawText;
+                this.addBtn.textContent = '메모 수정';
+                this.currentlyEditingMemo = memoItem;
+                this.textarea.focus();
+            }
+
+            updateMemo(memoItem) {
+                const newText = this.textarea.value.trim();
+                if (newText) {
+                    memoItem.dataset.rawText = newText;
+                    memoItem.querySelector('.notepad-content').innerHTML = linkify(newText);
+                } else {
+                    memoItem.remove();
+                }
+                this.saveMemos();
+                this.textarea.value = '';
+                this.addBtn.textContent = '메모 추가';
+                this.currentlyEditingMemo = null;
+            }
+        }
+
         class FavoritesTab {
             constructor(containerEl, tabId) {
-                this.container = containerEl; 
-                this.tabId = tabId; 
-                this.favRef = db.ref(`favorites/${this.tabId}`); // Firebase 경로
-                this.currentlyEditingFav = null; // 수정 중인 항목의 Firebase key
-                this.currentImage = null;
-                this.renderHTML(); 
-                this.bindElements(); 
-                this.addEventListeners(); 
-                this.loadFavorites(); // Firebase에서 즐겨찾기 로드
+                this.container = containerEl; this.tabId = tabId; this.dataKey = `favoritesData-${this.tabId}`;
+                this.currentlyEditingFav = null; this.currentImage = null;
+                this.renderHTML(); this.bindElements(); this.addEventListeners(); this.loadFavorites();
             }
             renderHTML() {
                 this.container.innerHTML = `
@@ -1263,11 +1140,7 @@
             }
             addEventListeners() {
                 this.addBtn.addEventListener('click', () => { if (this.currentlyEditingFav) this.updateFavorite(this.currentlyEditingFav); else this.addFavorite(); });
-                this.deleteAllBtn.addEventListener('click', () => { 
-                    if (confirm('모든 즐겨찾기를 삭제하시겠습니까?')) { 
-                        this.favRef.remove(); // Firebase에서 삭제
-                    } 
-                });
+                this.deleteAllBtn.addEventListener('click', () => { if (confirm('모든 즐겨찾기를 삭제하시겠습니까?')) { this.listContainer.querySelectorAll('.list-item').forEach(i => i.remove()); this.saveFavorites(); } });
                 this.imageUploadBtn.addEventListener('click', () => this.imageInput.click());
                 this.imageInput.addEventListener('change', e => e.target.files[0] && this.handleImageFile(e.target.files[0]));
                 this.titleInput.addEventListener('paste', e => {
@@ -1288,26 +1161,22 @@
             clearImagePreview() {
                 this.currentImage = null; this.imagePreview.src = ''; this.imageInput.value = ''; this.imageClearBtn.style.display = 'none';
             }
-            
-            // saveFavorites() 함수는 Firebase 사용으로 불필요해짐
-
-            loadFavorites() { 
-                this.favRef.on('value', (snapshot) => {
-                    this.listContainer.querySelectorAll('.list-item').forEach(i => i.remove()); // 목록 비우기
-                    let index = 1;
-                    snapshot.forEach(child => {
-                        const key = child.key;
-                        const fav = child.val();
-                        this.createFavoriteDOM(fav, key, index++); // DOM 생성
-                    });
-                });
+            saveFavorites() {
+                const favs = Array.from(this.listContainer.querySelectorAll('.list-item')).map(el => ({
+                    id: el.dataset.id,
+                    title: el.querySelector('.col-title').textContent,
+                    link: el.querySelector('.col-link a')?.href || '',
+                    memo: el.querySelector('.col-memo').dataset.fullMemo || '',
+                    image: el.querySelector('.thumbnail-container img')?.dataset.customImage || null
+                }));
+                localStorage.setItem(this.dataKey, JSON.stringify(favs));
             }
-            
-            async createFavoriteDOM(fav, key, index) {
+            loadFavorites() { JSON.parse(localStorage.getItem(this.dataKey) || '[]').forEach(fav => this.createFavoriteDOM(fav)); }
+            renumberFavorites() { this.listContainer.querySelectorAll('.list-item').forEach((el, i) => el.querySelector('.col-index').textContent = i + 1); }
+            async createFavoriteDOM(fav) {
                 const itemElement = document.createElement('div');
                 itemElement.className = 'list-item';
-                itemElement.dataset.key = key; // Firebase 키 저장
-                
+                itemElement.dataset.id = fav.id || Date.now();
                 const image = fav.image;
                 const link = fav.link;
                 let thumbnailHTML = '<div class="no-thumbnail">N/A</div>';
@@ -1320,75 +1189,67 @@
                         thumbnailHTML = `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${link.includes('/shorts/') ? 'is-short' : ''}"></div>`;
                     }
                 }
-                const displayedMemo = fav.memo && fav.memo.length > 30 ? fav.memo.substring(0, 30) + '...' : (fav.memo || '');
-                
+                const displayedMemo = fav.memo.length > 30 ? fav.memo.substring(0, 30) + '...' : fav.memo;
                 itemElement.innerHTML = `
-                    <div class="item-col col-index">${index}</div>
+                    <div class="item-col col-index"></div>
                     <div class="item-col col-title">${escapeHTML(fav.title)}</div>
                     <div class="item-col col-link">${link ? `<a href="${escapeHTML(link)}" target="_blank">${escapeHTML(link)}</a>` : '-'}</div>
                     <div class="item-col col-thumbnail">${thumbnailHTML}</div>
-                    <div class="item-col col-memo" data-full-memo="${escapeHTML(fav.memo || '')}">${escapeHTML(displayedMemo) || '-'}</div>
+                    <div class="item-col col-memo" data-full-memo="${escapeHTML(fav.memo)}">${escapeHTML(displayedMemo) || '-'}</div>
                     <div class="item-col col-actions action-buttons"><button class="btn-edit">수정</button><button class="btn-delete">삭제</button></div>`;
-                
                 this.listContainer.appendChild(itemElement);
-                
-                itemElement.querySelector('.btn-delete').addEventListener('click', () => {
-                    if (confirm('이 항목을 삭제하시겠습니까?')) {
-                        this.favRef.child(key).remove();
-                    }
-                });
-                itemElement.querySelector('.btn-edit').addEventListener('click', () => this.editFavorite(itemElement, fav, key));
+                itemElement.querySelector('.btn-delete').addEventListener('click', () => { itemElement.remove(); this.saveFavorites(); this.renumberFavorites(); });
+                itemElement.querySelector('.btn-edit').addEventListener('click', () => this.editFavorite(itemElement));
+                this.renumberFavorites();
             }
-            
             addFavorite() {
                 const title = this.titleInput.value.trim();
                 if (!title) return alert('제목을 입력해주세요.');
                 const newFav = {
-                    title, 
-                    link: this.linkInput.value.trim(), 
-                    memo: this.memoInput.value.trim(), 
-                    image: this.currentImage
+                    title, link: this.linkInput.value.trim(), memo: this.memoInput.value.trim(), image: this.currentImage
                 };
-                
-                this.favRef.push(newFav); // Firebase에 추가
-                // on('value')가 자동으로 DOM 갱신
-                
-                this.titleInput.value = this.linkInput.value = this.memoInput.value = '';
-                this.clearImagePreview();
-                this.titleInput.focus();
+                this.createFavoriteDOM(newFav).then(() => {
+                    this.saveFavorites();
+                    this.titleInput.value = this.linkInput.value = this.memoInput.value = '';
+                    this.clearImagePreview();
+                    this.titleInput.focus();
+                });
             }
-            
-            editFavorite(itemElement, fav, key) {
-                this.titleInput.value = fav.title; 
-                this.linkInput.value = fav.link; 
-                this.memoInput.value = fav.memo;
-                
-                if (fav.image) { 
-                    this.currentImage = fav.image; 
-                    this.imagePreview.src = fav.image; 
-                    this.imageClearBtn.style.display = 'inline'; 
-                }
-                else { 
-                    this.clearImagePreview(); 
-                }
-                
+            editFavorite(itemElement) {
+                const fav = {
+                    title: itemElement.querySelector('.col-title').textContent,
+                    link: itemElement.querySelector('.col-link a')?.href || '',
+                    memo: itemElement.querySelector('.col-memo').dataset.fullMemo,
+                    image: itemElement.querySelector('.thumbnail-container img')?.dataset.customImage
+                };
+                this.titleInput.value = fav.title; this.linkInput.value = fav.link; this.memoInput.value = fav.memo;
+                if (fav.image) { this.currentImage = fav.image; this.imagePreview.src = fav.image; this.imageClearBtn.style.display = 'inline'; }
+                else { this.clearImagePreview(); }
                 this.addBtn.textContent = '수정 완료';
-                this.currentlyEditingFav = key; // Firebase 키 저장
-                this.titleInput.focus();
+                this.currentlyEditingFav = itemElement; this.titleInput.focus();
             }
-            
-            async updateFavorite(key) {
+            async updateFavorite(itemElement) {
                 const newFav = {
-                    title: this.titleInput.value.trim(), 
-                    link: this.linkInput.value.trim(),
-                    memo: this.memoInput.value.trim(), 
-                    image: this.currentImage
+                    id: itemElement.dataset.id,
+                    title: this.titleInput.value.trim(), link: this.linkInput.value.trim(),
+                    memo: this.memoInput.value.trim(), image: this.currentImage
                 };
                 if (!newFav.title) return alert('제목을 입력해주세요.');
                 
-                this.favRef.child(key).update(newFav); // Firebase 업데이트
-                // on('value')가 자동으로 DOM 갱신
+                const parent = itemElement.parentNode;
+                const nextSibling = itemElement.nextSibling;
                 
+                itemElement.remove();
+                await this.createFavoriteDOM(newFav);
+
+                const newElement = parent.lastChild; 
+                if (nextSibling) {
+                    parent.insertBefore(newElement, nextSibling);
+                }
+
+                this.saveFavorites();
+                this.renumberFavorites();
+
                 this.titleInput.value = this.linkInput.value = this.memoInput.value = '';
                 this.clearImagePreview();
                 this.addBtn.textContent = '추가';
