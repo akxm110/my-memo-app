@@ -39,7 +39,7 @@
         .tabs {
             background-color: #fff; padding: 0 20px;
             border-bottom: 1px solid #dee2e6; display: flex;
-            flex-wrap: wrap; overflow-x: auto;
+            flex-wrap: nowrap; overflow-x: auto;
         }
         .tab { padding: 15px 20px; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; }
         .tab.active { border-bottom-color: #28a745; font-weight: bold; }
@@ -122,6 +122,9 @@
         .modal-post-body .ql-editor { padding: 0; }
         .modal-close-btn { display: block; margin: 20px auto 0; padding: 10px 25px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; }
         
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
         /* --- 휴대폰 반응형 레이아웃 --- */
         @media (max-width: 768px) {
             .container { padding: 10px; }
@@ -249,7 +252,7 @@
         const db = firebase.database();
         const rootRef = db.ref();
 
-        // --- [수정] 전체 JavaScript 코드 시작 ---
+        // --- 전체 JavaScript 코드 시작 ---
 
         document.addEventListener('DOMContentLoaded', () => {
             TabManager.init();
@@ -263,8 +266,7 @@
             importBtn.addEventListener('click', () => {
                 const fileInput = document.createElement('input');
                 fileInput.type = 'file';
-                fileInput.accept = '.json, .txt';
-                fileInput.style.display = 'none';
+                fileInput.accept = '.json';
                 fileInput.onchange = importData;
                 document.body.appendChild(fileInput);
                 fileInput.click();
@@ -303,9 +305,15 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const backupData = JSON.parse(e.target.result);
+                    let backupData = JSON.parse(e.target.result);
                     if (typeof backupData !== 'object' || backupData === null) throw new Error('Invalid backup file format.');
                     
+                    for (const key in backupData) {
+                        if (key.includes('.')) {
+                            delete backupData[key];
+                        }
+                    }
+
                     rootRef.set(backupData)
                         .then(() => {
                             alert('데이터를 성공적으로 복원했습니다. 페이지를 새로고침합니다.');
@@ -321,57 +329,12 @@
             };
             reader.readAsText(file);
         }
-
-        async function migrateTabStructure() {
-            if (localStorage.length === 0) {
-                return alert("기존 LocalStorage에 옮길 데이터가 없습니다.");
-            }
-            if (!confirm("기존 '개인 금고(LocalStorage)'의 탭 데이터를 '공용 금고(Firebase)' 형식으로 업그레이드하시겠습니까?\n\n이 작업은 데이터가 있는 PC에서 딱 한 번만 실행해야 합니다.")) {
-                return;
-            }
-
-            try {
-                const snapshot = await rootRef.child('tabs').once('value');
-                if (snapshot.exists()) {
-                     if (!confirm("경고: Firebase에 이미 탭 데이터가 있습니다. 그래도 LocalStorage 데이터를 기반으로 덮어쓰시겠습니까?")) {
-                        return;
-                    }
-                }
-                
-                alert("데이터 구조 업그레이드를 시작합니다.");
-
-                let oldTabs = [];
-                const oldTabsJson = localStorage.getItem('dynamicTabsConfig');
-                // 기존 '비디오 관리', '메모장' 탭을 기본값으로 추가
-                const newTabs = [
-                    { id: 'video-tab-content', name: '🎬 비디오 관리', type: 'favorites' },
-                    { id: 'memo-tab-content', name: '📝 메모장', type: 'memo' }
-                ];
-
-                if (oldTabsJson) {
-                    oldTabs = JSON.parse(oldTabsJson);
-                    oldTabs.forEach(tab => {
-                        newTabs.push({ ...tab, type: 'favorites' }); // 기존 탭은 모두 '즐겨찾기형'으로 간주
-                    });
-                }
-
-                await rootRef.child('tabs').set(newTabs);
-                
-                alert(`성공! 총 ${newTabs.length}개의 탭 구조를 Firebase로 옮겼습니다.\n\n이제, 나머지 '즐겨찾기'와 '메모' 데이터도 옮겨야 합니다.\n\n페이지를 새로고침합니다.`);
-                localStorage.removeItem('dynamicTabsConfig'); // 처리된 데이터 삭제
-                location.reload();
-
-            } catch (error) {
-                alert('탭 구조 이전 중 오류가 발생했습니다: ' + error.message);
-            }
-        }
-
+        
         function escapeHTML(str) {
             if (typeof str !== 'string') return '';
             return str.replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match]));
         }
 
-        // --- 탭 관리 로직 ---
         const TabManager = {
             tabsContainer: document.querySelector('.tabs'),
             contentContainer: document.querySelector('.container'),
@@ -385,12 +348,11 @@
                     if (savedTabs && Array.isArray(savedTabs) && savedTabs.length > 0) {
                         this.tabs = savedTabs;
                     } else {
-                        // Firebase에 데이터가 전혀 없으면 기본 탭 생성
                         this.tabs = [
                             { id: 'favorites-default', name: '⭐ 즐겨찾기', type: 'favorites' },
                             { id: 'memo-default', name: '📝 메모장', type: 'memo' }
                         ];
-                        this.tabsRef.set(this.tabs); // Firebase에 기본값 저장
+                        this.tabsRef.set(this.tabs);
                     }
                     this.render();
                 }, (error) => {
@@ -404,40 +366,43 @@
             },
 
             render() {
+                const activeTabId = this.tabsContainer.querySelector('.tab.active')?.dataset.tabId;
+                
                 this.tabsContainer.innerHTML = '';
                 this.contentContainer.innerHTML = '';
                 this.tabInstances = {};
 
-                this.tabs.forEach((tabData, index) => {
+                this.tabs.forEach((tabData) => {
                     const tabButton = document.createElement('div');
                     tabButton.className = 'tab';
                     tabButton.textContent = tabData.name;
                     tabButton.dataset.tabId = tabData.id;
                     this.tabsContainer.appendChild(tabButton);
 
-                    let tabContent;
+                    let tabInstance;
                     switch(tabData.type) {
                         case 'memo':
-                            this.tabInstances[tabData.id] = new MemoTab(tabData);
-                            tabContent = this.tabInstances[tabData.id].getElement();
+                            tabInstance = new MemoTab(tabData);
                             break;
                         case 'writing':
-                            this.tabInstances[tabData.id] = new WritingTab(tabData);
-                            tabContent = this.tabInstances[tabData.id].getElement();
+                            tabInstance = new WritingTab(tabData);
                             break;
-                        default: // 'favorites'
-                            this.tabInstances[tabData.id] = new FavoritesTab(tabData);
-                            tabContent = this.tabInstances[tabData.id].getElement();
+                        default:
+                            tabInstance = new FavoritesTab(tabData);
                             break;
                     }
-                    this.contentContainer.appendChild(tabContent);
-                    
-                    if (index === 0) {
-                        tabButton.classList.add('active');
-                        tabContent.classList.add('active');
-                    }
+                    this.tabInstances[tabData.id] = tabInstance;
+                    this.contentContainer.appendChild(tabInstance.getElement());
                 });
                 this.setupTabClickEvents();
+                
+                let tabToActivate = this.tabsContainer.querySelector(`.tab[data-tab-id="${activeTabId}"]`);
+                if (!tabToActivate) {
+                    tabToActivate = this.tabsContainer.querySelector('.tab');
+                }
+                if (tabToActivate) {
+                    tabToActivate.click();
+                }
             },
 
             setupTabClickEvents() {
@@ -447,7 +412,8 @@
                         this.contentContainer.querySelector('.tab-content.active')?.classList.remove('active');
                         tabButton.classList.add('active');
                         const tabId = tabButton.dataset.tabId;
-                        this.contentContainer.querySelector(`.tab-content[data-tab-id="${tabId}"]`).classList.add('active');
+                        const content = this.contentContainer.querySelector(`.tab-content[data-tab-id="${tabId}"]`)
+                        if (content) content.classList.add('active');
                     });
                 });
             },
@@ -509,55 +475,318 @@
             }
         };
 
-        // --- 탭 종류별 클래스 ---
         class FavoritesTab {
             constructor(tabData) {
                 this.tabData = tabData;
                 this.favRef = rootRef.child(`favorites/${tabData.id}`);
-                this.element = document.getElementById('favorites-tab-template').content.cloneNode(true).firstElementChild;
+                this.element = document.getElementById('favorites-tab-template').content.firstElementChild.cloneNode(true);
                 this.element.dataset.tabId = tabData.id;
-                // ... (이하 모든 FavoritesTab 관련 로직)
+
+                this.titleInput = this.element.querySelector('.fav-title-input');
+                this.linkInput = this.element.querySelector('.fav-link-input');
+                this.memoInput = this.element.querySelector('.fav-memo-input');
+                this.addBtn = this.element.querySelector('.fav-add-btn');
+                this.deleteAllBtn = this.element.querySelector('.delete-all-btn');
+                this.listContainer = this.element.querySelector('.fav-list-container');
+                this.imageInput = this.element.querySelector('.fav-image-input');
+                this.imageUploadBtn = this.element.querySelector('.fav-image-upload-btn');
+                this.imagePreview = this.element.querySelector('.fav-image-preview');
+                this.imageClearBtn = this.element.querySelector('.fav-image-clear-btn');
+                
+                this.currentlyEditingFav = null;
+                this.currentImage = null;
+
+                this.addEventListeners();
+                this.loadFavorites();
             }
             getElement() { return this.element; }
+
+            addEventListeners() {
+                this.addBtn.addEventListener('click', () => { if (this.currentlyEditingFav) this.updateFavorite(this.currentlyEditingFav); else this.addFavorite(); });
+                this.deleteAllBtn.addEventListener('click', () => { if (confirm('모든 즐겨찾기를 삭제하시겠습니까?')) { this.favRef.remove(); } });
+                this.imageUploadBtn.addEventListener('click', () => this.imageInput.click());
+                this.imageInput.addEventListener('change', e => e.target.files[0] && this.handleImageFile(e.target.files[0]));
+                this.titleInput.addEventListener('paste', e => {
+                    const file = Array.from(e.clipboardData.files).find(f => f.type.startsWith('image/'));
+                    if (file) { e.preventDefault(); this.handleImageFile(file); }
+                });
+                this.imageClearBtn.addEventListener('click', () => this.clearImagePreview());
+            }
+
+            handleImageFile(file) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    this.currentImage = e.target.result;
+                    this.imagePreview.src = this.currentImage;
+                    this.imageClearBtn.style.display = 'inline';
+                };
+                reader.readAsDataURL(file);
+            }
+
+            clearImagePreview() {
+                this.currentImage = null; this.imagePreview.src = ''; this.imageInput.value = ''; this.imageClearBtn.style.display = 'none';
+            }
+
+            loadFavorites() { 
+                this.favRef.on('value', (snapshot) => {
+                    this.listContainer.querySelectorAll('.list-item').forEach(i => i.remove());
+                    let index = 1;
+                    snapshot.forEach(child => {
+                        const key = child.key;
+                        const fav = child.val();
+                        this.createFavoriteDOM(fav, key, index++);
+                    });
+                });
+            }
+
+            async createFavoriteDOM(fav, key, index) {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'list-item';
+                itemElement.dataset.key = key;
+                
+                const link = fav.link || '';
+                let thumbnailHTML = '<div class="no-thumbnail">N/A</div>';
+                if (fav.image) {
+                    thumbnailHTML = `<div class="thumbnail-container"><img src="${fav.image}" data-custom-image="${fav.image}"></div>`;
+                }
+                
+                const displayedMemo = fav.memo && fav.memo.length > 30 ? fav.memo.substring(0, 30) + '...' : fav.memo;
+                
+                itemElement.innerHTML = `
+                    <div class="item-col col-index">${index}</div>
+                    <div class="item-col col-title">${escapeHTML(fav.title)}</div>
+                    <div class="item-col col-link">${link ? `<a href="${escapeHTML(link)}" target="_blank">${escapeHTML(link)}</a>` : '-'}</div>
+                    <div class="item-col col-thumbnail">${thumbnailHTML}</div>
+                    <div class="item-col col-memo" data-full-memo="${escapeHTML(fav.memo)}">${escapeHTML(displayedMemo) || '-'}</div>
+                    <div class="item-col col-actions action-buttons"><button class="btn-edit">수정</button><button class="btn-delete">삭제</button></div>`;
+                
+                this.listContainer.appendChild(itemElement);
+                
+                itemElement.querySelector('.btn-delete').addEventListener('click', () => { if (confirm('이 항목을 삭제하시겠습니까?')) { this.favRef.child(key).remove(); } });
+                itemElement.querySelector('.btn-edit').addEventListener('click', () => this.editFavorite(fav, key));
+            }
+
+            addFavorite() {
+                const title = this.titleInput.value.trim();
+                if (!title) return alert('제목을 입력해주세요.');
+                const newFav = {
+                    title, 
+                    link: this.linkInput.value.trim(), 
+                    memo: this.memoInput.value.trim(), 
+                    image: this.currentImage,
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                };
+                
+                this.favRef.push(newFav);
+                
+                this.titleInput.value = this.linkInput.value = this.memoInput.value = '';
+                this.clearImagePreview();
+                this.titleInput.focus();
+            }
+
+            editFavorite(fav, key) {
+                this.titleInput.value = fav.title; 
+                this.linkInput.value = fav.link || ''; 
+                this.memoInput.value = fav.memo || '';
+                
+                if (fav.image) { 
+                    this.currentImage = fav.image; 
+                    this.imagePreview.src = fav.image; 
+                    this.imageClearBtn.style.display = 'inline'; 
+                } else { 
+                    this.clearImagePreview(); 
+                }
+                
+                this.addBtn.textContent = '수정 완료';
+                this.currentlyEditingFav = key;
+                this.titleInput.focus();
+            }
+
+            updateFavorite(key) {
+                const newFav = {
+                    title: this.titleInput.value.trim(), 
+                    link: this.linkInput.value.trim(),
+                    memo: this.memoInput.value.trim(), 
+                    image: this.currentImage
+                };
+                if (!newFav.title) return alert('제목을 입력해주세요.');
+                
+                this.favRef.child(key).update(newFav);
+                
+                this.titleInput.value = this.linkInput.value = this.memoInput.value = '';
+                this.clearImagePreview();
+                this.addBtn.textContent = '추가';
+                this.currentlyEditingFav = null;
+            }
         }
+
         class MemoTab {
              constructor(tabData) {
                 this.tabData = tabData;
                 this.memoRef = rootRef.child(`memos/${tabData.id}`);
-                this.element = document.getElementById('memo-tab-template').content.cloneNode(true).firstElementChild;
+                this.element = document.getElementById('memo-tab-template').content.firstElementChild.cloneNode(true);
                 this.element.dataset.tabId = tabData.id;
-                // ... (이하 모든 MemoTab 관련 로직)
+
+                this.textarea = this.element.querySelector('.memo-textarea');
+                this.addBtn = this.element.querySelector('.memo-add-btn');
+                this.deleteAllBtn = this.element.querySelector('.delete-all-btn');
+                this.listContainer = this.element.querySelector('.memo-list-container');
+                this.charCounter = this.element.querySelector('.char-counter');
+                
+                this.currentlyEditingMemo = null;
+
+                this.addEventListeners();
+                this.loadMemos();
             }
             getElement() { return this.element; }
+
+            addEventListeners() {
+                this.textarea.addEventListener('input', () => this.charCounter.textContent = `${this.textarea.value.length}자`);
+                this.addBtn.addEventListener('click', () => { if (this.currentlyEditingMemo) this.updateMemo(this.currentlyEditingMemo); else this.addMemo(); });
+                this.deleteAllBtn.addEventListener('click', () => { if (confirm('모든 메모를 삭제하시겠습니까?')) { this.memoRef.remove(); }});
+            }
+
+            loadMemos() {
+                this.memoRef.orderByChild('createdAt').on('value', (snapshot) => {
+                    this.listContainer.innerHTML = '';
+                    snapshot.forEach((child) => {
+                        const key = child.key;
+                        const memo = child.val();
+                        if (memo && memo.text) {
+                            this.createMemoDOM(memo, key);
+                        }
+                    });
+                });
+            }
+            
+            createMemoDOM(memo, key) {
+                const item = document.createElement('div');
+                item.className = 'memo-item';
+                item.innerHTML = `
+                    <div class="memo-content">${escapeHTML(memo.text).replace(/\n/g, '<br>')}</div>
+                    <div class="memo-item-actions action-buttons">
+                        <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
+                    </div>
+                `;
+                this.listContainer.prepend(item);
+
+                item.querySelector('.btn-delete').addEventListener('click', () => { if (confirm('이 메모를 삭제하시겠습니까?')) { this.memoRef.child(key).remove(); }});
+                item.querySelector('.btn-edit').addEventListener('click', () => this.editMemo(memo, key));
+            }
+            
+            addMemo() {
+                const text = this.textarea.value.trim();
+                if (text) {
+                    this.memoRef.push({ text: text, createdAt: firebase.database.ServerValue.TIMESTAMP });
+                    this.textarea.value = '';
+                    this.charCounter.textContent = '0자';
+                }
+            }
+
+            editMemo(memo, key) {
+                this.textarea.value = memo.text;
+                this.addBtn.textContent = '수정 완료';
+                this.currentlyEditingMemo = key;
+                this.textarea.focus();
+            }
+
+            updateMemo(key) {
+                const newText = this.textarea.value.trim();
+                if (newText) {
+                    this.memoRef.child(key).update({ text: newText });
+                } else {
+                    this.memoRef.child(key).remove();
+                }
+                this.textarea.value = '';
+                this.addBtn.textContent = '메모 추가';
+                this.currentlyEditingMemo = null;
+            }
         }
+
         class WritingTab {
              constructor(tabData) {
                 this.tabData = tabData;
                 this.writingRef = rootRef.child(`writings/${tabData.id}`);
-                this.element = document.getElementById('writing-tab-template').content.cloneNode(true).firstElementChild;
+                this.element = document.getElementById('writing-tab-template').content.firstElementChild.cloneNode(true);
                 this.element.dataset.tabId = tabData.id;
-                // ... (이하 모든 WritingTab 관련 로직)
+
+                this.titleInput = this.element.querySelector('.post-title-input');
+                this.editorContainer = this.element.querySelector('.editor-container');
+                this.saveBtn = this.element.querySelector('.save-post-btn');
+                this.postListContainer = this.element.querySelector('.post-list-container');
+                
+                this.quill = new Quill(this.editorContainer, {
+                    theme: 'snow',
+                    modules: { toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        ['blockquote', { 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['link', 'image'],
+                        ['clean']
+                    ]}
+                });
+                
+                this.currentlyEditingPost = null;
+
+                this.addEventListeners();
+                this.loadPosts();
             }
             getElement() { return this.element; }
-        }
 
+            addEventListeners() {
+                this.saveBtn.addEventListener('click', () => { if (this.currentlyEditingPost) this.updatePost(this.currentlyEditingPost); else this.savePost(); });
+            }
+
+            loadPosts() {
+                this.writingRef.orderByChild('createdAt').on('value', (snapshot) => {
+                    this.postListContainer.innerHTML = '';
+                    snapshot.forEach(child => {
+                        this.createPostItemDOM(child.val(), child.key);
+                    });
+                });
+            }
+
+            createPostItemDOM(post, key) {
+                const item = document.createElement('div');
+                item.className = 'post-item';
+                const date = new Date(post.createdAt).toLocaleDateString('ko-KR');
+                item.innerHTML = `
+                    <span class="post-item-title">${escapeHTML(post.title)}</span>
+                    <span class="post-item-date">${date}</span>
+                `;
+                this.postListContainer.prepend(item);
+                item.addEventListener('click', () => this.showPostModal(post));
+            }
+
+            savePost() {
+                const title = this.titleInput.value.trim();
+                const content = this.quill.getContents(); // Delta object
+                if (!title || this.quill.getLength() <= 1) {
+                    return alert('제목과 내용을 모두 입력해주세요.');
+                }
+                this.writingRef.push({
+                    title: title,
+                    content: content,
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                });
+                this.titleInput.value = '';
+                this.quill.setContents([]);
+            }
+
+            showPostModal(post) {
+                const modal = document.getElementById('post-view-modal');
+                modal.querySelector('.modal-post-title').textContent = post.title;
+                const body = modal.querySelector('.modal-post-body');
+                const tempQuill = new Quill(body, { theme: 'snow', readOnly: true, modules: { toolbar: false } });
+                tempQuill.setContents(post.content);
+                modal.style.display = 'flex';
+                modal.querySelector('.modal-close-btn').onclick = () => {
+                    modal.style.display = 'none';
+                    body.innerHTML = ''; // Clear content for next time
+                };
+            }
+        }
     </script>
 </body>
 </html>
-```
-
-### 2단계: 다시 시작 및 데이터 이사
-
-1.  PC 브라우저에서 프로그램을 새로고침합니다. 이제 오류 없이 정상적으로 뜰 것입니다.
-
-2.  **가장 중요:** 이전에 사라진 것처럼 보였던 **'비디오 관리' 탭 등의 데이터가 다시 보이는지 확인**해 주세요. `LocalStorage`에 있던 데이터가 다시 정상적으로 보일 것입니다.
-
-3.  데이터가 보이는 것을 확인했으면, **데이터를 Firebase로 안전하게 옮기는 '이사' 작업**을 시작합니다.
-    * **F12**를 눌러 '개발자 도구'를 열고 **'Console' 탭**으로 갑니다.
-    * `allow pasting`을 입력하고 Enter를 칩니다. (필요하다면)
-    * 아래의 **'구조 업그레이드' 명령어**를 붙여넣고 **Enter**를 누릅니다.
-
-    ```javascript
-    migrateTabStructure()
-    
 
