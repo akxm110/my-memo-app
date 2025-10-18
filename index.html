@@ -315,6 +315,10 @@
             opacity: 0.6;
         }
     </style>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
 </head>
 <body>
     <div class="header">
@@ -355,7 +359,6 @@
                  <button id="delete-all-btn">전체 삭제</button>
             </div>
             
-            <!-- MODIFIED: Restored two-column layout -->
             <div class="lists-wrapper">
                 <div id="items-container-left" class="items-list">
                     <div class="list-header">
@@ -396,15 +399,35 @@
     <a id="download-anchor" style="position: absolute; top: -9999px; left: -9999px;"></a>
 
     <script>
+        // ▼▼▼ 2단계: 여기에 Firebase 설정값을 붙여넣으세요 ▼▼▼
+
+
+          const firebaseConfig = {
+          apiKey: "AIzaSyDV9wWRsEiS0pAsl1Xw9ee1fQ5Yf9N5mto",
+          authDomain: "my-memo-app-6311c.firebaseapp.com",
+          databaseURL: "https://my-memo-app-6311c-default-rtdb.firebaseio.com", 
+          projectId: "my-memo-app-6311c",
+          storageBucket: "my-memo-app-6311c.appspot.com", 
+          messagingSenderId: "345865782837",
+          appId: "1:345865782837:web:a9147e6468ff400953937c"
+        };
+
+        // Firebase 앱 초기화 및 데이터베이스 연결
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database(); // Realtime Database 사용
+        // ▲▲▲ 2단계 완료 ▲▲▲
+
+
         document.addEventListener('DOMContentLoaded', () => {
             TabManager.init();
             initializeVideoTab();
-            loadMemos();
+            loadMemos(); // Firebase용으로 수정된 함수가 호출됩니다.
             setupBackupAndRestore();
         });
 
         let currentObjectUrl = null;
 
+        // 백업/복원 기능 (LocalStorage + Firebase 메모)
         function setupBackupAndRestore() {
             const exportBtn = document.getElementById('export-data-btn');
             const importBtn = document.getElementById('import-data-btn');
@@ -423,12 +446,24 @@
 
         async function exportData() {
             try {
-                if (localStorage.length === 0) return alert('백업할 데이터가 없습니다.');
+                // LocalStorage 백업
                 const backupData = {};
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
+                    if (key === 'plainMemosData') continue; // 이전 메모 데이터는 제외
                     backupData[key] = localStorage.getItem(key);
                 }
+                
+                // Firebase 메모 데이터 백업
+                const memoSnapshot = await db.ref('plainMemos').once('value');
+                if (memoSnapshot.exists()) {
+                    backupData['firebasePlainMemos'] = memoSnapshot.val();
+                }
+
+                if (Object.keys(backupData).length === 0) {
+                    return alert('백업할 데이터가 없습니다.');
+                }
+
                 const dataStr = JSON.stringify(backupData, null, 2);
                 const blob = new Blob([dataStr], { type: 'application/json' });
                 const date = new Date();
@@ -468,18 +503,100 @@
                 try {
                     const backupData = JSON.parse(e.target.result);
                     if (typeof backupData !== 'object' || backupData === null) throw new Error('Invalid backup file format.');
+                    
+                    // LocalStorage 데이터 복원
                     localStorage.clear();
                     for (const key in backupData) {
-                        if (Object.hasOwnProperty.call(backupData, key)) localStorage.setItem(key, backupData[key]);
+                        if (Object.hasOwnProperty.call(backupData, key)) {
+                            if (key === 'firebasePlainMemos') continue; // Firebase 데이터는 스킵
+                            localStorage.setItem(key, backupData[key]);
+                        }
                     }
-                    alert('데이터를 성공적으로 복원했습니다. 페이지를 새로고침합니다.');
-                    location.reload();
+                    
+                    // Firebase 메모 데이터 복원
+                    const firebaseMemos = backupData.firebasePlainMemos || null;
+                    db.ref('plainMemos').set(firebaseMemos)
+                        .then(() => {
+                            alert('데이터를 성공적으로 복원했습니다. 페이지를 새로고침합니다.');
+                            location.reload();
+                        })
+                        .catch(err => {
+                            alert('Firebase 메모 복원 중 오류 발생: ' + err.message);
+                            location.reload();
+                        });
+
                 } catch (error) {
                     alert('백업 파일을 불러오는 중 오류가 발생했습니다: ' + error.message);
                 }
             };
             reader.readAsText(file);
         }
+
+        // --- ★★★★★ 기존 '메모장' 데이터 이사 기능 ★★★★★ ---
+        // 이 함수는 기존 '개인 금고(LocalStorage)'의 메모를
+        // '공용 금고(Firebase)'로 복사하는 1회성 기능입니다.
+        function migrateOldMemosToFirebase() {
+            const oldMemoKey = 'plainMemosData'; // 이전 데이터가 저장된 키
+            const oldMemosJson = localStorage.getItem(oldMemoKey);
+            
+            if (!oldMemosJson) {
+                alert('이전 메모 데이터(plainMemosData)가 없습니다.\n데이터를 옮길 필요가 없습니다.');
+                return;
+            }
+
+            try {
+                const oldMemos = JSON.parse(oldMemosJson);
+                if (!Array.isArray(oldMemos) || oldMemos.length === 0) {
+                    alert('이전 메모 데이터가 비어있습니다.');
+                    return;
+                }
+
+                if (!confirm(`총 ${oldMemos.length}개의 이전 '메모장' 데이터를 찾았습니다.\n이 데이터를 Firebase 공용 금고로 복사하시겠습니까?\n\n(이 작업은 한 번만 하시면 됩니다.)`)) {
+                    return;
+                }
+
+                const memoRef = db.ref('plainMemos');
+                let successCount = 0;
+                
+                // Firebase에 이미 데이터가 있는지 확인
+                memoRef.once('value', (snapshot) => {
+                    if (snapshot.exists()) {
+                        if (!confirm('경고: Firebase에 이미 메모가 있습니다.\n그래도 이전 데이터를 추가로 복사하시겠습니까?\n(메모가 중복될 수 있습니다!)')) {
+                            return;
+                        }
+                    }
+
+                    // 마이그레이션(이사) 시작
+                    const migrationPromises = [];
+                    oldMemos.forEach(memoText => {
+                        if (typeof memoText === 'string' && memoText.trim() !== '') {
+                            migrationPromises.push(
+                                memoRef.push({
+                                    text: memoText,
+                                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                                })
+                            );
+                            successCount++;
+                        }
+                    });
+
+                    Promise.all(migrationPromises)
+                        .then(() => {
+                            alert(`이사 성공! ${successCount}개의 메모를 Firebase로 복사했습니다.\n\n이제 기존 데이터는 삭제하고 페이지를 새로고침합니다.`);
+                            localStorage.removeItem(oldMemoKey); // 이사 완료 후 '개인 금고' 정리
+                            location.reload(); // 새로고침해서 Firebase 데이터 보기
+                        })
+                        .catch(error => {
+                            alert('메모를 옮기는 중 오류가 발생했습니다: ' + error.message);
+                        });
+                });
+
+            } catch (error) {
+                alert('이전 메모 데이터를 읽는 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+        // --- 데이터 이사 기능 끝 ---
+
 
         function initializeTabSwitching() {
             document.querySelectorAll('.tab').forEach(tab => {
@@ -542,7 +659,8 @@
             return null;
         }
 
-        // --- VIDEO MEMO LOGIC ---
+        // --- VIDEO MEMO LOGIC (LocalStorage - 동기화 안됨) ---
+        // (참고: 이 '비디오 관리' 탭은 Firebase와 동기화되지 않습니다.)
         const addBtn = document.getElementById('add-btn');
         const deleteAllBtn = document.getElementById('delete-all-btn');
         const videoDataKey = 'videoMemoData';
@@ -716,51 +834,107 @@
             currentlyEditingItem = null;
         }
 
-        // --- PLAIN MEMO LOGIC (Unchanged) ---
+        
+        // --- 3단계: '메모장' 코드 (Firebase Realtime Database 버전) 적용 완료 ---
         const memoTextarea = document.getElementById('memo-textarea'), memoAddBtn = document.getElementById('memo-add-btn');
         const memoDeleteAllBtn = document.getElementById('memo-delete-all-btn'), memoListContainer = document.getElementById('memo-list-container');
-        const charCounter = document.getElementById('char-counter'), memoDataKey = 'plainMemosData';
-        let currentlyEditingMemo = null;
+        const charCounter = document.getElementById('char-counter');
+        const memoRef = db.ref('plainMemos'); // Firebase의 'plainMemos' 게시판을 사용
+        let currentlyEditingMemo = null; // 수정 중인 메모의 ID(key)
+        let currentlyEditingMemoElement = null; // 수정 중인 메모의 HTML 요소
+
         memoTextarea.addEventListener('input', () => charCounter.textContent = `${memoTextarea.value.length}자`);
-        memoAddBtn.addEventListener('click', () => { if (currentlyEditingMemo) updateMemo(currentlyEditingMemo); else addMemo(); });
-        memoDeleteAllBtn.addEventListener('click', () => { if (confirm('모든 메모를 삭제하시겠습니까?')) { memoListContainer.innerHTML = ''; saveMemos(); }});
+        memoAddBtn.addEventListener('click', () => { if (currentlyEditingMemo) updateMemo(); else addMemo(); });
+        memoDeleteAllBtn.addEventListener('click', () => { 
+            if (confirm('모든 메모를 삭제하시겠습니까?')) { 
+                memoRef.remove(); // Firebase에서 'plainMemos' 전체 삭제
+            }
+        });
+        
         function linkify(text) { return escapeHTML(text).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>'); }
-        function saveMemos() {
-            const memos = Array.from(memoListContainer.querySelectorAll('.memo-item')).map(el => el.dataset.rawText);
-            localStorage.setItem(memoDataKey, JSON.stringify(memos));
+
+        // [수정됨] Firebase에서 메모 불러오기 (실시간 동기화)
+        function loadMemos() {
+            memoRef.orderByChild('createdAt').on('value', (snapshot) => {
+                memoListContainer.innerHTML = ''; // 목록 비우기
+                snapshot.forEach((childSnapshot) => {
+                    const memoKey = childSnapshot.key; // Firebase가 만든 고유 ID
+                    const memoText = childSnapshot.val().text; // 저장된 텍스트
+                    if (memoText) {
+                        createMemoDOM(memoText, memoKey); // DOM 생성
+                    }
+                });
+            });
         }
-        function loadMemos() { JSON.parse(localStorage.getItem(memoDataKey) || '[]').forEach(createMemoDOM); }
-        function createMemoDOM(text) {
+        
+        // [수정됨] Firebase용 DOM 생성
+        function createMemoDOM(text, key) {
             const memoItem = document.createElement('div');
-            memoItem.className = 'memo-item'; memoItem.dataset.rawText = text;
+            memoItem.className = 'memo-item'; 
+            memoItem.dataset.rawText = text;
+            memoItem.dataset.key = key; // Firebase 키 저장
             memoItem.innerHTML = `<div class="memo-content">${linkify(text)}</div>
                 <div class="memo-item-actions action-buttons">
                     <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
                 </div>`;
-            memoListContainer.prepend(memoItem);
-            memoItem.querySelector('.btn-delete').addEventListener('click', () => { memoItem.remove(); saveMemos(); });
+            memoListContainer.prepend(memoItem); // 새 메모를 맨 위에 추가
+            
+            // [수정됨] Firebase에서 삭제
+            memoItem.querySelector('.btn-delete').addEventListener('click', () => {
+                if (confirm('메모를 삭제하시겠습니까?')) {
+                    memoRef.child(key).remove(); // ID(key)로 특정 메모만 삭제
+                }
+            });
+            
+            // [수정됨] 수정 상태로 변경
             memoItem.querySelector('.btn-edit').addEventListener('click', () => editMemo(memoItem));
         }
+
+        // [수정됨] Firebase에 메모 추가
         function addMemo() {
             const text = memoTextarea.value.trim();
-            if (text) { createMemoDOM(text); saveMemos(); memoTextarea.value = ''; charCounter.textContent = '0자'; }
+            if (text) { 
+                memoRef.push({ // Firebase에 새 데이터 추가
+                    text: text,
+                    createdAt: firebase.database.ServerValue.TIMESTAMP // 정렬을 위한 시간 기록
+                });
+                // loadMemos의 on('value')가 자동으로 화면을 갱신해줍니다.
+                memoTextarea.value = ''; 
+                charCounter.textContent = '0자'; 
+            }
         }
+        
         function editMemo(memoItem) {
             memoTextarea.value = memoItem.dataset.rawText;
             memoAddBtn.textContent = '메모 수정';
-            currentlyEditingMemo = memoItem; memoTextarea.focus();
-        }
-        function updateMemo(memoItem) {
-            const newText = memoTextarea.value.trim();
-            if (newText) {
-                memoItem.dataset.rawText = newText;
-                memoItem.querySelector('.memo-content').innerHTML = linkify(newText);
-            } else { memoItem.remove(); }
-            saveMemos();
-            memoTextarea.value = ''; memoAddBtn.textContent = '메모 추가'; currentlyEditingMemo = null;
+            currentlyEditingMemo = memoItem.dataset.key; // Firebase 키 저장
+            currentlyEditingMemoElement = memoItem;
+            memoTextarea.focus();
         }
 
-        // --- DYNAMIC TAB MANAGER (Unchanged) ---
+        // [수정됨] Firebase 데이터 업데이트
+        function updateMemo() {
+            const newText = memoTextarea.value.trim();
+            if (currentlyEditingMemo) {
+                if (newText) {
+                    // Firebase에서 텍스트 업데이트
+                    memoRef.child(currentlyEditingMemo).update({ text: newText });
+                } else {
+                    // 텍스트가 비었으면 삭제
+                    memoRef.child(currentlyEditingMemo).remove();
+                }
+            }
+            // 초기화
+            memoTextarea.value = ''; 
+            memoAddBtn.textContent = '메모 추가'; 
+            currentlyEditingMemo = null;
+            currentlyEditingMemoElement = null;
+        }
+        // --- 3단계 완료 ---
+
+
+        // --- DYNAMIC TAB MANAGER (LocalStorage - 동기화 안됨) ---
+        // (참고: 이 '즐겨찾기' 탭도 Firebase와 동기화되지 않습니다.)
         const TabManager = {
             tabsContainer: document.querySelector('.tabs'),
             contentContainer: document.querySelector('.container'),
@@ -986,4 +1160,3 @@
     </script>
 </body>
 </html>
-
