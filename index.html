@@ -9,6 +9,7 @@
             font-family: "Malgun Gothic", "맑은 고딕", sans-serif;
             margin: 0;
             background-color: #f8f9fa;
+            overflow: hidden; /* Prevent body scroll */
         }
         .header {
             background-color: #fff;
@@ -318,7 +319,7 @@
         /* Modal Styles */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.5); display: none; /* Changed */
+            background-color: rgba(0, 0, 0, 0.5); display: none;
             justify-content: center; align-items: center; z-index: 1000;
         }
         .modal-content {
@@ -332,75 +333,83 @@
             border: 1px solid #ccc; background-color: #f8f9fa; cursor: pointer;
         }
         .modal-options button:hover { background-color: #e9ecef; }
-        /* New styles for input modal */
         #input-modal-prompt { margin: 20px 0; display: block; }
         #input-modal-input {
             width: 100%; padding: 10px; margin-bottom: 15px;
             border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box;
         }
-        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;}
         .modal-buttons button {
              padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer;
         }
         .modal-confirm-btn { background-color: #007bff; color: white; }
         .modal-cancel-btn { background-color: #6c757d; color: white; }
-
-
         
         /* Editor Tab Styles */
-        .editor-container { padding: 15px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .editor-title-input {
-            width: 100%; padding: 10px; font-size: 20px; font-weight: bold;
-            border: none; border-bottom: 2px solid #dee2e6; margin-bottom: 15px;
-            box-sizing: border-box; outline: none;
+        .editor-layout {
+            display: flex;
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            height: calc(100vh - 220px);
+            overflow: hidden;
         }
-        .editor-title-input:focus { border-bottom-color: #007bff; }
-        .editor-toolbar {
-            border-bottom: 1px solid #dee2e6; padding-bottom: 10px; margin-bottom: 10px;
-            display: flex; gap: 5px; flex-wrap: wrap;
+        .editor-post-list-panel {
+            flex: 0 0 300px;
+            border-right: 1px solid #dee2e6;
+            overflow-y: auto;
         }
-        .editor-toolbar button {
-            background: #fff; border: 1px solid #ccc; border-radius: 4px;
-            width: 32px; height: 32px; cursor: pointer; font-family: 'Times New Roman', serif;
+        .post-list-item {
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+            cursor: pointer;
         }
-        .editor-toolbar button:hover { background-color: #f0f0f0; }
-        .editor-content {
-            border: 1px solid #dee2e6; min-height: 300px; padding: 15px;
-            border-radius: 4px; outline: none; line-height: 1.6;
+        .post-list-item:hover { background-color: #f8f9fa; }
+        .post-list-item.active { background-color: #e7f1ff; border-right: 3px solid #007bff; }
+        .post-list-title {
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        .editor-content img { max-width: 100%; height: auto; border-radius: 4px; }
-        .editor-content blockquote {
+        .post-list-snippet {
+            font-size: 14px; color: #6c757d;
+            margin-top: 5px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;  
+            overflow: hidden;
+        }
+        .post-list-date { font-size: 12px; color: #adb5bd; margin-top: 8px; }
+        .editor-post-view-panel {
+            flex: 1;
+            padding: 25px;
+            overflow-y: auto;
+        }
+        .post-view-header { border-bottom: 1px solid #dee2e6; padding-bottom: 15px; margin-bottom: 20px; }
+        .post-view-title { font-size: 24px; font-weight: bold; margin: 0; }
+        .post-view-meta { font-size: 13px; color: #868e96; margin-top: 10px; }
+        .post-view-actions { float: right; }
+        .post-view-content { line-height: 1.7; }
+        .post-view-content img { max-width: 100%; height: auto; border-radius: 4px; }
+        .post-view-content blockquote {
             margin: 1.5em 10px; padding: 0.5em 10px;
             border-left: 5px solid #eee; color: #666;
         }
-        .editor-content blockquote.quote-style-1 {
+        .post-view-content blockquote.quote-style-1 {
             background: #f9f9f9; border-left-color: #007bff;
             font-style: italic;
         }
-
-        .editor-actions { margin-top: 15px; text-align: right; }
-        .editor-save-btn {
-            background-color: #007bff; color: white; padding: 8px 18px;
-            border: none; border-radius: 4px; cursor: pointer;
+        .editor-placeholder {
+            display: flex; align-items: center; justify-content: center;
+            height: 100%; color: #adb5bd;
         }
 
-        .editor-posts-container { margin-top: 30px; }
-        .editor-post-item {
-            background-color: #fff; border: 1px solid #e9ecef;
-            border-radius: 6px; padding: 15px; margin-bottom: 10px;
-        }
-        .post-header {
-            display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid #f1f3f5; padding-bottom: 10px; margin-bottom: 10px;
-        }
-        .post-title { font-size: 18px; font-weight: bold; }
-        .post-meta { font-size: 12px; color: #868e96; }
-        .post-content-preview {
-            max-height: 100px; overflow: hidden; color: #495057;
-            padding-bottom: 10px;
-        }
-        .post-actions button { margin-left: 8px; }
-
+        /* Editor Modal */
+        #editor-modal .modal-content { max-width: 900px; width: 90vw; }
+        #editor-modal .editor-container { box-shadow: none; padding: 0; }
+        #editor-modal .editor-content { min-height: 40vh; }
+        
     </style>
 </head>
 <body>
@@ -416,6 +425,7 @@
         <div class="tab" data-tab-target="#memo-tab-content">📝 메모장</div>
     </div>
     <div class="tab-management">
+        <button id="new-post-btn" style="display: none;">✍️ 새 글 작성</button>
         <button id="add-tab-btn">+ 탭 추가</button>
         <button id="rename-tab-btn">✏️ 이름 변경</button>
         <button id="delete-tab-btn">🗑️ 탭 삭제</button>
@@ -502,6 +512,29 @@
             <div class="modal-buttons">
                  <button class="modal-cancel-btn">취소</button>
                  <button class="modal-confirm-btn">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editor-modal" class="modal-overlay">
+        <div class="modal-content">
+             <div class="editor-container">
+                <input type="text" class="editor-title-input" placeholder="제목을 입력하세요...">
+                <div class="editor-toolbar">
+                    <button data-command="bold" title="굵게"><b>B</b></button> <button data-command="italic" title="기울임"><i>I</i></button>
+                    <button data-command="underline" title="밑줄"><u>U</u></button> <button data-command="strikeThrough" title="취소선"><s>S</s></button>
+                    <button data-command="insertOrderedList" title="순서 있는 목록">1.</button> <button data-command="insertUnorderedList" title="순서 없는 목록">•</button>
+                    <button data-command="formatBlock" data-value="h2" title="제목2">H2</button> <button data-command="formatBlock" data-value="blockquote" title="기본 인용">"</button>
+                    <button data-command="customQuote" data-value="quote-style-1" title="강조 인용">❞</button> <button data-command="createLink" title="링크">🔗</button>
+                    <button data-command="insertLocalImage" title="이미지 첨부">🖼️</button> <button data-command="justifyLeft" title="왼쪽 정렬">L</button>
+                    <button data-command="justifyCenter" title="가운데 정렬">C</button> <button data-command="justifyRight" title="오른쪽 정렬">R</button>
+                </div>
+                <div class="editor-content" contenteditable="true"></div>
+                <input type="file" class="editor-image-input" accept="image/*" style="display:none;">
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-cancel-btn">취소</button>
+                <button class="modal-confirm-btn editor-save-btn">저장</button>
             </div>
         </div>
     </div>
@@ -604,6 +637,7 @@
 
         // --- TAB SWITCHING ---
         function initializeTabSwitching() {
+            const newPostBtn = document.getElementById('new-post-btn');
             document.querySelector('.tabs').addEventListener('click', (e) => {
                 if (!e.target.classList.contains('tab')) return;
                 const tab = e.target;
@@ -614,6 +648,24 @@
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 target.classList.add('active');
+
+                // Toggle "New Post" button visibility
+                const tabInstance = TabManager.tabInstances[target.id];
+                if (tabInstance && tabInstance.constructor.name === 'EditorTab') {
+                    newPostBtn.style.display = 'inline-flex';
+                } else {
+                    newPostBtn.style.display = 'none';
+                }
+            });
+
+            newPostBtn.addEventListener('click', () => {
+                const activeTab = document.querySelector('.tab.active');
+                if(!activeTab) return;
+                const activeContentId = activeTab.dataset.tabTarget.substring(1);
+                const activeTabInstance = TabManager.tabInstances[activeContentId];
+                if (activeTabInstance && typeof activeTabInstance.showEditor === 'function') {
+                    activeTabInstance.showEditor();
+                }
             });
         }
 
@@ -774,6 +826,7 @@
             contentContainer: document.querySelector('.container'),
             tabConfigKey: 'dynamicTabsConfig',
             tabs: [],
+            tabInstances: {},
             init() {
                 this.loadTabs(); this.render(); initializeTabSwitching();
                 document.getElementById('add-tab-btn').addEventListener('click', () => this.showAddTabModal());
@@ -788,6 +841,7 @@
             render() {
                 this.tabsContainer.querySelectorAll('.dynamic-tab').forEach(t => t.remove());
                 this.contentContainer.querySelectorAll('.dynamic-tab-content').forEach(c => c.remove());
+                this.tabInstances = {};
                 this.tabs.forEach(tabData => {
                     const button = document.createElement('div');
                     button.className = 'tab dynamic-tab'; button.textContent = tabData.name; button.dataset.tabTarget = `#${tabData.id}`;
@@ -796,11 +850,13 @@
                     content.id = tabData.id; content.className = 'tab-content dynamic-tab-content';
                     this.contentContainer.appendChild(content);
                     const type = tabData.type || 'favorites';
+                    let instance;
                     switch(type) {
-                        case 'notepad': new NotepadTab(content, tabData.id); break;
-                        case 'editor': new EditorTab(content, tabData.id); break;
-                        case 'favorites': default: new FavoritesTab(content, tabData.id); break;
+                        case 'notepad': instance = new NotepadTab(content, tabData.id); break;
+                        case 'editor': instance = new EditorTab(content, tabData.id); break;
+                        case 'favorites': default: instance = new FavoritesTab(content, tabData.id); break;
                     }
+                    this.tabInstances[tabData.id] = instance;
                 });
             },
             showAddTabModal() {
@@ -856,6 +912,7 @@
                 if (tabIndex > -1 && confirm(`'${tabName}' 탭과 모든 데이터를 정말로 삭제하시겠습니까?`)) {
                     const type = this.tabs[tabIndex].type || 'favorites';
                     localStorage.removeItem(`${type}Data-${tabId}`);
+                    delete this.tabInstances[tabId];
                     this.tabs.splice(tabIndex, 1);
                     this.saveTabs();
                     document.querySelector(activeTabEl.dataset.tabTarget).remove();
@@ -901,110 +958,143 @@
         class EditorTab {
              constructor(containerEl, tabId) {
                 this.container = containerEl; this.tabId = tabId; this.dataKey = `editorData-${this.tabId}`;
-                this.posts = []; this.editingPostId = null;
+                this.posts = []; this.editingPostId = null; this.activePostId = null;
                 this.renderHTML(); this.bindElements(); this.addEventListeners(); this.loadPosts();
             }
             renderHTML() {
                 this.container.innerHTML = `
-                    <div class="editor-container">
-                        <input type="text" class="editor-title-input" placeholder="제목을 입력하세요...">
-                        <div class="editor-toolbar">
-                            <button data-command="bold" title="굵게"><b>B</b></button> <button data-command="italic" title="기울임"><i>I</i></button>
-                            <button data-command="underline" title="밑줄"><u>U</u></button> <button data-command="strikeThrough" title="취소선"><s>S</s></button>
-                            <button data-command="insertOrderedList" title="순서 있는 목록">1.</button> <button data-command="insertUnorderedList" title="순서 없는 목록">•</button>
-                            <button data-command="formatBlock" data-value="h2" title="제목2">H2</button> <button data-command="formatBlock" data-value="blockquote" title="기본 인용">"</button>
-                            <button data-command="customQuote" data-value="quote-style-1" title="강조 인용">❞</button> <button data-command="createLink" title="링크">🔗</button>
-                            <button data-command="insertLocalImage" title="이미지 첨부">🖼️</button> <button data-command="justifyLeft" title="왼쪽 정렬">L</button>
-                            <button data-command="justifyCenter" title="가운데 정렬">C</button> <button data-command="justifyRight" title="오른쪽 정렬">R</button>
+                    <div class="editor-layout">
+                        <div class="editor-post-list-panel"></div>
+                        <div class="editor-post-view-panel">
+                            <div class="editor-placeholder">
+                                <div>글을 선택하거나 새 글을 작성하세요.</div>
+                            </div>
                         </div>
-                        <div class="editor-content" contenteditable="true"></div>
-                        <input type="file" class="editor-image-input" accept="image/*" style="display:none;">
-                        <div class="editor-actions"><button class="editor-save-btn">저장</button></div>
-                    </div>
-                    <div class="editor-posts-container"></div>`;
+                    </div>`;
             }
             bindElements() {
-                this.titleInput = this.container.querySelector('.editor-title-input'); this.toolbar = this.container.querySelector('.editor-toolbar');
-                this.contentArea = this.container.querySelector('.editor-content'); this.saveBtn = this.container.querySelector('.editor-save-btn');
-                this.imageInput = this.container.querySelector('.editor-image-input'); this.postsContainer = this.container.querySelector('.editor-posts-container');
+                this.postListPanel = this.container.querySelector('.editor-post-list-panel');
+                this.postViewPanel = this.container.querySelector('.editor-post-view-panel');
             }
             addEventListeners() {
-                this.toolbar.addEventListener('click', async e => {
-                    const button = e.target.closest('button'); if (!button) return;
-                    const { command, value } = button.dataset;
-                    if (command === 'createLink') {
-                        try { const url = await showInputModal('URL 입력', '연결할 URL을 입력하세요:', 'https://'); if (url) document.execCommand(command, false, url); } catch(err) {}
-                    } else if (command === 'insertLocalImage') { this.imageInput.click();
-                    } else if (command === 'customQuote') { this.applyCustomQuote(value);
-                    } else { document.execCommand(command, false, value || null); }
-                    this.contentArea.focus();
+                this.postListPanel.addEventListener('click', (e) => {
+                    const listItem = e.target.closest('.post-list-item');
+                    if (listItem) {
+                        this.displayPost(listItem.dataset.id);
+                    }
                 });
-                this.imageInput.addEventListener('change', e => { if (e.target.files && e.target.files[0]) this.handleImageFile(e.target.files[0]); });
-                this.saveBtn.addEventListener('click', () => this.savePost());
-                this.postsContainer.addEventListener('click', e => {
-                    const postItem = e.target.closest('.editor-post-item'); if (!postItem) return;
-                    const postId = postItem.dataset.id;
-                    if (e.target.classList.contains('btn-edit')) { this.editPost(postId); } 
-                    else if (e.target.classList.contains('btn-delete')) { this.deletePost(postId); }
-                });
-            }
-            handleImageFile(file) {
-                const reader = new FileReader();
-                reader.onload = e => { document.execCommand('insertImage', false, e.target.result); };
-                reader.readAsDataURL(file); this.imageInput.value = '';
-            }
-            applyCustomQuote(styleClass) {
-                document.execCommand('formatBlock', false, 'blockquote');
-                const selection = window.getSelection();
-                if (selection.rangeCount > 0) {
-                    let container = selection.getRangeAt(0).commonAncestorContainer;
-                    if (container.nodeType !== 1) container = container.parentNode;
-                    const blockquote = container.closest('blockquote');
-                    if (blockquote) { blockquote.className = styleClass; }
-                }
             }
             savePosts() { localStorage.setItem(this.dataKey, JSON.stringify(this.posts)); }
-            loadPosts() { this.posts = JSON.parse(localStorage.getItem(this.dataKey) || '[]'); this.renderPosts(); }
-            renderPosts() {
-                this.postsContainer.innerHTML = '';
+            loadPosts() { 
+                this.posts = JSON.parse(localStorage.getItem(this.dataKey) || '[]'); 
+                this.renderPostList();
+                if (this.posts.length > 0) {
+                    this.displayPost(this.posts[this.posts.length - 1].id);
+                }
+            }
+            renderPostList() {
+                this.postListPanel.innerHTML = '';
                 [...this.posts].reverse().forEach(post => {
                     const postEl = document.createElement('div');
-                    postEl.className = 'editor-post-item'; postEl.dataset.id = post.id;
+                    postEl.className = 'post-list-item';
+                    postEl.dataset.id = post.id;
+                    if (post.id == this.activePostId) {
+                        postEl.classList.add('active');
+                    }
                     const tempDiv = document.createElement('div'); tempDiv.innerHTML = post.content;
-                    const previewText = tempDiv.textContent.substring(0, 100) + '...';
+                    const snippet = tempDiv.textContent.substring(0, 50);
                     postEl.innerHTML = `
-                        <div class="post-header">
-                           <div class="post-title">${escapeHTML(post.title)}</div>
-                           <div class="post-meta">${new Date(post.timestamp).toLocaleString()}</div>
-                        </div>
-                        <div class="post-content-preview">${escapeHTML(previewText)}</div>
-                        <div class="post-actions action-buttons">
-                           <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
-                        </div>`;
-                    this.postsContainer.appendChild(postEl);
+                        <div class="post-list-title">${escapeHTML(post.title)}</div>
+                        <div class="post-list-snippet">${escapeHTML(snippet)}...</div>
+                        <div class="post-list-date">${new Date(post.timestamp).toLocaleDateString()}</div>`;
+                    this.postListPanel.appendChild(postEl);
                 });
             }
-            savePost() {
-                const title = this.titleInput.value.trim(); const content = this.contentArea.innerHTML;
+            displayPost(postId) {
+                const post = this.posts.find(p => p.id == postId);
+                if (!post) {
+                    this.postViewPanel.innerHTML = `<div class="editor-placeholder"><div>글을 선택하거나 새 글을 작성하세요.</div></div>`;
+                    this.activePostId = null;
+                    return;
+                }
+                this.activePostId = postId;
+                this.postViewPanel.innerHTML = `
+                    <div class="post-view-header">
+                        <div class="post-view-actions action-buttons">
+                           <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
+                        </div>
+                        <h2 class="post-view-title">${escapeHTML(post.title)}</h2>
+                        <div class="post-view-meta">${new Date(post.timestamp).toLocaleString()}</div>
+                    </div>
+                    <div class="post-view-content">${post.content}</div>`;
+
+                this.postViewPanel.querySelector('.btn-edit').addEventListener('click', () => this.showEditor(postId));
+                this.postViewPanel.querySelector('.btn-delete').addEventListener('click', () => this.deletePost(postId));
+                this.renderPostList(); // To update active state
+            }
+            showEditor(postId = null) {
+                this.editingPostId = postId;
+                const modal = document.getElementById('editor-modal');
+                const titleInput = modal.querySelector('.editor-title-input');
+                const contentArea = modal.querySelector('.editor-content');
+                
+                if (postId) {
+                    const post = this.posts.find(p => p.id == postId);
+                    if (post) {
+                        titleInput.value = post.title;
+                        contentArea.innerHTML = post.content;
+                    }
+                } else {
+                    titleInput.value = '';
+                    contentArea.innerHTML = '';
+                }
+
+                modal.style.display = 'flex';
+                
+                const saveBtn = modal.querySelector('.editor-save-btn');
+                const cancelBtn = modal.querySelector('.modal-cancel-btn');
+                
+                const onSave = () => {
+                    this.savePostFromModal();
+                    cleanup();
+                };
+                const onCancel = () => cleanup();
+                
+                const cleanup = () => {
+                    modal.style.display = 'none';
+                    saveBtn.removeEventListener('click', onSave);
+                    cancelBtn.removeEventListener('click', onCancel);
+                };
+
+                saveBtn.addEventListener('click', onSave);
+                cancelBtn.addEventListener('click', onCancel);
+            }
+            savePostFromModal() {
+                const modal = document.getElementById('editor-modal');
+                const title = modal.querySelector('.editor-title-input').value.trim();
+                const content = modal.querySelector('.editor-content').innerHTML;
                 if (!title) return alert('제목을 입력해주세요.');
+
                 if (this.editingPostId) {
                     const postIndex = this.posts.findIndex(p => p.id == this.editingPostId);
                     if (postIndex > -1) { Object.assign(this.posts[postIndex], { title, content, timestamp: Date.now() }); }
-                } else { this.posts.push({ id: Date.now(), title, content, timestamp: Date.now() }); }
-                this.savePosts(); this.renderPosts(); this.clearEditor();
-            }
-            editPost(postId) {
-                const post = this.posts.find(p => p.id == postId); if (!post) return;
-                this.editingPostId = postId; this.titleInput.value = post.title; this.contentArea.innerHTML = post.content;
-                this.saveBtn.textContent = "수정 완료"; this.container.querySelector('.editor-container').scrollIntoView({ behavior: 'smooth' }); this.titleInput.focus();
+                } else {
+                    this.editingPostId = Date.now();
+                    this.posts.push({ id: this.editingPostId, title, content, timestamp: this.editingPostId });
+                }
+                this.savePosts();
+                this.renderPostList();
+                this.displayPost(this.editingPostId);
             }
             deletePost(postId) {
                 if (confirm('이 게시글을 정말 삭제하시겠습니까?')) {
-                    this.posts = this.posts.filter(p => p.id != postId); this.savePosts(); this.renderPosts();
+                    this.posts = this.posts.filter(p => p.id != postId);
+                    this.savePosts();
+                    this.renderPostList();
+                    if(this.activePostId == postId){
+                         this.displayPost(this.posts.length > 0 ? this.posts[this.posts.length - 1].id : null);
+                    }
                 }
-            }
-            clearEditor() {
-                this.editingPostId = null; this.titleInput.value = ''; this.contentArea.innerHTML = ''; this.saveBtn.textContent = "저장";
             }
         }
         class NotepadTab {
@@ -1150,13 +1240,26 @@
             }
             async updateFavorite(itemElement) {
                 const favData = {
+                    id: itemElement.dataset.id,
                     title: this.titleInput.value.trim(), link: this.linkInput.value.trim(),
                     memo: this.memoInput.value.trim(), image: this.currentImage
                 };
                 if (!favData.title) return alert('제목을 입력해주세요.');
-                await this.createFavoriteDOM(favData); // Recreate the DOM to fetch new thumbnails if link changed
-                itemElement.remove(); // Remove the old one
-                this.saveFavorites(); this.renumberFavorites(); this.clearFavoriteInputs();
+                
+                const parent = itemElement.parentNode;
+                const nextSibling = itemElement.nextSibling;
+
+                await this.createFavoriteDOM(favData); 
+                const newElement = parent.lastChild;
+                
+                if (nextSibling) {
+                    parent.insertBefore(newElement, nextSibling);
+                }
+                itemElement.remove();
+
+                this.saveFavorites(); 
+                this.renumberFavorites(); 
+                this.clearFavoriteInputs();
             }
             clearFavoriteInputs() {
                 this.titleInput.value = this.linkInput.value = this.memoInput.value = '';
