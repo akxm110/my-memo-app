@@ -235,6 +235,7 @@
             border: 1px solid;
             cursor: pointer;
             font-weight: bold;
+            display: none; /* 버튼 숨기기 - 우클릭/롱프레스로 대체 */
         }
         .btn-edit { background-color: #007bff; border-color: #007bff; color: white; }
         .btn-delete { background-color: #dc3545; border-color: #dc3545; color: white; }
@@ -822,8 +823,8 @@
             </div>
             <div id="memo-list-container"></div>
             </div>
-                    </div>
-
+        </div>
+        
     <a id="download-anchor" style="position: absolute; top: -9999px; left: -9999px;"></a>
 
     <script>
@@ -986,6 +987,88 @@
                 }, 3000);
             }
         });
+
+        // --- 컨텍스트 메뉴 유틸리티 ---
+        class ContextMenuUtil {
+            constructor() {
+                this.menu = null;
+                this.currentCallback = null;
+                this.longPressTimer = null;
+                this.longPressDelay = 1000; // 1초
+                this.init();
+            }
+            
+            init() {
+                // 공통 컨텍스트 메뉴 생성
+                this.menu = document.createElement('div');
+                this.menu.className = 'context-menu';
+                this.menu.id = 'common-context-menu';
+                this.menu.innerHTML = `
+                    <div class="context-menu-item" data-action="edit">수정</div>
+                    <div class="context-menu-item delete" data-action="delete">삭제</div>`;
+                document.body.appendChild(this.menu);
+                
+                // 클릭 시 메뉴 닫기
+                document.addEventListener('click', () => this.hide());
+                
+                // 메뉴 항목 클릭
+                this.menu.addEventListener('click', (e) => {
+                    const item = e.target.closest('.context-menu-item');
+                    if (!item) return;
+                    
+                    const action = item.dataset.action;
+                    if (this.currentCallback) {
+                        this.currentCallback(action);
+                    }
+                    this.hide();
+                });
+            }
+            
+            show(x, y, callback) {
+                this.currentCallback = callback;
+                this.menu.style.left = x + 'px';
+                this.menu.style.top = y + 'px';
+                this.menu.classList.add('active');
+            }
+            
+            hide() {
+                this.menu.classList.remove('active');
+                this.currentCallback = null;
+            }
+            
+            // 엘리먼트에 우클릭 + long press 이벤트 추가
+            attachToElement(element, callback) {
+                // 우클릭
+                element.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    this.show(e.pageX, e.pageY, callback);
+                });
+                
+                // Long press (모바일)
+                element.addEventListener('touchstart', (e) => {
+                    this.longPressTimer = setTimeout(() => {
+                        const touch = e.touches[0];
+                        this.show(touch.pageX, touch.pageY, callback);
+                    }, this.longPressDelay);
+                });
+                
+                element.addEventListener('touchend', () => {
+                    if (this.longPressTimer) {
+                        clearTimeout(this.longPressTimer);
+                        this.longPressTimer = null;
+                    }
+                });
+                
+                element.addEventListener('touchmove', () => {
+                    if (this.longPressTimer) {
+                        clearTimeout(this.longPressTimer);
+                        this.longPressTimer = null;
+                    }
+                });
+            }
+        }
+        
+        const contextMenuUtil = new ContextMenuUtil();
 
         // --- COMMON ---
         document.addEventListener('DOMContentLoaded', async () => {
@@ -1251,7 +1334,7 @@
                 <div class="item-col col-title">${escapeHTML(title)}</div>
                 <div class="item-col col-thumbnail">
                     <div class="thumbnail-wrapper">${thumbnailHTML}<a href="${escapeHTML(link)}" target="_blank" class="link-button">링크 보기</a></div>
-            </div>
+    </div>
                 <div class="item-col col-memo">${formatVideoMemo(memo)}</div>
                 <div class="item-col col-actions action-buttons">
                     <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
@@ -1268,8 +1351,17 @@
                 };
             }
 
-            itemElement.querySelector('.btn-delete').addEventListener('click', () => { itemElement.remove(); saveItems(); renumberItems(); });
-            itemElement.querySelector('.btn-edit').addEventListener('click', () => editItem(itemElement));
+            // 우클릭 & Long Press 메뉴
+            contextMenuUtil.attachToElement(itemElement, (action) => {
+                if (action === 'delete') {
+                    itemElement.remove();
+                    saveItems();
+                    renumberItems();
+                } else if (action === 'edit') {
+                    editItem(itemElement);
+                }
+            });
+            
             renumberItems();
             return true;
         }
@@ -1359,8 +1451,16 @@
                     <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
                 </div>`;
             memoListContainer.prepend(memoItem);
-            memoItem.querySelector('.btn-delete').addEventListener('click', () => { memoItem.remove(); saveMemos(); });
-            memoItem.querySelector('.btn-edit').addEventListener('click', () => editMemo(memoItem));
+            
+            // 우클릭 & Long Press 메뉴
+            contextMenuUtil.attachToElement(memoItem, (action) => {
+                if (action === 'delete') {
+                    memoItem.remove();
+                    saveMemos();
+                } else if (action === 'edit') {
+                    editMemo(memoItem);
+                }
+            });
         }
         function addMemo() {
             const text = memoTextarea.value.trim();
@@ -1541,13 +1641,13 @@
                         <div class="input-group"><label>사진</label><button class="fav-image-upload-btn">파일 선택</button><input type="file" class="fav-image-input" accept="image/*" style="display:none;"></div>
                         <div class="fav-image-preview-container"><img class="fav-image-preview"><span class="fav-image-clear-btn">X</span></div>
                         <button class="fav-add-btn">추가</button>
-        </div>
+            </div>
                     <div class="actions"><button class="fav-delete-all-btn">전체 삭제</button></div>
                     <div class="items-list fav-list-container">
                         <div class="list-header">
                             <div class="item-col col-index">#</div><div class="item-col col-title">제목</div><div class="item-col col-link">링크</div>
                             <div class="item-col col-thumbnail">썸네일</div><div class="item-col col-memo">메모</div><div class="item-col col-actions">동작</div>
-                        </div>
+            </div>
                     </div>`;
             }
             bindElements() {
@@ -1624,8 +1724,18 @@
                     <div class="item-col col-memo" data-full-memo="${escapeHTML(fav.memo)}">${escapeHTML(displayedMemo) || '-'}</div>
                     <div class="item-col col-actions action-buttons"><button class="btn-edit">수정</button><button class="btn-delete">삭제</button></div>`;
                 this.listContainer.appendChild(itemElement);
-                itemElement.querySelector('.btn-delete').addEventListener('click', () => { itemElement.remove(); this.saveFavorites(); this.renumberFavorites(); });
-                itemElement.querySelector('.btn-edit').addEventListener('click', () => this.editFavorite(itemElement));
+                
+                // 우클릭 & Long Press 메뉴
+                contextMenuUtil.attachToElement(itemElement, (action) => {
+                    if (action === 'delete') {
+                        itemElement.remove();
+                        this.saveFavorites();
+                        this.renumberFavorites();
+                    } else if (action === 'edit') {
+                        this.editFavorite(itemElement);
+                    }
+                });
+                
                 this.renumberFavorites();
             }
             addFavorite() {
@@ -1694,7 +1804,7 @@
                             <span class="memo-tab-char-counter">0자</span>
                             <div><button class="memo-tab-add-btn">메모 추가</button></div>
                             <button class="memo-tab-delete-all-btn">전체 삭제</button>
-            </div>
+                    </div>
         </div>
                     <div class="memo-tab-list-container"></div>`;
             }
@@ -1752,11 +1862,16 @@
                         <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
                     </div>`;
                 this.listContainer.prepend(memoItem);
-                memoItem.querySelector('.btn-delete').addEventListener('click', () => { 
-                    memoItem.remove(); 
-                    this.saveMemos(); 
+                
+                // 우클릭 & Long Press 메뉴
+                contextMenuUtil.attachToElement(memoItem, (action) => {
+                    if (action === 'delete') {
+                        memoItem.remove();
+                        this.saveMemos();
+                    } else if (action === 'edit') {
+                        this.editMemo(memoItem);
+                    }
                 });
-                memoItem.querySelector('.btn-edit').addEventListener('click', () => this.editMemo(memoItem));
             }
             
             addMemo() {
@@ -1815,10 +1930,10 @@
                     <div class="editor-container">
                         <div class="editor-list-panel">
                             <div class="editor-post-list"></div>
-                        </div>
+            </div>
                         <div class="editor-content-panel">
                             <div class="editor-empty-state">왼쪽에서 글을 선택하거나 "글쓰기" 버튼을 눌러 새 글을 작성하세요</div>
-                        </div>
+        </div>
                     </div>`;
             }
             
@@ -1831,7 +1946,7 @@
                         <div class="editor-modal-header">
                             <h3>글 작성</h3>
                             <button class="editor-modal-close">×</button>
-                        </div>
+            </div>
                         <div class="editor-modal-body">
                             <input type="text" class="editor-title-input" placeholder="제목을 입력하세요">
                             <div class="editor-toolbar">
@@ -1842,10 +1957,10 @@
                                 <button class="editor-btn" data-command="insertUnorderedList">• 목록</button>
                                 <button class="editor-btn" data-command="insertOrderedList">1. 목록</button>
                                 <button class="editor-btn" data-command="image">🖼️ 이미지</button>
-                            </div>
+        </div>
                             <div contenteditable="true" class="editor-textarea" data-placeholder="내용을 입력하세요..."></div>
                             <input type="file" class="editor-image-upload" accept="image/*">
-                        </div>
+    </div>
                         <div class="editor-modal-footer">
                             <button class="editor-cancel-btn">취소</button>
                             <button class="editor-save-btn">저장</button>
@@ -1997,6 +2112,29 @@
                     item.addEventListener('contextmenu', (e) => {
                         e.preventDefault();
                         this.showContextMenu(e, post.id);
+                    });
+                    
+                    // Long press (모바일)
+                    let longPressTimer = null;
+                    item.addEventListener('touchstart', (e) => {
+                        longPressTimer = setTimeout(() => {
+                            const touch = e.touches[0];
+                            this.showContextMenu({ pageX: touch.pageX, pageY: touch.pageY }, post.id);
+                        }, 1000);
+                    });
+                    
+                    item.addEventListener('touchend', () => {
+                        if (longPressTimer) {
+                            clearTimeout(longPressTimer);
+                            longPressTimer = null;
+                        }
+                    });
+                    
+                    item.addEventListener('touchmove', () => {
+                        if (longPressTimer) {
+                            clearTimeout(longPressTimer);
+                            longPressTimer = null;
+                        }
                     });
                     
                     this.postList.appendChild(item);
