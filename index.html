@@ -290,6 +290,351 @@
              background-color: #fff; cursor: pointer;
         }
         .tab-management button:hover { background-color: #f8f9fa; }
+
+        /* 글쓰기 에디터 스타일 */
+        .editor-container {
+            display: flex;
+            gap: 20px;
+            height: calc(100vh - 250px);
+            min-height: 500px;
+        }
+        .editor-list-panel {
+            flex: 0 0 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .editor-new-btn {
+            padding: 12px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .editor-new-btn:hover {
+            background-color: #218838;
+        }
+        .editor-post-list {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            background-color: #fff;
+        }
+        .editor-post-item {
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .editor-post-item:hover {
+            background-color: #f8f9fa;
+        }
+        .editor-post-item.active {
+            background-color: #e7f5ff;
+            border-left: 4px solid #007bff;
+        }
+        .editor-post-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .editor-post-date {
+            font-size: 12px;
+            color: #6c757d;
+        }
+        .editor-content-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .editor-title-input {
+            font-size: 24px;
+            font-weight: bold;
+            border: none;
+            border-bottom: 2px solid #dee2e6;
+            padding: 10px 0;
+            outline: none;
+        }
+        .editor-title-input:focus {
+            border-bottom-color: #007bff;
+        }
+        .editor-toolbar {
+            display: flex;
+            gap: 5px;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            background-color: #f8f9fa;
+            flex-wrap: wrap;
+        }
+        .editor-btn {
+            padding: 6px 12px;
+            border: 1px solid #adb5bd;
+            background-color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .editor-btn:hover {
+            background-color: #e9ecef;
+        }
+        .editor-btn.active {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .editor-textarea {
+            flex: 1;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: inherit;
+            font-size: 15px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+        }
+        .editor-textarea:focus {
+            border-color: #007bff;
+        }
+        .editor-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .editor-save-btn {
+            padding: 10px 30px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .editor-save-btn:hover {
+            background-color: #0056b3;
+        }
+        .editor-delete-btn {
+            padding: 10px 20px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .editor-delete-btn:hover {
+            background-color: #c82333;
+        }
+        .editor-image-upload {
+            display: none;
+        }
+
+        /* 모달 스타일 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-content {
+            background-color: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .modal-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .modal-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .modal-option {
+            padding: 15px 20px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .modal-option:hover {
+            border-color: #28a745;
+            background-color: #f8f9fa;
+        }
+        .modal-option-icon {
+            font-size: 24px;
+        }
+        .modal-close-btn {
+            margin-top: 20px;
+            padding: 10px;
+            width: 100%;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .modal-close-btn:hover {
+            background-color: #5a6268;
+        }
+
+        /* 모바일 반응형 */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .header-title {
+                font-size: 18px;
+            }
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .header-actions button {
+                flex: 1;
+                font-size: 13px;
+                padding: 6px 10px;
+            }
+            .tabs {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+            }
+            .tab {
+                padding: 12px 15px;
+                font-size: 14px;
+                white-space: nowrap;
+            }
+            .tab-management {
+                flex-wrap: wrap;
+            }
+            .tab-management button {
+                font-size: 13px;
+            }
+            .container {
+                padding: 10px;
+            }
+            .input-section {
+                gap: 10px;
+            }
+            #video-tab-content .input-section {
+                grid-template-columns: 1fr;
+            }
+            .dynamic-tab-content .input-section {
+                grid-template-columns: 1fr;
+            }
+            .fav-image-preview-container {
+                padding-left: 0;
+                margin-top: 10px;
+            }
+            .lists-wrapper {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .items-list {
+                width: 100%;
+            }
+            .list-item {
+                flex-direction: column;
+                align-items: flex-start;
+                min-height: auto;
+                padding: 10px;
+            }
+            .item-col {
+                width: 100%;
+                padding: 5px 0;
+            }
+            .col-index {
+                text-align: left;
+                font-weight: bold;
+            }
+            .col-thumbnail {
+                margin: 10px 0;
+            }
+            .thumbnail-wrapper {
+                width: 100%;
+            }
+            .thumbnail-container, .no-thumbnail {
+                width: 100%;
+                max-width: 300px;
+                height: auto;
+                aspect-ratio: 16/9;
+            }
+            .col-actions {
+                display: flex;
+                gap: 5px;
+                margin-top: 10px;
+            }
+            .action-buttons button {
+                flex: 1;
+            }
+            .memo-item {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .memo-item-actions {
+                width: 100%;
+                display: flex;
+                gap: 5px;
+            }
+            .memo-item-actions button {
+                flex: 1;
+            }
+            .fav-list-container .col-link a {
+                word-break: break-all;
+                font-size: 12px;
+            }
+            .editor-container {
+                flex-direction: column;
+                height: auto;
+            }
+            .editor-list-panel {
+                flex: 0 0 auto;
+            }
+            .editor-post-list {
+                max-height: 300px;
+            }
+            .editor-toolbar {
+                gap: 3px;
+            }
+            .editor-btn {
+                font-size: 12px;
+                padding: 5px 10px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -306,6 +651,7 @@
     </div>
     <div class="tab-management">
         <button id="add-tab-btn">+ 탭 추가</button>
+        <button id="new-post-btn" style="display: none;">✍️ 새 글 작성</button>
         <button id="rename-tab-btn">✏️ 이름 변경</button>
         <button id="delete-tab-btn">🗑️ 탭 삭제</button>
     </div>
@@ -316,7 +662,7 @@
                 <div class="input-group">
                     <label for="title-input">제목</label>
                     <input type="text" id="title-input" placeholder="비디오 제목 입력">
-                </div>
+            </div>
                 <div class="input-group">
                     <label for="link-input">비디오 링크</label>
                     <input type="text" id="link-input" placeholder="YouTube, Shorts, Vimeo, TikTok 등 URL 입력">
@@ -362,8 +708,8 @@
                 </div>
             </div>
             <div id="memo-list-container"></div>
-        </div>
-    </div>
+            </div>
+                    </div>
 
     <a id="download-anchor" style="position: absolute; top: -9999px; left: -9999px;"></a>
 
@@ -648,6 +994,8 @@
         }
 
         function initializeTabSwitching() {
+            const newPostBtn = document.getElementById('new-post-btn');
+            
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.addEventListener('click', () => {
                     const target = document.querySelector(tab.dataset.tabTarget);
@@ -656,6 +1004,22 @@
                     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                     tab.classList.add('active');
                     target.classList.add('active');
+                    
+                    // 글쓰기 탭인지 확인
+                    const tabId = target.id;
+                    const tabData = TabManager.tabs.find(t => t.id === tabId);
+                    
+                    if (tabData && tabData.type === 'editor') {
+                        newPostBtn.style.display = 'inline-block';
+                        
+                        // 버튼 클릭 시 해당 탭의 EditorTab 인스턴스에서 새 글 작성
+                        newPostBtn.onclick = () => {
+                            const editorBtn = target.querySelector('.editor-new-btn');
+                            if (editorBtn) editorBtn.click();
+                        };
+                    } else {
+                        newPostBtn.style.display = 'none';
+                    }
                 });
             });
         }
@@ -769,7 +1133,7 @@
                 <div class="item-col col-title">${escapeHTML(title)}</div>
                 <div class="item-col col-thumbnail">
                     <div class="thumbnail-wrapper">${thumbnailHTML}<a href="${escapeHTML(link)}" target="_blank" class="link-button">링크 보기</a></div>
-                </div>
+            </div>
                 <div class="item-col col-memo">${formatVideoMemo(memo)}</div>
                 <div class="item-col col-actions action-buttons">
                     <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
@@ -933,16 +1297,71 @@
                     content.id = tabData.id;
                     content.className = 'tab-content dynamic-tab-content';
                     this.contentContainer.appendChild(content);
-                    new FavoritesTab(content, tabData.id);
+                    
+                    // 탭 타입에 따라 다른 콘텐츠 생성
+                    const tabType = tabData.type || 'favorites'; // 기본값: favorites
+                    if (tabType === 'favorites') {
+                        new FavoritesTab(content, tabData.id);
+                    } else if (tabType === 'memo') {
+                        new MemoTab(content, tabData.id);
+                    } else if (tabType === 'editor') {
+                        new EditorTab(content, tabData.id);
+                    }
                 });
                 initializeTabSwitching();
             },
             addTab() {
-                const name = prompt('새 탭 이름:');
-                if (name && name.trim()) {
-                    this.tabs.push({ id: `tab-${Date.now()}`, name: name.trim() });
-                    this.saveTabs(); this.render();
-                }
+                const modal = document.getElementById('tab-type-modal');
+                modal.classList.add('active');
+                
+                // 모달 옵션 클릭 이벤트
+                const handleOptionClick = (e) => {
+                    const option = e.target.closest('.modal-option');
+                    if (!option) return;
+                    
+                    const tabType = option.dataset.tabType;
+                    modal.classList.remove('active');
+                    
+                    // 탭 이름 입력 받기
+                    const name = prompt('새 탭 이름:');
+                    if (name && name.trim()) {
+                        const newTab = { 
+                            id: `tab-${Date.now()}`, 
+                            name: name.trim(),
+                            type: tabType 
+                        };
+                        this.tabs.push(newTab);
+                        this.saveTabs(); 
+                        this.render();
+                    }
+                    
+                    // 이벤트 리스너 제거
+                    document.querySelectorAll('.modal-option').forEach(opt => {
+                        opt.removeEventListener('click', handleOptionClick);
+                    });
+                };
+                
+                // 각 옵션에 이벤트 리스너 추가
+                document.querySelectorAll('.modal-option').forEach(option => {
+                    option.addEventListener('click', handleOptionClick);
+                });
+                
+                // 취소 버튼
+                const closeBtn = modal.querySelector('.modal-close-btn');
+                const handleClose = () => {
+                    modal.classList.remove('active');
+                    closeBtn.removeEventListener('click', handleClose);
+                };
+                closeBtn.addEventListener('click', handleClose);
+                
+                // 배경 클릭 시 닫기
+                const handleOverlayClick = (e) => {
+                    if (e.target === modal) {
+                        modal.classList.remove('active');
+                        modal.removeEventListener('click', handleOverlayClick);
+                    }
+                };
+                modal.addEventListener('click', handleOverlayClick);
             },
             renameTab() {
                 const activeTabEl = this.tabsContainer.querySelector('.tab.active');
@@ -1001,7 +1420,7 @@
                         <div class="input-group"><label>사진</label><button class="fav-image-upload-btn">파일 선택</button><input type="file" class="fav-image-input" accept="image/*" style="display:none;"></div>
                         <div class="fav-image-preview-container"><img class="fav-image-preview"><span class="fav-image-clear-btn">X</span></div>
                         <button class="fav-add-btn">추가</button>
-                    </div>
+        </div>
                     <div class="actions"><button class="fav-delete-all-btn">전체 삭제</button></div>
                     <div class="items-list fav-list-container">
                         <div class="list-header">
@@ -1131,6 +1550,361 @@
                 this.currentlyEditingFav = null;
             }
         }
+
+        // --- 메모장 탭 클래스 ---
+        class MemoTab {
+            constructor(containerEl, tabId) {
+                this.container = containerEl;
+                this.tabId = tabId;
+                this.dataKey = `memoTabData-${this.tabId}`;
+                this.currentlyEditingMemo = null;
+                this.renderHTML();
+                this.bindElements();
+                this.addEventListeners();
+                this.loadMemos();
+            }
+            
+            renderHTML() {
+                this.container.innerHTML = `
+                    <div class="memo-editor">
+                        <h2>새 메모 작성</h2>
+                        <textarea class="memo-tab-textarea" placeholder="메모를 입력하세요... (URL은 자동으로 링크로 변환됩니다)"></textarea>
+                        <div class="memo-actions">
+                            <span class="memo-tab-char-counter">0자</span>
+                            <div><button class="memo-tab-add-btn">메모 추가</button></div>
+                            <button class="memo-tab-delete-all-btn">전체 삭제</button>
+            </div>
+        </div>
+                    <div class="memo-tab-list-container"></div>`;
+            }
+            
+            bindElements() {
+                this.textarea = this.container.querySelector('.memo-tab-textarea');
+                this.addBtn = this.container.querySelector('.memo-tab-add-btn');
+                this.deleteAllBtn = this.container.querySelector('.memo-tab-delete-all-btn');
+                this.listContainer = this.container.querySelector('.memo-tab-list-container');
+                this.charCounter = this.container.querySelector('.memo-tab-char-counter');
+            }
+            
+            addEventListeners() {
+                this.textarea.addEventListener('input', () => {
+                    this.charCounter.textContent = `${this.textarea.value.length}자`;
+                });
+                this.addBtn.addEventListener('click', () => {
+                    if (this.currentlyEditingMemo) this.updateMemo(this.currentlyEditingMemo);
+                    else this.addMemo();
+                });
+                this.deleteAllBtn.addEventListener('click', () => {
+                    if (confirm('모든 메모를 삭제하시겠습니까?')) {
+                        this.listContainer.innerHTML = '';
+                        this.saveMemos();
+                    }
+                });
+            }
+            
+            linkify(text) {
+                return escapeHTML(text).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
+            }
+            
+            saveMemos() {
+                const memos = Array.from(this.listContainer.querySelectorAll('.memo-item')).map(el => el.dataset.rawText);
+                localStorage.setItem(this.dataKey, JSON.stringify(memos));
+            }
+            
+            loadMemos() {
+                try {
+                    JSON.parse(localStorage.getItem(this.dataKey) || '[]').forEach(text => this.createMemoDOM(text));
+                } catch (error) {
+                    console.error('메모 데이터 로드 실패:', error);
+                    localStorage.removeItem(this.dataKey);
+                }
+            }
+            
+            createMemoDOM(text) {
+                const memoItem = document.createElement('div');
+                memoItem.className = 'memo-item';
+                memoItem.dataset.rawText = text;
+                memoItem.innerHTML = `<div class="memo-content">${this.linkify(text)}</div>
+                    <div class="memo-item-actions action-buttons">
+                        <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
+                    </div>`;
+                this.listContainer.prepend(memoItem);
+                memoItem.querySelector('.btn-delete').addEventListener('click', () => { 
+                    memoItem.remove(); 
+                    this.saveMemos(); 
+                });
+                memoItem.querySelector('.btn-edit').addEventListener('click', () => this.editMemo(memoItem));
+            }
+            
+            addMemo() {
+                const text = this.textarea.value.trim();
+                if (text) {
+                    this.createMemoDOM(text);
+                    this.saveMemos();
+                    this.textarea.value = '';
+                    this.charCounter.textContent = '0자';
+                }
+            }
+            
+            editMemo(memoItem) {
+                this.textarea.value = memoItem.dataset.rawText;
+                this.addBtn.textContent = '메모 수정';
+                this.currentlyEditingMemo = memoItem;
+                this.textarea.focus();
+            }
+            
+            updateMemo(memoItem) {
+                const newText = this.textarea.value.trim();
+                if (newText) {
+                    memoItem.dataset.rawText = newText;
+                    memoItem.querySelector('.memo-content').innerHTML = this.linkify(newText);
+                } else {
+                    memoItem.remove();
+                }
+                this.saveMemos();
+                this.textarea.value = '';
+                this.addBtn.textContent = '메모 추가';
+                this.currentlyEditingMemo = null;
+            }
+        }
+
+        // --- 글쓰기 에디터 탭 클래스 ---
+        class EditorTab {
+            constructor(containerEl, tabId) {
+                this.container = containerEl;
+                this.tabId = tabId;
+                this.dataKey = `editorTabData-${this.tabId}`;
+                this.posts = [];
+                this.currentPostId = null;
+                this.renderHTML();
+                this.bindElements();
+                this.addEventListeners();
+                this.loadPosts();
+            }
+            
+            renderHTML() {
+                this.container.innerHTML = `
+                    <div class="editor-container">
+                        <div class="editor-list-panel">
+                            <button class="editor-new-btn">✍️ 새 글 작성</button>
+                            <div class="editor-post-list"></div>
+    </div>
+                        <div class="editor-content-panel">
+                            <input type="text" class="editor-title-input" placeholder="제목을 입력하세요">
+                            <div class="editor-toolbar">
+                                <button class="editor-btn" data-command="bold"><strong>B</strong></button>
+                                <button class="editor-btn" data-command="italic"><em>I</em></button>
+                                <button class="editor-btn" data-command="underline"><u>U</u></button>
+                                <button class="editor-btn" data-command="strikethrough"><s>S</s></button>
+                                <button class="editor-btn" data-command="insertUnorderedList">• 목록</button>
+                                <button class="editor-btn" data-command="insertOrderedList">1. 목록</button>
+                                <button class="editor-btn" data-command="image">🖼️ 이미지</button>
+                            </div>
+                            <div contenteditable="true" class="editor-textarea" data-placeholder="내용을 입력하세요..."></div>
+                            <div class="editor-actions">
+                                <button class="editor-save-btn">저장</button>
+                                <button class="editor-delete-btn">삭제</button>
+                            </div>
+                            <input type="file" class="editor-image-upload" accept="image/*">
+                        </div>
+                    </div>`;
+            }
+            
+            bindElements() {
+                this.newBtn = this.container.querySelector('.editor-new-btn');
+                this.postList = this.container.querySelector('.editor-post-list');
+                this.titleInput = this.container.querySelector('.editor-title-input');
+                this.toolbar = this.container.querySelector('.editor-toolbar');
+                this.textarea = this.container.querySelector('.editor-textarea');
+                this.saveBtn = this.container.querySelector('.editor-save-btn');
+                this.deleteBtn = this.container.querySelector('.editor-delete-btn');
+                this.imageUpload = this.container.querySelector('.editor-image-upload');
+            }
+            
+            addEventListeners() {
+                // 새 글 작성 버튼
+                this.newBtn.addEventListener('click', () => this.createNewPost());
+                
+                // 저장 버튼
+                this.saveBtn.addEventListener('click', () => this.savePost());
+                
+                // 삭제 버튼
+                this.deleteBtn.addEventListener('click', () => this.deletePost());
+                
+                // 툴바 버튼들
+                this.toolbar.addEventListener('click', (e) => {
+                    const btn = e.target.closest('.editor-btn');
+                    if (!btn) return;
+                    
+                    const command = btn.dataset.command;
+                    if (command === 'image') {
+                        this.imageUpload.click();
+                    } else {
+                        document.execCommand(command, false, null);
+                        this.textarea.focus();
+                    }
+                });
+                
+                // 이미지 업로드
+                this.imageUpload.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) this.handleImageUpload(file);
+                });
+                
+                // 이미지 붙여넣기
+                this.textarea.addEventListener('paste', (e) => {
+                    const file = Array.from(e.clipboardData.files).find(f => f.type.startsWith('image/'));
+                    if (file) {
+                        e.preventDefault();
+                        this.handleImageUpload(file);
+                    }
+                });
+            }
+            
+            handleImageUpload(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.maxWidth = '100%';
+                    img.style.height = 'auto';
+                    this.textarea.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+                this.imageUpload.value = '';
+            }
+            
+            loadPosts() {
+                try {
+                    this.posts = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                    this.renderPostList();
+                    if (this.posts.length > 0) {
+                        this.loadPost(this.posts[0].id);
+                    }
+                } catch (error) {
+                    console.error('게시글 로드 실패:', error);
+                    this.posts = [];
+                }
+            }
+            
+            savePosts() {
+                localStorage.setItem(this.dataKey, JSON.stringify(this.posts));
+            }
+            
+            renderPostList() {
+                this.postList.innerHTML = '';
+                this.posts.forEach(post => {
+                    const item = document.createElement('div');
+                    item.className = 'editor-post-item';
+                    if (post.id === this.currentPostId) {
+                        item.classList.add('active');
+                    }
+                    item.dataset.postId = post.id;
+                    
+                    const date = new Date(post.date);
+                    const dateStr = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+                    
+                    item.innerHTML = `
+                        <div class="editor-post-title">${escapeHTML(post.title || '제목 없음')}</div>
+                        <div class="editor-post-date">${dateStr}</div>`;
+                    
+                    item.addEventListener('click', () => this.loadPost(post.id));
+                    this.postList.appendChild(item);
+                });
+            }
+            
+            createNewPost() {
+                const newPost = {
+                    id: Date.now(),
+                    title: '',
+                    content: '',
+                    date: Date.now()
+                };
+                this.posts.unshift(newPost);
+                this.savePosts();
+                this.renderPostList();
+                this.loadPost(newPost.id);
+            }
+            
+            loadPost(postId) {
+                const post = this.posts.find(p => p.id === postId);
+                if (!post) return;
+                
+                this.currentPostId = postId;
+                this.titleInput.value = post.title;
+                this.textarea.innerHTML = post.content;
+                this.renderPostList();
+            }
+            
+            savePost() {
+                if (!this.currentPostId) {
+                    this.createNewPost();
+                    return;
+                }
+                
+                const post = this.posts.find(p => p.id === this.currentPostId);
+                if (!post) return;
+                
+                post.title = this.titleInput.value.trim() || '제목 없음';
+                post.content = this.textarea.innerHTML;
+                post.date = Date.now();
+                
+                this.savePosts();
+                this.renderPostList();
+                
+                alert('저장되었습니다!');
+            }
+            
+            deletePost() {
+                if (!this.currentPostId) return;
+                
+                if (!confirm('이 글을 삭제하시겠습니까?')) return;
+                
+                this.posts = this.posts.filter(p => p.id !== this.currentPostId);
+                this.savePosts();
+                
+                this.currentPostId = null;
+                this.titleInput.value = '';
+                this.textarea.innerHTML = '';
+                
+                this.renderPostList();
+                
+                if (this.posts.length > 0) {
+                    this.loadPost(this.posts[0].id);
+                }
+            }
+        }
     </script>
+
+    <!-- 탭 타입 선택 모달 -->
+    <div id="tab-type-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-title">어떤 탭을 추가할까요?</div>
+            <div class="modal-options">
+                <div class="modal-option" data-tab-type="favorites">
+                    <span class="modal-option-icon">⭐</span>
+                    <div>
+                        <div style="font-weight: bold;">즐겨찾기</div>
+                        <div style="font-size: 12px; color: #6c757d;">링크, 이미지, 메모 저장</div>
+                    </div>
+                </div>
+                <div class="modal-option" data-tab-type="memo">
+                    <span class="modal-option-icon">📝</span>
+                    <div>
+                        <div style="font-weight: bold;">메모장</div>
+                        <div style="font-size: 12px; color: #6c757d;">간단한 텍스트 메모</div>
+                    </div>
+                </div>
+                <div class="modal-option" data-tab-type="editor">
+                    <span class="modal-option-icon">✍️</span>
+                    <div>
+                        <div style="font-weight: bold;">글쓰기 에디터</div>
+                        <div style="font-size: 12px; color: #6c757d;">제목, 본문, 에디터 기능</div>
+                    </div>
+                </div>
+            </div>
+            <button class="modal-close-btn">취소</button>
+        </div>
+    </div>
 </body>
 </html>
