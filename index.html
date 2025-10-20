@@ -115,7 +115,7 @@
             align-items: center;
             margin-top: 20px;
         }
-        #delete-all-btn, #memo-delete-all-btn, .fav-delete-all-btn, .notepad-delete-all-btn {
+        #delete-all-btn, #memo-delete-all-btn, .fav-delete-all-btn {
             background-color: #dc3545;
             color: white;
             border: none;
@@ -240,27 +240,27 @@
         .btn-delete { background-color: #dc3545; border-color: #dc3545; color: white; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .memo-editor, .notepad-editor {
+        .memo-editor {
             background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
-        .memo-editor h2, .notepad-editor h2 { margin-top: 0; font-size: 18px; }
-        #memo-textarea, .notepad-textarea {
+        .memo-editor h2 { margin-top: 0; font-size: 18px; }
+        #memo-textarea {
             width: 100%; height: 120px; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;
             resize: vertical; box-sizing: border-box; font-family: inherit; font-size: 14px;
         }
-        .memo-actions, .notepad-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
-        #char-counter, .notepad-char-counter { font-size: 14px; color: #6c757d; }
-        #memo-add-btn, .notepad-add-btn {
+        .memo-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+        #char-counter { font-size: 14px; color: #6c757d; }
+        #memo-add-btn {
             background-color: #007bff; color: white; padding: 10px 20px; border: none;
             border-radius: 4px; cursor: pointer; font-size: 16px;
         }
-        #memo-list-container, .notepad-list-container { margin-top: 20px; }
-        .memo-item, .notepad-item {
+        #memo-list-container { margin-top: 20px; }
+        .memo-item {
             background-color: #fff; padding: 15px; border-radius: 5px; margin-bottom: 10px;
             border: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: flex-start;
         }
-        .memo-content, .notepad-content { white-space: pre-wrap; word-break: break-word; flex-grow: 1; }
-        .memo-item-actions button, .notepad-item-actions button { margin-left: 8px; }
+        .memo-content { white-space: pre-wrap; word-break: break-word; flex-grow: 1; }
+        .memo-item-actions button { margin-left: 8px; }
         .dynamic-tab-content .input-section {
             grid-template-columns: repeat(4, 1fr) auto 1fr;
         }
@@ -319,91 +319,6 @@
             cursor: not-allowed;
             opacity: 0.6;
         }
-        
-        /* Modal Styles */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.5); display: none;
-            justify-content: center; align-items: center; z-index: 1000;
-        }
-        .modal-content {
-            background-color: #fff; padding: 30px; border-radius: 8px;
-            width: 90%; max-width: 400px; text-align: center;
-        }
-        .modal-options { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
-        .modal-options button {
-            padding: 12px; font-size: 16px; border-radius: 6px;
-            border: 1px solid #ccc; background-color: #f8f9fa; cursor: pointer;
-        }
-        .modal-options button:hover { background-color: #e9ecef; }
-        #input-modal-input {
-            width: 100%; padding: 10px; margin-bottom: 15px;
-            border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box;
-        }
-        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;}
-        .modal-buttons button { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; }
-        .modal-confirm-btn { background-color: #007bff; color: white; }
-        .modal-cancel-btn { background-color: #6c757d; color: white; }
-        
-        /* Editor Tab Styles */
-        .editor-layout {
-            display: flex; background-color: #fff; border: 1px solid #dee2e6;
-            border-radius: 8px; height: 500px; overflow: hidden;
-        }
-        .editor-post-list-panel {
-            flex: 0 0 300px; border-right: 1px solid #dee2e6; overflow-y: auto;
-        }
-        .post-list-item {
-            padding: 15px; border-bottom: 1px solid #e9ecef; cursor: pointer;
-        }
-        .post-list-item:hover { background-color: #f8f9fa; }
-        .post-list-item.active { background-color: #e7f1ff; border-right: 3px solid #007bff; }
-        .post-list-title {
-            font-weight: bold; white-space: nowrap;
-            overflow: hidden; text-overflow: ellipsis;
-        }
-        .post-list-snippet {
-            font-size: 14px; color: #6c757d; margin-top: 5px;
-            display: -webkit-box; -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical; overflow: hidden;
-        }
-        .post-list-date { font-size: 12px; color: #adb5bd; margin-top: 8px; }
-        .editor-post-view-panel { flex: 1; padding: 25px; overflow-y: auto; }
-        .post-view-header { border-bottom: 1px solid #dee2e6; padding-bottom: 15px; margin-bottom: 20px; }
-        .post-view-title { font-size: 24px; font-weight: bold; margin: 0; }
-        .post-view-meta { font-size: 13px; color: #868e96; margin-top: 10px; }
-        .post-view-actions { float: right; }
-        .post-view-content { line-height: 1.7; }
-        .post-view-content img { max-width: 100%; height: auto; border-radius: 4px; }
-        .editor-placeholder {
-            display: flex; align-items: center; justify-content: center;
-            height: 100%; color: #adb5bd;
-        }
-        #editor-modal .modal-content { max-width: 900px; width: 90vw; }
-        #editor-modal .editor-container { box-shadow: none; padding: 0; }
-        #editor-modal .editor-content { 
-            min-height: 300px; padding: 15px; border: 1px solid #ced4da; 
-            border-radius: 4px; outline: none;
-        }
-        .editor-toolbar { margin: 10px 0; display: flex; gap: 5px; flex-wrap: wrap; }
-        .editor-toolbar button { 
-            padding: 5px 10px; border: 1px solid #ccc; background: #fff; 
-            cursor: pointer; border-radius: 3px; 
-        }
-        .editor-toolbar button:hover { background-color: #e9ecef; }
-        .editor-title-input { 
-            width: 100%; padding: 10px; border: 1px solid #ced4da; 
-            border-radius: 4px; font-size: 18px; margin-bottom: 10px; 
-        }
-        
-        blockquote.quote-style-1 {
-            border-left: 4px solid #007bff;
-            background-color: #e7f1ff;
-            padding: 15px 20px;
-            margin: 15px 0;
-            font-style: italic;
-            color: #495057;
-        }
     </style>
 </head>
 <body>
@@ -419,7 +334,6 @@
         <div class="tab" data-tab-target="#memo-tab-content">📝 메모장</div>
     </div>
     <div class="tab-management">
-        <button id="new-post-btn" style="display: none;">✍️ 새 글 작성</button>
         <button id="add-tab-btn">+ 탭 추가</button>
         <button id="rename-tab-btn">✏️ 이름 변경</button>
         <button id="delete-tab-btn">🗑️ 탭 삭제</button>
@@ -446,6 +360,7 @@
                  <button id="delete-all-btn">전체 삭제</button>
             </div>
             
+            <!-- MODIFIED: Restored two-column layout -->
             <div class="lists-wrapper">
                 <div id="items-container-left" class="items-list">
                     <div class="list-header">
@@ -483,64 +398,10 @@
         </div>
     </div>
 
-    <!-- Modals -->
-    <div id="add-tab-modal" class="modal-overlay">
-        <div class="modal-content">
-            <h2>새 탭 유형 선택</h2>
-            <div class="modal-options">
-                <button data-tab-type="favorites">⭐ 즐겨찾기</button>
-                <button data-tab-type="notepad">📝 메모장</button>
-                <button data-tab-type="editor">✍️ 글쓰기</button>
-            </div>
-            <div class="modal-buttons">
-                <button class="modal-cancel-btn">취소</button>
-            </div>
-        </div>
-    </div>
-    
-    <div id="input-modal" class="modal-overlay">
-        <div class="modal-content">
-            <h2 id="input-modal-title"></h2>
-            <label id="input-modal-prompt" for="input-modal-input"></label>
-            <input type="text" id="input-modal-input">
-            <div class="modal-buttons">
-                 <button class="modal-cancel-btn">취소</button>
-                 <button class="modal-confirm-btn">확인</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="editor-modal" class="modal-overlay">
-        <div class="modal-content">
-             <div class="editor-container">
-                <input type="text" class="editor-title-input" placeholder="제목을 입력하세요...">
-                <div class="editor-toolbar">
-                    <button data-command="bold" title="굵게"><b>B</b></button>
-                    <button data-command="italic" title="기울임"><i>I</i></button>
-                    <button data-command="underline" title="밑줄"><u>U</u></button>
-                    <button data-command="strikeThrough" title="취소선"><s>S</s></button>
-                    <button data-command="insertOrderedList" title="순서 있는 목록">1.</button>
-                    <button data-command="insertUnorderedList" title="순서 없는 목록">•</button>
-                    <button data-command="formatBlock" data-value="h2" title="제목2">H2</button>
-                    <button data-command="formatBlock" data-value="blockquote" title="기본 인용">"</button>
-                    <button data-command="customQuote" data-value="quote-style-1" title="강조 인용">❞</button>
-                    <button data-command="createLink" title="링크">🔗</button>
-                    <button data-command="insertLocalImage" title="이미지 첨부">🖼️</button>
-                </div>
-                <div class="editor-content" contenteditable="true"></div>
-                <input type="file" class="editor-image-input" accept="image/*" style="display:none;">
-            </div>
-            <div class="modal-buttons">
-                <button class="modal-cancel-btn">취소</button>
-                <button class="modal-confirm-btn editor-save-btn">저장</button>
-            </div>
-        </div>
-    </div>
-
     <a id="download-anchor" style="position: absolute; top: -9999px; left: -9999px;"></a>
 
     <script>
-        // ===== FIREBASE CONFIGURATION =====
+        // ===== FIREBASE 초기화 =====
         const firebaseConfig = {
             apiKey: "AIzaSyDV9wWRsEiS0pAsl1Xw9ee1fQ5Yf9N5mto",
             authDomain: "my-memo-app-6311c.firebaseapp.com",
@@ -552,61 +413,56 @@
         };
         
         firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        const db = firebase.database();
         const userId = 'user1';
-        let isSyncing = false;
         
-        // Firebase 동기화 함수
-        function syncToFirebase() {
-            if (isSyncing) return;
-            isSyncing = true;
-            
-            const syncData = {
-                videoMemoData: JSON.parse(localStorage.getItem('videoMemoData') || '[]'),
-                plainMemosData: JSON.parse(localStorage.getItem('plainMemosData') || '[]'),
-                dynamicTabsConfig: JSON.parse(localStorage.getItem('dynamicTabsConfig') || '[]'),
-                dynamicTabData: {}
-            };
-            
+        // Firebase 동기화 함수 (간단 버전)
+        function syncData() {
+            const data = {};
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
-                if (key.startsWith('favoritesData-')) {
-                    syncData.dynamicTabData[key] = JSON.parse(localStorage.getItem(key) || '[]');
-                }
+                data[key] = localStorage.getItem(key);
             }
-            
-            database.ref('users/' + userId).set(syncData).then(() => {
-                console.log('Firebase 동기화 완료');
-                isSyncing = false;
-            }).catch(error => {
-                console.error('Firebase 동기화 실패:', error);
-                isSyncing = false;
-            });
+            db.ref('users/' + userId).set(data);
+            console.log('✅ Firebase 동기화 완료');
         }
         
-        // localStorage.setItem 오버라이드
+        // localStorage 변경 감지
         const originalSetItem = localStorage.setItem;
         localStorage.setItem = function(key, value) {
-            originalSetItem.apply(this, arguments);
-            setTimeout(syncToFirebase, 300);
+            originalSetItem.call(this, key, value);
+            setTimeout(syncData, 500);
         };
         
         // Firebase에서 데이터 로드
-        database.ref('users/' + userId).once('value').then(snapshot => {
+        db.ref('users/' + userId).once('value').then(snapshot => {
             const data = snapshot.val();
             if (data) {
-                if (data.videoMemoData) localStorage.setItem('videoMemoData', JSON.stringify(data.videoMemoData));
-                if (data.plainMemosData) localStorage.setItem('plainMemosData', JSON.stringify(data.plainMemosData));
-                if (data.dynamicTabsConfig) localStorage.setItem('dynamicTabsConfig', JSON.stringify(data.dynamicTabsConfig));
-                if (data.dynamicTabData) {
-                    for (const [key, value] of Object.entries(data.dynamicTabData)) {
-                        localStorage.setItem(key, JSON.stringify(value));
+                for (const key in data) {
+                    originalSetItem.call(localStorage, key, data[key]);
+                }
+                console.log('✅ Firebase 데이터 로드 완료');
+            }
+        });
+        
+        // 실시간 동기화 리스너
+        db.ref('users/' + userId).on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                let changed = false;
+                for (const key in data) {
+                    if (localStorage.getItem(key) !== data[key]) {
+                        changed = true;
+                        originalSetItem.call(localStorage, key, data[key]);
                     }
+                }
+                if (changed) {
+                    console.log('🔄 다른 기기에서 변경 감지');
+                    location.reload();
                 }
             }
         });
-
-        // ===== INITIALIZATION =====
+        
         document.addEventListener('DOMContentLoaded', () => {
             TabManager.init();
             initializeVideoTab();
@@ -681,11 +537,8 @@
                     if (typeof backupData !== 'object' || backupData === null) throw new Error('Invalid backup file format.');
                     localStorage.clear();
                     for (const key in backupData) {
-                        if (Object.hasOwnProperty.call(backupData, key)) {
-                            originalSetItem.call(localStorage, key, backupData[key]);
-                        }
+                        if (Object.hasOwnProperty.call(backupData, key)) localStorage.setItem(key, backupData[key]);
                     }
-                    syncToFirebase();
                     alert('데이터를 성공적으로 복원했습니다. 페이지를 새로고침합니다.');
                     location.reload();
                 } catch (error) {
@@ -696,7 +549,6 @@
         }
 
         function initializeTabSwitching() {
-            const newPostBtn = document.getElementById('new-post-btn');
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.addEventListener('click', () => {
                     const target = document.querySelector(tab.dataset.tabTarget);
@@ -705,25 +557,11 @@
                     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                     tab.classList.add('active');
                     target.classList.add('active');
-                    
-                    const tabInstance = TabManager.tabInstances && TabManager.tabInstances[target.id];
-                    newPostBtn.style.display = (tabInstance && tabInstance instanceof EditorTab) ? 'inline-flex' : 'none';
                 });
-            });
-            
-            newPostBtn.addEventListener('click', () => {
-                const activeTab = document.querySelector('.tab.active');
-                if(!activeTab) return;
-                const activeContentId = activeTab.dataset.tabTarget.substring(1);
-                const activeTabInstance = TabManager.tabInstances && TabManager.tabInstances[activeContentId];
-                if (activeTabInstance && typeof activeTabInstance.showEditor === 'function') {
-                    activeTabInstance.showEditor();
-                }
             });
         }
 
         function escapeHTML(str) {
-            if (!str) return '';
             return str.replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match]));
         }
 
@@ -763,7 +601,6 @@
         }
 
         function getYoutubeVideoId(url) {
-            if (!url) return null;
             const patterns = [/(?:v=)([^&]+)/, /(?:youtu\.be\/)([^?]+)/, /(?:youtube\.com\/embed\/)([^?]+)/, /(?:youtube\.com\/shorts\/)([^?]+)/];
             for (const pattern of patterns) {
                 const match = url.match(pattern);
@@ -946,7 +783,7 @@
             currentlyEditingItem = null;
         }
 
-        // --- PLAIN MEMO LOGIC ---
+        // --- PLAIN MEMO LOGIC (Unchanged) ---
         const memoTextarea = document.getElementById('memo-textarea'), memoAddBtn = document.getElementById('memo-add-btn');
         const memoDeleteAllBtn = document.getElementById('memo-delete-all-btn'), memoListContainer = document.getElementById('memo-list-container');
         const charCounter = document.getElementById('char-counter'), memoDataKey = 'plainMemosData';
@@ -990,63 +827,21 @@
             memoTextarea.value = ''; memoAddBtn.textContent = '메모 추가'; currentlyEditingMemo = null;
         }
 
-        // ===== MODAL UTILITIES =====
-        function showInputModal(title, promptText, defaultValue = '') {
-            return new Promise((resolve, reject) => {
-                const modal = document.getElementById('input-modal');
-                modal.querySelector('#input-modal-title').textContent = title;
-                modal.querySelector('#input-modal-prompt').textContent = promptText;
-                const input = modal.querySelector('#input-modal-input');
-                input.value = defaultValue;
-                modal.style.display = 'flex';
-                input.focus();
-                input.select();
-
-                const confirmBtn = modal.querySelector('.modal-confirm-btn');
-                const cancelBtn = modal.querySelector('.modal-cancel-btn');
-                
-                const onConfirm = () => {
-                    resolve(input.value);
-                    cleanup();
-                };
-                const onCancel = () => {
-                    reject();
-                    cleanup();
-                };
-                const onKeyup = (e) => {
-                    if (e.key === 'Enter') onConfirm();
-                    if (e.key === 'Escape') onCancel();
-                };
-                
-                const cleanup = () => {
-                    modal.style.display = 'none';
-                    confirmBtn.removeEventListener('click', onConfirm);
-                    cancelBtn.removeEventListener('click', onCancel);
-                    document.removeEventListener('keyup', onKeyup);
-                };
-
-                confirmBtn.addEventListener('click', onConfirm);
-                cancelBtn.addEventListener('click', onCancel);
-                document.addEventListener('keyup', onKeyup);
-            });
-        }
-
-        // --- DYNAMIC TAB MANAGER ---
+        // --- DYNAMIC TAB MANAGER (Unchanged) ---
         const TabManager = {
             tabsContainer: document.querySelector('.tabs'),
             contentContainer: document.querySelector('.container'),
             tabConfigKey: 'dynamicTabsConfig',
             tabs: [],
-            tabInstances: {},
             init() {
                 this.loadTabs(); this.render();
-                document.getElementById('add-tab-btn').addEventListener('click', () => this.showAddTabModal());
+                document.getElementById('add-tab-btn').addEventListener('click', () => this.addTab());
                 document.getElementById('rename-tab-btn').addEventListener('click', () => this.renameTab());
                 document.getElementById('delete-tab-btn').addEventListener('click', () => this.deleteTab());
             },
             loadTabs() {
                 const saved = JSON.parse(localStorage.getItem(this.tabConfigKey));
-                this.tabs = saved && saved.length ? saved : [{ id: `tab-${Date.now()}`, name: '⭐ 즐겨찾기', type: 'favorites' }];
+                this.tabs = saved && saved.length ? saved : [{ id: `tab-${Date.now()}`, name: '⭐ 즐겨찾기' }];
             },
             saveTabs() { localStorage.setItem(this.tabConfigKey, JSON.stringify(this.tabs)); },
             render() {
@@ -1062,72 +857,29 @@
                     content.id = tabData.id;
                     content.className = 'tab-content dynamic-tab-content';
                     this.contentContainer.appendChild(content);
-                    
-                    const type = tabData.type || 'favorites';
-                    let instance;
-                    switch(type) {
-                        case 'notepad':
-                            instance = new NotepadTab(content, tabData.id);
-                            break;
-                        case 'editor':
-                            instance = new EditorTab(content, tabData.id);
-                            break;
-                        case 'favorites':
-                        default:
-                            instance = new FavoritesTab(content, tabData.id);
-                            break;
-                    }
-                    this.tabInstances[tabData.id] = instance;
+                    new FavoritesTab(content, tabData.id);
                 });
                 initializeTabSwitching();
             },
-            showAddTabModal() {
-                const modal = document.getElementById('add-tab-modal');
-                modal.style.display = 'flex';
-                
-                const handleOptionClick = (e) => {
-                    if (e.target.tagName === 'BUTTON' && e.target.dataset.tabType) {
-                        this._createTab(e.target.dataset.tabType);
-                        cleanup();
-                    }
-                };
-                
-                const handleCancelClick = () => cleanup();
-                
-                const cleanup = () => {
-                    modal.style.display = 'none';
-                    modal.querySelector('.modal-options').removeEventListener('click', handleOptionClick);
-                    modal.querySelector('.modal-cancel-btn').removeEventListener('click', handleCancelClick);
-                };
-                
-                modal.querySelector('.modal-options').addEventListener('click', handleOptionClick);
-                modal.querySelector('.modal-cancel-btn').addEventListener('click', handleCancelClick);
+            addTab() {
+                const name = prompt('새 탭 이름:');
+                if (name && name.trim()) {
+                    this.tabs.push({ id: `tab-${Date.now()}`, name: name.trim() });
+                    this.saveTabs(); this.render();
+                }
             },
-            async _createTab(type) {
-                const defaultNames = { favorites: '⭐ 새 즐겨찾기', notepad: '📝 새 메모장', editor: '✍️ 새 문서' };
-                try {
-                    const name = await showInputModal('새 탭 이름 입력', '새 탭의 이름을 입력하세요:', defaultNames[type]);
-                    if (name && name.trim()) {
-                        this.tabs.push({ id: `tab-${Date.now()}`, name: name.trim(), type: type });
-                        this.saveTabs(); 
-                        this.render();
-                    }
-                } catch(e) { }
-            },
-            async renameTab() {
+            renameTab() {
                 const activeTabEl = this.tabsContainer.querySelector('.tab.active');
                 if (!activeTabEl || !activeTabEl.classList.contains('dynamic-tab')) return alert('기본 탭은 이름을 변경할 수 없습니다.');
                 const oldName = activeTabEl.textContent.trim();
                 const tabId = activeTabEl.dataset.tabTarget.substring(1);
                 const tabData = this.tabs.find(t => t.id === tabId);
                 if (tabData) {
-                    try {
-                        const newName = await showInputModal('탭 이름 변경', `'${oldName}' 탭의 새 이름을 입력하세요:`, oldName);
-                        if (newName && newName.trim() && newName.trim() !== oldName) {
-                            tabData.name = newName.trim();
-                            this.saveTabs(); this.render();
-                        }
-                    } catch(e) { }
+                    const newName = prompt(`'${oldName}' 탭의 새 이름을 입력하세요:`, oldName);
+                    if (newName && newName.trim() && newName.trim() !== oldName) {
+                        tabData.name = newName.trim();
+                        this.saveTabs(); this.render();
+                    }
                 } else alert('오류: 해당 탭 정보를 찾을 수 없습니다.');
             },
             deleteTab() {
@@ -1147,25 +899,9 @@
             }
         };
 
-        // ===== TAB BASE CLASS =====
-        class TabBase {
+        class FavoritesTab {
             constructor(containerEl, tabId) {
-                this.container = containerEl;
-                this.tabId = tabId;
-                this.dataKey = `favoritesData-${this.tabId}`;
-            }
-            getItems() {
-                return JSON.parse(localStorage.getItem(this.dataKey) || '[]');
-            }
-            saveItems(items) {
-                localStorage.setItem(this.dataKey, JSON.stringify(items));
-            }
-        }
-
-        // ===== FAVORITES TAB =====
-        class FavoritesTab extends TabBase {
-            constructor(containerEl, tabId) {
-                super(containerEl, tabId);
+                this.container = containerEl; this.tabId = tabId; this.dataKey = `favoritesData-${this.tabId}`;
                 this.currentlyEditingFav = null; this.currentImage = null;
                 this.renderHTML(); this.bindElements(); this.addEventListeners(); this.loadFavorites();
             }
@@ -1229,11 +965,9 @@
                     memo: el.querySelector('.col-memo').dataset.fullMemo || '',
                     image: el.querySelector('.thumbnail-container img')?.dataset.customImage || null
                 }));
-                this.saveItems(favs);
+                localStorage.setItem(this.dataKey, JSON.stringify(favs));
             }
-            loadFavorites() { 
-                this.getItems().forEach(fav => this.createFavoriteDOM(fav)); 
-            }
+            loadFavorites() { JSON.parse(localStorage.getItem(this.dataKey) || '[]').forEach(fav => this.createFavoriteDOM(fav)); }
             renumberFavorites() { this.listContainer.querySelectorAll('.list-item').forEach((el, i) => el.querySelector('.col-index').textContent = i + 1); }
             async createFavoriteDOM(fav) {
                 const itemElement = document.createElement('div');
@@ -1250,7 +984,7 @@
                         thumbnailHTML = `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${link.includes('/shorts/') ? 'is-short' : ''}"></div>`;
                     }
                 }
-                const displayedMemo = fav.memo && fav.memo.length > 30 ? fav.memo.substring(0, 30) + '...' : (fav.memo || '');
+                const displayedMemo = fav.memo.length > 30 ? fav.memo.substring(0, 30) + '...' : fav.memo;
                 itemElement.innerHTML = `
                     <div class="item-col col-index"></div>
                     <div class="item-col col-title">${escapeHTML(fav.title)}</div>
@@ -1314,322 +1048,6 @@
                 this.clearImagePreview();
                 this.addBtn.textContent = '추가';
                 this.currentlyEditingFav = null;
-            }
-        }
-
-        // ===== NOTEPAD TAB =====
-        class NotepadTab extends TabBase {
-            constructor(containerEl, tabId) {
-                super(containerEl, tabId);
-                this.currentlyEditingMemo = null;
-                this.renderHTML(); this.bindElements(); this.addEventListeners(); this.loadMemos();
-            }
-            renderHTML() {
-                this.container.innerHTML = `
-                <div class="notepad-editor">
-                    <h2>새 메모 작성</h2>
-                    <textarea class="notepad-textarea" placeholder="메모를 입력하세요..."></textarea>
-                    <div class="notepad-actions">
-                        <span class="notepad-char-counter">0자</span>
-                        <div><button class="notepad-add-btn">메모 추가</button></div>
-                        <button class="notepad-delete-all-btn">전체 삭제</button>
-                    </div>
-                </div>
-                <div class="notepad-list-container"></div>`;
-            }
-            bindElements() {
-                this.textarea = this.container.querySelector('.notepad-textarea');
-                this.addBtn = this.container.querySelector('.notepad-add-btn');
-                this.deleteAllBtn = this.container.querySelector('.notepad-delete-all-btn');
-                this.listContainer = this.container.querySelector('.notepad-list-container');
-                this.charCounter = this.container.querySelector('.notepad-char-counter');
-            }
-            addEventListeners() {
-                this.textarea.addEventListener('input', () => this.charCounter.textContent = `${this.textarea.value.length}자`);
-                this.addBtn.addEventListener('click', () => { this.currentlyEditingMemo ? this.updateMemo(this.currentlyEditingMemo) : this.addMemo(); });
-                this.deleteAllBtn.addEventListener('click', () => {
-                    if (confirm('이 탭의 모든 메모를 삭제하시겠습니까?')) {
-                        this.saveItems([]);
-                        this.listContainer.innerHTML = '';
-                    }
-                });
-            }
-            loadMemos() {
-                this.listContainer.innerHTML = '';
-                this.getItems().forEach(text => this.createMemoDOM(text));
-            }
-            createMemoDOM(text) {
-                const memoItem = document.createElement('div');
-                memoItem.className = 'notepad-item';
-                memoItem.dataset.rawText = text;
-                memoItem.innerHTML = `
-                    <div class="notepad-content">${linkify(text)}</div>
-                    <div class="notepad-item-actions action-buttons">
-                        <button class="btn-edit">수정</button>
-                        <button class="btn-delete">삭제</button>
-                    </div>`;
-                this.listContainer.prepend(memoItem);
-                
-                memoItem.querySelector('.btn-delete').addEventListener('click', () => {
-                    const updatedItems = this.getItems().filter(m => m !== text);
-                    this.saveItems(updatedItems);
-                    memoItem.remove();
-                });
-                memoItem.querySelector('.btn-edit').addEventListener('click', () => this.editMemo(memoItem));
-            }
-            addMemo() {
-                const text = this.textarea.value.trim();
-                if (text) {
-                    const updatedItems = [text, ...this.getItems()];
-                    this.saveItems(updatedItems);
-                    this.createMemoDOM(text);
-                    this.textarea.value = '';
-                    this.charCounter.textContent = '0자';
-                }
-            }
-            editMemo(memoItem) {
-                this.textarea.value = memoItem.dataset.rawText;
-                this.addBtn.textContent = '메모 수정';
-                this.currentlyEditingMemo = memoItem;
-                this.textarea.focus();
-            }
-            updateMemo(memoItem) {
-                const originalText = memoItem.dataset.rawText;
-                const newText = this.textarea.value.trim();
-                const items = this.getItems();
-                const index = items.indexOf(originalText);
-
-                if (index > -1) {
-                    if (newText) {
-                        items[index] = newText;
-                        this.saveItems(items);
-                        memoItem.dataset.rawText = newText;
-                        memoItem.querySelector('.notepad-content').innerHTML = linkify(newText);
-                    } else {
-                        items.splice(index, 1);
-                        this.saveItems(items);
-                        memoItem.remove();
-                    }
-                }
-                
-                this.textarea.value = '';
-                this.addBtn.textContent = '메모 추가';
-                this.currentlyEditingMemo = null;
-            }
-        }
-
-        // ===== EDITOR TAB =====
-        class EditorTab extends TabBase {
-            constructor(containerEl, tabId) {
-                super(containerEl, tabId);
-                this.editingPostId = null;
-                this.activePostId = null;
-                this.renderHTML();
-                this.bindElements();
-                this.addEventListeners();
-                this.loadPosts();
-            }
-            renderHTML() {
-                this.container.innerHTML = `
-                    <div class="editor-layout">
-                        <div class="editor-post-list-panel"></div>
-                        <div class="editor-post-view-panel">
-                            <div class="editor-placeholder"><div>글을 선택하거나 새 글을 작성하세요.</div></div>
-                        </div>
-                    </div>`;
-            }
-            bindElements() {
-                this.postListPanel = this.container.querySelector('.editor-post-list-panel');
-                this.postViewPanel = this.container.querySelector('.editor-post-view-panel');
-            }
-            addEventListeners() {
-                this.postListPanel.addEventListener('click', (e) => {
-                    const listItem = e.target.closest('.post-list-item');
-                    if (listItem) this.displayPost(listItem.dataset.id);
-                });
-            }
-            loadPosts() {
-                const items = this.getItems();
-                this.renderPostList();
-                if (items.length > 0) {
-                    const sortedItems = [...items].sort((a,b) => b.timestamp - a.timestamp);
-                    this.displayPost(sortedItems[0].id);
-                } else {
-                    this.displayPost(null);
-                }
-            }
-            renderPostList() {
-                this.postListPanel.innerHTML = '';
-                const items = this.getItems();
-                [...items].sort((a,b) => b.timestamp - a.timestamp).forEach(post => {
-                    const postEl = document.createElement('div');
-                    postEl.className = 'post-list-item';
-                    postEl.dataset.id = post.id;
-                    if (post.id == this.activePostId) postEl.classList.add('active');
-                    
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = post.content;
-                    const snippet = tempDiv.textContent.substring(0, 50);
-                    
-                    postEl.innerHTML = `
-                        <div class="post-list-title">${escapeHTML(post.title)}</div>
-                        <div class="post-list-snippet">${escapeHTML(snippet)}...</div>
-                        <div class="post-list-date">${new Date(post.timestamp).toLocaleDateString()}</div>`;
-                    this.postListPanel.appendChild(postEl);
-                });
-            }
-            displayPost(postId) {
-                const post = this.getItems().find(p => p.id == postId);
-                if (!post) {
-                    this.postViewPanel.innerHTML = `<div class="editor-placeholder"><div>글을 선택하거나 새 글을 작성하세요.</div></div>`;
-                    this.activePostId = null;
-                    return;
-                }
-                
-                this.activePostId = postId;
-                this.postViewPanel.innerHTML = `
-                    <div class="post-view-header">
-                        <div class="post-view-actions action-buttons">
-                           <button class="btn-edit">수정</button>
-                           <button class="btn-delete">삭제</button>
-                        </div>
-                        <h2 class="post-view-title">${escapeHTML(post.title)}</h2>
-                        <div class="post-view-meta">${new Date(post.timestamp).toLocaleString()}</div>
-                    </div>
-                    <div class="post-view-content">${post.content}</div>`;
-
-                this.postViewPanel.querySelector('.btn-edit').addEventListener('click', () => this.showEditor(postId));
-                this.postViewPanel.querySelector('.btn-delete').addEventListener('click', () => this.deletePost(postId));
-                this.renderPostList();
-            }
-            showEditor(postId = null) {
-                this.editingPostId = postId;
-                const modal = document.getElementById('editor-modal');
-                const titleInput = modal.querySelector('.editor-title-input');
-                const contentArea = modal.querySelector('.editor-content');
-                const toolbar = modal.querySelector('.editor-toolbar');
-                const imageInput = modal.querySelector('.editor-image-input');
-                
-                if (postId) {
-                    const post = this.getItems().find(p => p.id == postId);
-                    if (post) {
-                        titleInput.value = post.title;
-                        contentArea.innerHTML = post.content;
-                    }
-                } else {
-                    titleInput.value = '';
-                    contentArea.innerHTML = '';
-                }
-
-                modal.style.display = 'flex';
-                contentArea.focus();
-                
-                const saveBtn = modal.querySelector('.editor-save-btn');
-                const cancelBtn = modal.querySelector('.modal-cancel-btn');
-                
-                const onToolbarClick = (e) => {
-                    if (e.target.tagName !== 'BUTTON') return;
-                    e.preventDefault();
-                    
-                    const command = e.target.dataset.command;
-                    const value = e.target.dataset.value;
-                    
-                    contentArea.focus();
-                    
-                    if (command === 'createLink') {
-                        const url = prompt('링크 URL을 입력하세요:', 'https://');
-                        if (url) document.execCommand(command, false, url);
-                    } else if (command === 'insertLocalImage') {
-                        imageInput.click();
-                    } else if (command === 'customQuote') {
-                        const selection = window.getSelection();
-                        const selectedText = selection.toString();
-                        if (selectedText) {
-                            document.execCommand('insertHTML', false, 
-                                `<blockquote class="${value}">${selectedText}</blockquote>`);
-                        }
-                    } else if (value) {
-                        document.execCommand(command, false, value);
-                    } else {
-                        document.execCommand(command, false, null);
-                    }
-                };
-                
-                const onImageSelect = (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (ev) => {
-                            document.execCommand('insertHTML', false, 
-                                `<img src="${ev.target.result}" style="max-width: 100%; height: auto;">`);
-                            imageInput.value = '';
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                };
-                
-                const onSave = () => {
-                    this.savePostFromModal();
-                    cleanup();
-                };
-                const onCancel = () => cleanup();
-                
-                const cleanup = () => {
-                    modal.style.display = 'none';
-                    saveBtn.removeEventListener('click', onSave);
-                    cancelBtn.removeEventListener('click', onCancel);
-                    toolbar.removeEventListener('click', onToolbarClick);
-                    imageInput.removeEventListener('change', onImageSelect);
-                };
-
-                toolbar.addEventListener('click', onToolbarClick);
-                imageInput.addEventListener('change', onImageSelect);
-                saveBtn.addEventListener('click', onSave);
-                cancelBtn.addEventListener('click', onCancel);
-            }
-            savePostFromModal() {
-                const modal = document.getElementById('editor-modal');
-                const title = modal.querySelector('.editor-title-input').value.trim();
-                const content = modal.querySelector('.editor-content').innerHTML;
-                
-                if (!title) return alert('제목을 입력해주세요.');
-                
-                const items = this.getItems();
-                if (this.editingPostId) {
-                    const postIndex = items.findIndex(p => p.id == this.editingPostId);
-                    if (postIndex > -1) {
-                        Object.assign(items[postIndex], {
-                            title,
-                            content,
-                            timestamp: Date.now()
-                        });
-                    }
-                } else {
-                    this.editingPostId = Date.now();
-                    items.push({
-                        id: this.editingPostId,
-                        title,
-                        content,
-                        timestamp: this.editingPostId
-                    });
-                }
-                
-                this.saveItems(items);
-                this.activePostId = this.editingPostId;
-                this.loadPosts();
-            }
-            deletePost(postId) {
-                if (confirm('이 게시글을 정말 삭제하시겠습니까?')) {
-                    let items = this.getItems();
-                    items = items.filter(p => p.id != postId);
-                    this.saveItems(items);
-                    
-                    if(this.activePostId == postId) {
-                        const sortedItems = [...items].sort((a,b) => b.timestamp - a.timestamp);
-                        this.activePostId = sortedItems.length > 0 ? sortedItems[0].id : null;
-                    }
-                    this.loadPosts();
-                }
             }
         }
     </script>
