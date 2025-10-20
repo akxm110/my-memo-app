@@ -568,9 +568,14 @@
         }
 
         async function loadItems() {
-            const items = JSON.parse(localStorage.getItem(videoDataKey) || '[]');
-            for (const item of items) {
-                await createItemDOM(item.title, item.link, item.memo);
+            try {
+                const items = JSON.parse(localStorage.getItem(videoDataKey) || '[]');
+                for (const item of items) {
+                    await createItemDOM(item.title, item.link, item.memo);
+                }
+            } catch (error) {
+                console.error('비디오 데이터 로드 실패:', error);
+                localStorage.removeItem(videoDataKey);
             }
         }
 
@@ -687,7 +692,14 @@
             const memos = Array.from(memoListContainer.querySelectorAll('.memo-item')).map(el => el.dataset.rawText);
             localStorage.setItem(memoDataKey, JSON.stringify(memos));
         }
-        function loadMemos() { JSON.parse(localStorage.getItem(memoDataKey) || '[]').forEach(createMemoDOM); }
+        function loadMemos() { 
+            try {
+                JSON.parse(localStorage.getItem(memoDataKey) || '[]').forEach(createMemoDOM);
+            } catch (error) {
+                console.error('메모 데이터 로드 실패:', error);
+                localStorage.removeItem(memoDataKey);
+            }
+        }
         function createMemoDOM(text) {
             const memoItem = document.createElement('div');
             memoItem.className = 'memo-item'; memoItem.dataset.rawText = text;
@@ -731,8 +743,14 @@
                 document.getElementById('delete-tab-btn').addEventListener('click', () => this.deleteTab());
             },
             loadTabs() {
-                const saved = JSON.parse(localStorage.getItem(this.tabConfigKey));
-                this.tabs = saved && saved.length ? saved : [{ id: `tab-${Date.now()}`, name: '⭐ 즐겨찾기' }];
+                try {
+                    const saved = JSON.parse(localStorage.getItem(this.tabConfigKey) || '[]');
+                    this.tabs = saved && saved.length ? saved : [{ id: `tab-${Date.now()}`, name: '⭐ 즐겨찾기' }];
+                } catch (error) {
+                    console.error('탭 로드 실패, 초기화:', error);
+                    this.tabs = [{ id: `tab-${Date.now()}`, name: '⭐ 즐겨찾기' }];
+                    this.saveTabs();
+                }
             },
             saveTabs() { localStorage.setItem(this.tabConfigKey, JSON.stringify(this.tabs)); },
             render() {
@@ -869,7 +887,14 @@
                 }));
                 localStorage.setItem(this.dataKey, JSON.stringify(favs));
             }
-            loadFavorites() { JSON.parse(localStorage.getItem(this.dataKey) || '[]').forEach(fav => this.createFavoriteDOM(fav)); }
+            loadFavorites() { 
+                try {
+                    JSON.parse(localStorage.getItem(this.dataKey) || '[]').forEach(fav => this.createFavoriteDOM(fav));
+                } catch (error) {
+                    console.error('즐겨찾기 데이터 로드 실패:', error);
+                    localStorage.removeItem(this.dataKey);
+                }
+            }
             renumberFavorites() { this.listContainer.querySelectorAll('.list-item').forEach((el, i) => el.querySelector('.col-index').textContent = i + 1); }
             async createFavoriteDOM(fav) {
                 const itemElement = document.createElement('div');
