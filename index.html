@@ -1189,8 +1189,9 @@
             reader.readAsText(file);
         }
 
-        // EditorTab 인스턴스 저장
+        // EditorTab & CommunityTab 인스턴스 저장
         window.editorTabInstances = {};
+        window.communityTabInstances = {};
         
         function initializeTabSwitching() {
             const newPostBtn = document.getElementById('new-post-btn');
@@ -1208,14 +1209,21 @@
                     const tabId = target.id;
                     const tabData = TabManager.tabs.find(t => t.id === tabId);
                     
-                    if (tabData && tabData.type === 'editor') {
+                    if (tabData && (tabData.type === 'editor' || tabData.type === 'community')) {
                         newPostBtn.style.display = 'inline-block';
                         
-                        // 버튼 클릭 시 해당 탭의 EditorTab 인스턴스에서 새 글 작성
+                        // 버튼 클릭 시 해당 탭의 인스턴스에서 새 글 작성
                         newPostBtn.onclick = () => {
-                            const editorInstance = window.editorTabInstances[tabId];
-                            if (editorInstance) {
-                                editorInstance.createNewPost();
+                            if (tabData.type === 'editor') {
+                                const editorInstance = window.editorTabInstances[tabId];
+                                if (editorInstance) {
+                                    editorInstance.createNewPost();
+                                }
+                            } else if (tabData.type === 'community') {
+                                const communityInstance = window.communityTabInstances[tabId];
+                                if (communityInstance) {
+                                    communityInstance.createNewPost();
+                                }
                             }
                         };
                     } else {
@@ -1527,6 +1535,9 @@
                     } else if (tabType === 'editor') {
                         const editorInstance = new EditorTab(content, tabData.id);
                         window.editorTabInstances[tabData.id] = editorInstance;
+                    } else if (tabType === 'community') {
+                        const communityInstance = new CommunityTab(content, tabData.id);
+                        window.communityTabInstances[tabData.id] = communityInstance;
                     }
                 });
                 initializeTabSwitching();
@@ -2246,6 +2257,227 @@
                 this.contextMenu.classList.remove('active');
             }
         }
+
+        // --- CommunityTab 클래스 ---
+        class CommunityTab {
+            constructor(containerEl, tabId) {
+                this.container = containerEl;
+                this.tabId = tabId;
+                this.dataKey = `communityTabData-${this.tabId}`;
+                this.modalId = `community-modal-${this.tabId}`;
+                this.posts = [];
+                this.editingPostId = null;
+                
+                this.renderHTML();
+                this.createModal();
+                this.bindElements();
+                this.addEventListeners();
+                this.loadPosts();
+            }
+            
+            renderHTML() {
+                this.container.innerHTML = `
+                    <div class="community-container">
+                        <div class="items-list community-list-container">
+                            <div class="list-header">
+                                <div class="item-col" style="flex: 0 0 50px; text-align: center;">#</div>
+                                <div class="item-col" style="flex: 1 1 25%;">제목</div>
+                                <div class="item-col" style="flex: 1 1 30%;">메모</div>
+                                <div class="item-col" style="flex: 1 1 25%;">링크</div>
+                                <div class="item-col" style="flex: 0 0 120px; text-align: center;">날짜</div>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+            
+            createModal() {
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.id = this.modalId;
+                modal.innerHTML = `
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-title">게시글 작성</div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">제목</label>
+                            <input type="text" class="community-modal-title" placeholder="제목을 입력하세요" 
+                                style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box;">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">메모</label>
+                            <textarea class="community-modal-memo" placeholder="메모를 입력하세요" 
+                                style="width: 100%; height: 120px; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; resize: vertical;"></textarea>
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">링크</label>
+                            <input type="text" class="community-modal-link" placeholder="링크를 입력하세요 (선택사항)" 
+                                style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box;">
+                        </div>
+                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                            <button class="community-modal-cancel" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">취소</button>
+                            <button class="community-modal-save" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">저장</button>
+                        </div>
+                    </div>`;
+                document.body.appendChild(modal);
+            }
+            
+            bindElements() {
+                this.listContainer = this.container.querySelector('.community-list-container');
+                this.modal = document.getElementById(this.modalId);
+                this.modalTitle = this.modal.querySelector('.community-modal-title');
+                this.modalMemo = this.modal.querySelector('.community-modal-memo');
+                this.modalLink = this.modal.querySelector('.community-modal-link');
+                this.modalSave = this.modal.querySelector('.community-modal-save');
+                this.modalCancel = this.modal.querySelector('.community-modal-cancel');
+            }
+            
+            addEventListeners() {
+                this.modalSave.addEventListener('click', () => this.savePost());
+                this.modalCancel.addEventListener('click', () => this.closeModal());
+                
+                // 모달 배경 클릭으로 닫기
+                this.modal.addEventListener('click', (e) => {
+                    if (e.target === this.modal) {
+                        this.closeModal();
+                    }
+                });
+            }
+            
+            loadPosts() {
+                try {
+                    const data = localStorage.getItem(this.dataKey);
+                    if (data) {
+                        this.posts = JSON.parse(data);
+                        this.posts.sort((a, b) => b.date - a.date);
+                    }
+                    this.renderPostList();
+                } catch (error) {
+                    console.error('게시글 로드 실패:', error);
+                    this.posts = [];
+                }
+            }
+            
+            savePosts() {
+                localStorage.setItem(this.dataKey, JSON.stringify(this.posts));
+            }
+            
+            renderPostList() {
+                // 기존 항목 제거
+                const existingItems = this.listContainer.querySelectorAll('.list-item');
+                existingItems.forEach(item => item.remove());
+                
+                // 게시글 렌더링
+                this.posts.forEach((post, index) => {
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'list-item';
+                    itemElement.dataset.postId = post.id;
+                    
+                    const date = new Date(post.date);
+                    const dateStr = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+                    
+                    // 메모 미리보기 (50자 제한)
+                    const memoPreview = post.memo.length > 50 ? post.memo.substring(0, 50) + '...' : post.memo;
+                    
+                    // 링크 미리보기
+                    const linkDisplay = post.link ? 
+                        `<a href="${escapeHTML(post.link)}" target="_blank" onclick="event.stopPropagation();">${escapeHTML(post.link.length > 30 ? post.link.substring(0, 30) + '...' : post.link)}</a>` : 
+                        '-';
+                    
+                    itemElement.innerHTML = `
+                        <div class="item-col" style="flex: 0 0 50px; text-align: center;">${index + 1}</div>
+                        <div class="item-col" style="flex: 1 1 25%;">${escapeHTML(post.title)}</div>
+                        <div class="item-col" style="flex: 1 1 30%;" data-full-memo="${escapeHTML(post.memo)}">${escapeHTML(memoPreview)}</div>
+                        <div class="item-col" style="flex: 1 1 25%;">${linkDisplay}</div>
+                        <div class="item-col" style="flex: 0 0 120px; text-align: center;">${dateStr}</div>`;
+                    
+                    this.listContainer.appendChild(itemElement);
+                    
+                    // 우클릭 & Long Press 메뉴
+                    contextMenuUtil.attachToElement(itemElement, (action) => {
+                        if (action === 'delete') {
+                            this.deletePost(post.id);
+                        } else if (action === 'edit') {
+                            this.editPost(post.id);
+                        }
+                    });
+                });
+            }
+            
+            openModal() {
+                this.modal.classList.add('active');
+                this.modalTitle.focus();
+            }
+            
+            closeModal() {
+                this.modal.classList.remove('active');
+                this.editingPostId = null;
+                this.modalTitle.value = '';
+                this.modalMemo.value = '';
+                this.modalLink.value = '';
+            }
+            
+            createNewPost() {
+                this.editingPostId = null;
+                this.modalTitle.value = '';
+                this.modalMemo.value = '';
+                this.modalLink.value = '';
+                this.openModal();
+            }
+            
+            editPost(postId) {
+                const post = this.posts.find(p => p.id === postId);
+                if (!post) return;
+                
+                this.editingPostId = postId;
+                this.modalTitle.value = post.title;
+                this.modalMemo.value = post.memo;
+                this.modalLink.value = post.link || '';
+                this.openModal();
+            }
+            
+            savePost() {
+                const title = this.modalTitle.value.trim();
+                const memo = this.modalMemo.value.trim();
+                const link = this.modalLink.value.trim();
+                
+                if (!title) {
+                    alert('제목을 입력해주세요.');
+                    return;
+                }
+                
+                if (this.editingPostId) {
+                    // 수정
+                    const post = this.posts.find(p => p.id === this.editingPostId);
+                    if (post) {
+                        post.title = title;
+                        post.memo = memo;
+                        post.link = link;
+                        post.date = Date.now();
+                    }
+                } else {
+                    // 새 글
+                    const newPost = {
+                        id: Date.now(),
+                        title,
+                        memo,
+                        link,
+                        date: Date.now()
+                    };
+                    this.posts.unshift(newPost);
+                }
+                
+                this.savePosts();
+                this.renderPostList();
+                this.closeModal();
+            }
+            
+            deletePost(postId) {
+                if (!confirm('이 게시글을 삭제하시겠습니까?')) return;
+                
+                this.posts = this.posts.filter(p => p.id !== postId);
+                this.savePosts();
+                this.renderPostList();
+            }
+        }
     </script>
 
     <!-- 탭 타입 선택 모달 -->
@@ -2272,6 +2504,13 @@
                     <div>
                         <div style="font-weight: bold;">글쓰기 에디터</div>
                         <div style="font-size: 12px; color: #6c757d;">제목, 본문, 에디터 기능</div>
+                    </div>
+                </div>
+                <div class="modal-option" data-tab-type="community">
+                    <span class="modal-option-icon">💬</span>
+                    <div>
+                        <div style="font-weight: bold;">커뮤니티 게시판</div>
+                        <div style="font-size: 12px; color: #6c757d;">제목, 메모, 링크, 날짜</div>
                     </div>
                 </div>
             </div>
