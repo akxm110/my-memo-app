@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>공유된 콘텐츠 저장</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 14px;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+        button {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .save-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .cancel-btn {
+            background: #e0e0e0;
+            color: #666;
+        }
+        .cancel-btn:hover {
+            background: #d0d0d0;
+        }
+        .success-message {
+            display: none;
+            background: #4caf50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+            animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .tab-info {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="successMessage" class="success-message">
+            ✅ 저장 완료!
+        </div>
+        
+        <h1>📝 공유된 콘텐츠 저장</h1>
+        
+        <div class="tab-info" id="tabInfo">
+            탭을 선택하세요
+        </div>
+        
+        <form id="shareForm">
+            <div class="form-group">
+                <label>저장할 위치</label>
+                <select id="saveLocation" required>
+                    <option value="">선택하세요</option>
+                    <option value="bookmarks">📚 북마크</option>
+                    <option value="thumbnails">🖼️ 썸네일</option>
+                </select>
+            </div>
+            
+            <div id="tabSelector" style="display:none;">
+                <div class="form-group">
+                    <label>탭 선택</label>
+                    <select id="tabSelect" required>
+                        <option value="">탭을 선택하세요</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>제목</label>
+                <input type="text" id="title" placeholder="제목" required>
+            </div>
+            
+            <div class="form-group">
+                <label>링크</label>
+                <input type="url" id="url" placeholder="https://..." required>
+            </div>
+            
+            <div class="form-group">
+                <label>메모</label>
+                <textarea id="memo" placeholder="메모를 입력하세요 (선택사항)"></textarea>
+            </div>
+            
+            <div class="button-group">
+                <button type="button" class="cancel-btn" onclick="window.close()">취소</button>
+                <button type="submit" class="save-btn">저장</button>
+            </div>
+        </form>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+        import { getDatabase, ref, get, set } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
+
+        // Firebase 설정
+        const firebaseConfig = {
+            apiKey: "AIzaSyDCEQgvwd8a1SbIPcvm3p9CwHRoLLIRs34",
+            authDomain: "gojungwon-92127.firebaseapp.com",
+            databaseURL: "https://gojungwon-92127-default-rtdb.firebaseio.com",
+            projectId: "gojungwon-92127",
+            storageBucket: "gojungwon-92127.firebasestorage.app",
+            messagingSenderId: "1055836798877",
+            appId: "1:1055836798877:web:2dbdc4e03f42ac3dea8f64"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const userId = 'gojungwon5656@gmail.com';
+        const userRef = ref(database, `users/${userId.replace(/[.#$[\]]/g, '_')}`);
+
+        // URL 파라미터에서 공유된 데이터 가져오기
+        const urlParams = new URLSearchParams(window.location.search);
+        const sharedTitle = urlParams.get('title') || '';
+        const sharedUrl = urlParams.get('url') || '';
+        const sharedText = urlParams.get('text') || '';
+
+        // 폼 필드에 데이터 채우기
+        document.getElementById('title').value = sharedTitle;
+        document.getElementById('url').value = sharedUrl;
+        document.getElementById('memo').value = sharedText;
+
+        const saveLocation = document.getElementById('saveLocation');
+        const tabSelector = document.getElementById('tabSelector');
+        const tabSelect = document.getElementById('tabSelect');
+        const tabInfo = document.getElementById('tabInfo');
+
+        // 저장 위치 변경 시
+        saveLocation.addEventListener('change', async (e) => {
+            const location = e.target.value;
+            
+            if (location === 'bookmarks' || location === 'thumbnails') {
+                tabSelector.style.display = 'block';
+                await loadTabs(location);
+            } else {
+                tabSelector.style.display = 'none';
+            }
+        });
+
+        // 탭 목록 로드
+        async function loadTabs(type) {
+            try {
+                const snapshot = await get(userRef);
+                const userData = snapshot.val();
+                
+                if (!userData) {
+                    tabSelect.innerHTML = '<option value="">탭이 없습니다</option>';
+                    return;
+                }
+
+                const tabKey = type === 'bookmarks' ? 'bookmarkTabs' : 'tabs';
+                const dataKey = type === 'bookmarks' ? 'bookmarkTabData' : 'tabData';
+                
+                let tabs = [];
+                
+                if (userData[tabKey]) {
+                    try {
+                        tabs = JSON.parse(userData[tabKey]);
+                    } catch (e) {
+                        console.error('탭 파싱 오류:', e);
+                    }
+                }
+
+                tabSelect.innerHTML = '<option value="">탭을 선택하세요</option>';
+                
+                if (tabs.length === 0) {
+                    tabSelect.innerHTML += '<option value="" disabled>탭이 없습니다</option>';
+                } else {
+                    tabs.forEach(tab => {
+                        const option = document.createElement('option');
+                        option.value = tab.id;
+                        option.textContent = `${tab.icon} ${tab.name}`;
+                        tabSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('탭 로드 오류:', error);
+                alert('탭을 불러오는데 실패했습니다.');
+            }
+        }
+
+        // 탭 선택 시
+        tabSelect.addEventListener('change', (e) => {
+            const selectedOption = e.target.options[e.target.selectedIndex];
+            if (selectedOption.value) {
+                tabInfo.textContent = `저장 위치: ${selectedOption.textContent}`;
+            }
+        });
+
+        // 폼 제출
+        document.getElementById('shareForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const location = saveLocation.value;
+            const tabId = tabSelect.value;
+            const title = document.getElementById('title').value;
+            const url = document.getElementById('url').value;
+            const memo = document.getElementById('memo').value;
+
+            if (!location) {
+                alert('저장 위치를 선택하세요.');
+                return;
+            }
+
+            if (!tabId) {
+                alert('탭을 선택하세요.');
+                return;
+            }
+
+            try {
+                const dataKey = location === 'bookmarks' ? 'bookmarkTabData' : 'tabData';
+                const itemKey = `${dataKey}-${tabId}`;
+                
+                const snapshot = await get(ref(database, `users/${userId.replace(/[.#$[\]]/g, '_')}/${itemKey}`));
+                let items = [];
+                
+                if (snapshot.exists()) {
+                    try {
+                        items = JSON.parse(snapshot.val());
+                    } catch (e) {
+                        console.error('데이터 파싱 오류:', e);
+                    }
+                }
+
+                const newItem = {
+                    id: Date.now(),
+                    title: title,
+                    link: url,
+                    memo: memo,
+                    date: new Date().toISOString(),
+                    image: null
+                };
+
+                items.unshift(newItem);
+                
+                await set(ref(database, `users/${userId.replace(/[.#$[\]]/g, '_')}/${itemKey}`), JSON.stringify(items));
+
+                // 성공 메시지 표시
+                const successMessage = document.getElementById('successMessage');
+                successMessage.style.display = 'block';
+                
+                setTimeout(() => {
+                    window.close();
+                }, 1500);
+
+            } catch (error) {
+                console.error('저장 오류:', error);
+                alert('저장에 실패했습니다: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>
+
