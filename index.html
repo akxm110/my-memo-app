@@ -597,7 +597,9 @@
             const data = snapshot.val();
             if (data) {
                 for (const key in data) {
-                    originalSetItem.call(localStorage, key, data[key]);
+                    // 값이 문자열인지 확인하고 저장
+                    const value = typeof data[key] === 'string' ? data[key] : JSON.stringify(data[key]);
+                    originalSetItem.call(localStorage, key, value);
                 }
                 console.log('✅ Firebase 데이터 로드 완료');
             }
@@ -615,7 +617,9 @@
             if (data) {
                 let changed = false;
                 for (const key in data) {
-                    if (localStorage.getItem(key) !== data[key]) {
+                    const currentValue = localStorage.getItem(key);
+                    const newValue = typeof data[key] === 'string' ? data[key] : JSON.stringify(data[key]);
+                    if (currentValue !== newValue) {
                         changed = true;
                         break;
                     }
@@ -624,7 +628,9 @@
                 if (changed) {
                     console.log('🔄 다른 기기에서 변경 감지');
                     for (const key in data) {
-                        originalSetItem.call(localStorage, key, data[key]);
+                        // 값이 문자열인지 확인하고 저장
+                        const value = typeof data[key] === 'string' ? data[key] : JSON.stringify(data[key]);
+                        originalSetItem.call(localStorage, key, value);
                     }
                     lastUpdateTime = Date.now();
                     location.reload();
