@@ -591,23 +591,71 @@
             setTimeout(syncToFirebase, 300);
         };
         
-        // Firebase에서 데이터 로드
-        database.ref('users/' + userId).once('value').then(snapshot => {
+        // Firebase 실시간 리스너 (다른 기기의 변경사항 감지)
+        database.ref('users/' + userId).on('value', (snapshot) => {
+            if (isSyncing) return; // 자기 자신의 변경사항은 무시
+            
             const data = snapshot.val();
             if (data) {
-                if (data.videoMemoData) localStorage.setItem('videoMemoData', JSON.stringify(data.videoMemoData));
-                if (data.plainMemosData) localStorage.setItem('plainMemosData', JSON.stringify(data.plainMemosData));
-                if (data.dynamicTabsConfig) localStorage.setItem('dynamicTabsConfig', JSON.stringify(data.dynamicTabsConfig));
-                if (data.dynamicTabData) {
-                    for (const [key, value] of Object.entries(data.dynamicTabData)) {
-                        localStorage.setItem(key, JSON.stringify(value));
+                let hasChanges = false;
+                
+                // 기존 데이터와 비교하여 변경사항이 있는지 확인
+                const currentVideo = localStorage.getItem('videoMemoData');
+                const currentMemos = localStorage.getItem('plainMemosData');
+                const currentTabs = localStorage.getItem('dynamicTabsConfig');
+                
+                const newVideo = JSON.stringify(data.videoMemoData || []);
+                const newMemos = JSON.stringify(data.plainMemosData || []);
+                const newTabs = JSON.stringify(data.dynamicTabsConfig || []);
+                
+                if (currentVideo !== newVideo || currentMemos !== newMemos || currentTabs !== newTabs) {
+                    hasChanges = true;
+                }
+                
+                // 변경사항이 있으면 localStorage 업데이트
+                if (hasChanges) {
+                    console.log('다른 기기에서 변경 감지, 동기화 중...');
+                    
+                    if (data.videoMemoData) originalSetItem.call(localStorage, 'videoMemoData', JSON.stringify(data.videoMemoData));
+                    if (data.plainMemosData) originalSetItem.call(localStorage, 'plainMemosData', JSON.stringify(data.plainMemosData));
+                    if (data.dynamicTabsConfig) originalSetItem.call(localStorage, 'dynamicTabsConfig', JSON.stringify(data.dynamicTabsConfig));
+                    if (data.dynamicTabData) {
+                        for (const [key, value] of Object.entries(data.dynamicTabData)) {
+                            originalSetItem.call(localStorage, key, JSON.stringify(value));
+                        }
                     }
+                    
+                    // UI 새로고침
+                    location.reload();
                 }
             }
         });
+        
+        // Firebase에서 초기 데이터 로드
+        let isInitialized = false;
+        database.ref('users/' + userId).once('value').then(snapshot => {
+            const data = snapshot.val();
+            if (data) {
+                if (data.videoMemoData) originalSetItem.call(localStorage, 'videoMemoData', JSON.stringify(data.videoMemoData));
+                if (data.plainMemosData) originalSetItem.call(localStorage, 'plainMemosData', JSON.stringify(data.plainMemosData));
+                if (data.dynamicTabsConfig) originalSetItem.call(localStorage, 'dynamicTabsConfig', JSON.stringify(data.dynamicTabsConfig));
+                if (data.dynamicTabData) {
+                    for (const [key, value] of Object.entries(data.dynamicTabData)) {
+                        originalSetItem.call(localStorage, key, JSON.stringify(value));
+                    }
+                }
+            }
+            isInitialized = true;
+            console.log('Firebase 초기 데이터 로드 완료');
+        });
 
         // ===== INITIALIZATION =====
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Firebase 초기화 대기
+            while (!isInitialized) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
             TabManager.init();
             initializeVideoTab();
             loadMemos();
