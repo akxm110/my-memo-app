@@ -556,95 +556,58 @@
         const userId = 'user1';
         let isSyncing = false;
         
-        // localStorage 오버라이드 (동기화용)
-        const originalSetItem = localStorage.setItem;
-        let syncTimer = null;
-        
-        localStorage.setItem = function(key, value) {
-            originalSetItem.call(this, key, value);
-            // 연속 호출 방지 (500ms 내 변경사항 모아서 한 번만 동기화)
-            if (syncTimer) clearTimeout(syncTimer);
-            syncTimer = setTimeout(() => {
-                syncToFirebase();
-            }, 500);
-        };
-        
-        // Firebase 동기화 함수 (자동 파싱 방지)
+        // Firebase 동기화 함수
         function syncToFirebase() {
             if (isSyncing) return;
             isSyncing = true;
             
-            const data = {};
+            const syncData = {
+                videoMemoData: JSON.parse(localStorage.getItem('videoMemoData') || '[]'),
+                plainMemosData: JSON.parse(localStorage.getItem('plainMemosData') || '[]'),
+                dynamicTabsConfig: JSON.parse(localStorage.getItem('dynamicTabsConfig') || '[]'),
+                dynamicTabData: {}
+            };
+            
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
-                // Firebase 내부 키 제외
-                if (key.startsWith('firebase:')) continue;
-                // 값을 _value로 감싸서 Firebase가 자동 파싱 못하게 함
-                data[key] = { _value: localStorage.getItem(key) };
+                if (key.startsWith('favoritesData-')) {
+                    syncData.dynamicTabData[key] = JSON.parse(localStorage.getItem(key) || '[]');
+                }
             }
             
-            database.ref('users/' + userId).set(data).then(() => {
-                console.log('✅ Firebase 동기화 완료');
-                setTimeout(() => { isSyncing = false; }, 1000);
+            database.ref('users/' + userId).set(syncData).then(() => {
+                console.log('Firebase 동기화 완료');
+                isSyncing = false;
             }).catch(error => {
-                console.error('❌ Firebase 동기화 실패:', error);
+                console.error('Firebase 동기화 실패:', error);
                 isSyncing = false;
             });
         }
         
-        // Firebase에서 초기 데이터 로드
-        let isInitialized = false;
+        // localStorage.setItem 오버라이드
+        const originalSetItem = localStorage.setItem;
+        localStorage.setItem = function(key, value) {
+            originalSetItem.apply(this, arguments);
+            setTimeout(syncToFirebase, 300);
+        };
+        
+        // Firebase에서 데이터 로드
         database.ref('users/' + userId).once('value').then(snapshot => {
             const data = snapshot.val();
             if (data) {
-                // _value를 unwrap해서 localStorage에 저장
-                Object.keys(data).forEach(key => {
-                    const value = data[key]._value || data[key]; // _value가 있으면 unwrap
-                    originalSetItem.call(localStorage, key, value);
-                });
-                console.log('✅ Firebase 데이터 로드 완료');
-            }
-            isInitialized = true;
-        });
-        
-        // 실시간 리스너 (다른 기기 변경 감지)
-        let lastUpdateTime = Date.now();
-        database.ref('users/' + userId).on('value', (snapshot) => {
-            if (!isInitialized) return; // 초기 로드 시 무시
-            if (isSyncing) return; // 자기 변경사항 무시
-            if (Date.now() - lastUpdateTime < 2000) return; // 2초 내 중복 무시
-            
-            const data = snapshot.val();
-            if (data) {
-                let changed = false;
-                for (const key in data) {
-                    const currentValue = localStorage.getItem(key);
-                    const newValue = data[key]._value || data[key]; // _value unwrap
-                    if (currentValue !== newValue) {
-                        changed = true;
-                        break;
+                if (data.videoMemoData) localStorage.setItem('videoMemoData', JSON.stringify(data.videoMemoData));
+                if (data.plainMemosData) localStorage.setItem('plainMemosData', JSON.stringify(data.plainMemosData));
+                if (data.dynamicTabsConfig) localStorage.setItem('dynamicTabsConfig', JSON.stringify(data.dynamicTabsConfig));
+                if (data.dynamicTabData) {
+                    for (const [key, value] of Object.entries(data.dynamicTabData)) {
+                        localStorage.setItem(key, JSON.stringify(value));
                     }
-                }
-                
-                if (changed) {
-                    console.log('🔄 다른 기기에서 변경 감지');
-                    for (const key in data) {
-                        const value = data[key]._value || data[key]; // _value unwrap
-                        originalSetItem.call(localStorage, key, value);
-                    }
-                    lastUpdateTime = Date.now();
-                    location.reload();
                 }
             }
         });
 
         // ===== INITIALIZATION =====
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Firebase 초기화 대기
-            while (!isInitialized) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            
+        document.addEventListener('DOMContentLoaded', () => {
             TabManager.init();
             initializeVideoTab();
             loadMemos();
