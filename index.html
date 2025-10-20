@@ -359,12 +359,12 @@
     <a id="download-anchor" style="display: none;"></a>
 
     <script type="module">
-        // This combines the Firebase init and main app logic into one script block.
-        
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
         // --- GLOBAL SCOPE VARIABLES ---
         let currentObjectUrl = null;
-        let currentPage = 1;
-        const itemsPerPage = 10; 
         let currentlyEditingItem = null;
         let currentlyEditingMemo = null;
         
@@ -395,6 +395,9 @@
             }
             return null;
         }
+        function linkify(text) { 
+            return escapeHTML(text).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>'); 
+        }
 
         // --- BACKUP & RESTORE ---
         function setupBackupAndRestore() {
@@ -408,7 +411,7 @@
         }
         async function exportData() {
             try {
-                if (!window.appState || !window.appState.userId || !window.appState.isDataLoaded) return alert('데이터가 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
+                if (!window.appState || !window.appState.userId || !window.appState.isDataLoaded) return alert('데이터가 아직 로드되지 않았습니다.');
                 
                 const backupData = window.appState.userData;
                 const isEmpty = Object.values(backupData).every(value => 
@@ -416,7 +419,6 @@
                     (typeof value === 'object' && !value) ||
                     (typeof value === 'object' && Object.keys(value).length === 0)
                 );
-
                 if (isEmpty) return alert('백업할 데이터가 없습니다.');
 
                 const dataStr = JSON.stringify(backupData, null, 2);
@@ -434,36 +436,31 @@
                     const downloadAnchor = document.getElementById('download-anchor');
                     downloadAnchor.href = currentObjectUrl; downloadAnchor.download = filename; downloadAnchor.click();
                 }
-            } catch (error) { if (error.name !== 'AbortError') { alert('데이터 내보내기 중 오류가 발생했습니다: ' + error.message); console.error(error); } }
+            } catch (error) { if (error.name !== 'AbortError') { alert('데이터 내보내기 중 오류: ' + error.message); console.error(error); } }
         }
         function importData(event) {
             const file = event.target.files[0]; if (!file) return;
-            if (!confirm('데이터를 가져오면 현재 Firebase에 저장된 모든 내용이 덮어씌워집니다. 계속하시겠습니까?')) return;
+            if (!confirm('현재 Firebase 데이터 전체를 덮어씁니다. 계속하시겠습니까?')) return;
             const reader = new FileReader();
             reader.onload = async function(e) {
                 try {
                     const backupData = JSON.parse(e.target.result);
-                    if (typeof backupData !== 'object' || backupData === null) throw new Error('Invalid backup file format.');
+                    if (typeof backupData !== 'object' || backupData === null) throw new Error('잘못된 백업 파일 형식입니다.');
                     
                     const validKeys = ['videoMemoData', 'plainMemosData', 'dynamicTabsConfig', 'dynamicTabData'];
-                    const sanitizedData = {
-                        videoMemoData: [],
-                        plainMemosData: [],
-                        dynamicTabsConfig: [],
-                        dynamicTabData: {}
-                    };
+                    const sanitizedData = {};
 
                     for(const key of validKeys) {
-                        if (backupData[key]) {
-                            sanitizedData[key] = backupData[key];
+                        if (backupData.hasOwnProperty(key)) {
+                             sanitizedData[key] = JSON.parse(JSON.stringify(backupData[key]));
                         }
                     }
                     
-                    window.appState.userData = sanitizedData;
+                    window.appState.userData = { ...window.appState.userData, ...sanitizedData };
                     await window.appState.saveUserData();
                     
-                    alert('데이터를 성공적으로 복원했습니다. 잠시 후 데이터가 동기화됩니다.');
-                } catch (error) { alert('백업 파일을 불러오는 중 오류가 발생했습니다: ' + error.message); }
+                    alert('데이터를 성공적으로 복원했습니다. 잠시 후 동기화됩니다.');
+                } catch (error) { alert('백업 파일 불러오기 오류: ' + error.message); }
             };
             reader.readAsText(file);
         }
@@ -498,20 +495,7 @@
         }
 
         // --- VIDEO TAB LOGIC ---
-        window.initializeVideoTab = function() {
-            const addBtn = document.getElementById('add-btn');
-            const deleteAllBtn = document.getElementById('delete-all-btn');
-            
-            if (!window.videoTabInitialized) {
-                addBtn.addEventListener('click', () => { (currentlyEditingItem) ? updateVideoItem(currentlyEditingItem) : addVideoItem(); });
-                deleteAllBtn.addEventListener('click', () => {
-                    if (confirm('모든 비디오 항목을 삭제하시겠습니까?')) {
-                        window.appState.userData.videoMemoData = []; 
-                        window.appState.saveUserData();
-                    }
-                });
-                window.videoTabInitialized = true;
-            }
+        function initializeVideoTab() {
             renderVideoPage();
         }
         
@@ -585,24 +569,9 @@
         }
 
         // --- PLAIN MEMO TAB LOGIC ---
-        window.initializeMemoTab = function() {
-            const memoTextarea = document.getElementById('memo-textarea'), memoAddBtn = document.getElementById('memo-add-btn');
-            const memoDeleteAllBtn = document.getElementById('memo-delete-all-btn'), charCounter = document.getElementById('char-counter');
-            
-            if(!window.memoTabInitialized) {
-                memoTextarea.addEventListener('input', () => charCounter.textContent = `${memoTextarea.value.length}자`);
-                memoAddBtn.addEventListener('click', () => { (currentlyEditingMemo) ? updateMemo(currentlyEditingMemo) : addMemo(); });
-                memoDeleteAllBtn.addEventListener('click', () => { 
-                    if (confirm('모든 메모를 삭제하시겠습니까?')) { 
-                        window.appState.userData.plainMemosData = [];
-                        window.appState.saveUserData();
-                    }
-                });
-                window.memoTabInitialized = true;
-            }
+        function initializeMemoTab() {
             loadMemos();
         }
-        function linkify(text) { return escapeHTML(text).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>'); }
         
         function loadMemos() { 
             const memoListContainer = document.getElementById('memo-list-container');
@@ -827,7 +796,6 @@
                 const items = this.getItems();
                 this.renderPostList();
                 if (items.length > 0) {
-                    // Default to the most recent post
                     const sortedItems = [...items].sort((a,b) => b.timestamp - a.timestamp);
                     this.displayPost(sortedItems[0].id);
                 } else {
@@ -1121,6 +1089,126 @@
                 this.clearImagePreview(); this.addBtn.textContent = '추가'; this.currentlyEditingFav = null;
             }
         }
+        
+        // --- App Entry Point ---
+        function main() {
+             // Your web app's Firebase configuration
+            const firebaseConfig = {
+                apiKey: "AIzaSyDV9wWRsEiS0pAsl1Xw9ee1fQ5Yf9N5mto",
+                authDomain: "my-memo-app-6311c.firebaseapp.com",
+                projectId: "my-memo-app-6311c",
+                storageBucket: "my-memo-app-6311c.appspot.com",
+                messagingSenderId: "345865782837",
+                appId: "1:345865782837:web:a9147e6468ff400953937c"
+            };
+
+            // Initialize Firebase
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const db = getFirestore(app);
+
+            // --- GLOBAL APP STATE ---
+            window.appState = {
+                db: db,
+                userId: null,
+                isDataLoaded: false,
+                userData: { videoMemoData: [], plainMemosData: [], dynamicTabsConfig: [], dynamicTabData: {} },
+                
+                async saveUserData() {
+                    if (!this.userId || !this.isDataLoaded) return;
+                    console.log("Saving data to Firestore...");
+                    const userDocRef = doc(db, "users", this.userId);
+                    const dataToSave = { ...this.userData, lastUpdated: serverTimestamp() };
+                    try {
+                        await setDoc(userDocRef, dataToSave, { merge: true });
+                    } catch (error) {
+                        console.error("Error saving data:", error);
+                        alert(`데이터 저장 중 오류가 발생했습니다: ${error.message}`);
+                    }
+                },
+
+                renderAllTabs() {
+                    if(!this.isDataLoaded) return;
+                    console.log("Rendering all tabs with new data...");
+                    const previouslyActiveTab = document.querySelector('.tab.active')?.dataset.tabTarget;
+                    
+                    TabManager.loadTabs();
+                    TabManager.render();
+                    initializeVideoTab();
+                    initializeMemoTab();
+                    
+                    setTimeout(() => {
+                        const tabToActivate = previouslyActiveTab ? document.querySelector(`.tab[data-tab-target="${previouslyActiveTab}"]`) : null;
+                        (tabToActivate || document.querySelector('.tab')).click();
+                    }, 0);
+                }
+            };
+            
+            // Static event listeners that only need to be set up once
+            const addBtn = document.getElementById('add-btn');
+            const deleteAllBtn = document.getElementById('delete-all-btn');
+            addBtn.addEventListener('click', () => { (currentlyEditingItem) ? updateVideoItem(currentlyEditingItem) : addVideoItem(); });
+            deleteAllBtn.addEventListener('click', () => {
+                if (confirm('모든 비디오 항목을 삭제하시겠습니까?')) {
+                    window.appState.userData.videoMemoData = []; 
+                    window.appState.saveUserData();
+                }
+            });
+
+            const memoTextarea = document.getElementById('memo-textarea'), memoAddBtn = document.getElementById('memo-add-btn');
+            const memoDeleteAllBtn = document.getElementById('memo-delete-all-btn'), charCounter = document.getElementById('char-counter');
+            memoTextarea.addEventListener('input', () => charCounter.textContent = `${memoTextarea.value.length}자`);
+            memoAddBtn.addEventListener('click', () => { (currentlyEditingMemo) ? updateMemo(currentlyEditingMemo) : addMemo(); });
+            memoDeleteAllBtn.addEventListener('click', () => { 
+                if (confirm('모든 메모를 삭제하시겠습니까?')) { 
+                    window.appState.userData.plainMemosData = [];
+                    window.appState.saveUserData();
+                }
+            });
+
+            setupBackupAndRestore();
+            TabManager.init();
+
+            // --- AUTHENTICATION ---
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    if(window.appState.userId === user.uid) return; // Already listening
+                    
+                    console.log("User is signed in:", user.uid);
+                    window.appState.userId = user.uid;
+
+                    if(window.unsubscribe) window.unsubscribe(); // Unsubscribe from previous listener if any
+
+                    const userDocRef = doc(db, "users", user.uid);
+                    window.unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+                        console.log("Received remote data update.");
+                        if (docSnap.exists()) {
+                            const remoteData = docSnap.data();
+                            window.appState.userData = {
+                                videoMemoData: [], plainMemosData: [], dynamicTabsConfig: [], dynamicTabData: {},
+                                ...remoteData
+                            };
+                        } else {
+                            console.log("No data for this user. Initializing document.");
+                            // Reset to default if user has no data
+                            window.appState.userData = { videoMemoData: [], plainMemosData: [], dynamicTabsConfig: [], dynamicTabData: {} };
+                        }
+                        window.appState.isDataLoaded = true;
+                        window.appState.renderAllTabs();
+                    }, (error) => {
+                        console.error("Snapshot listener error:", error);
+                    });
+
+                } else {
+                    signInAnonymously(auth).catch((error) => {
+                        console.error("Anonymous sign-in failed:", error);
+                        alert("Firebase 인증에 실패했습니다: " + error.message);
+                    });
+                }
+            });
+        }
+        
+        main();
 
     </script>
 </body>
