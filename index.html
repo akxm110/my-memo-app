@@ -363,8 +363,29 @@
     <a id="download-anchor" style="position: absolute; top: -9999px; left: -9999px;"></a>
 
     <script>
+        // --- 손상된 localStorage 데이터 자동 복구 ---
+        function cleanupCorruptedData() {
+            const allKeys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                allKeys.push(localStorage.key(i));
+            }
+            
+            allKeys.forEach(key => {
+                if (key.startsWith('firebase:')) return; // Firebase 내부 키는 무시
+                
+                const value = localStorage.getItem(key);
+                if (value && (value.includes('[object Object]') || value === '[object Object]')) {
+                    console.log(`❌ 손상된 데이터 발견: ${key} - 삭제합니다`);
+                    localStorage.removeItem(key);
+                }
+            });
+            
+            console.log('✅ localStorage 데이터 검증 완료');
+        }
+
         // --- COMMON ---
         document.addEventListener('DOMContentLoaded', async () => {
+            cleanupCorruptedData(); // 손상된 데이터 먼저 정리
             TabManager.init();
             await loadItems();
             loadMemos();
