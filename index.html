@@ -260,7 +260,7 @@
             border: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: flex-start;
         }
         .memo-content, .notepad-content { white-space: pre-wrap; word-break: break-word; flex-grow: 1; }
-        .memo-item-actions button { margin-left: 8px; }
+        .memo-item-actions button, .notepad-item-actions button { margin-left: 8px; }
         .dynamic-tab-content .input-section {
             grid-template-columns: repeat(4, 1fr) auto 1fr;
         }
@@ -365,7 +365,7 @@
         .post-list-snippet {
             font-size: 14px; color: #6c757d; margin-top: 5px;
             display: -webkit-box; -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;  overflow: hidden;
+            -webkit-box-orient: vertical; overflow: hidden;
         }
         .post-list-date { font-size: 12px; color: #adb5bd; margin-top: 8px; }
         .editor-post-view-panel { flex: 1; padding: 25px; overflow-y: auto; }
@@ -381,11 +381,20 @@
         }
         #editor-modal .modal-content { max-width: 900px; width: 90vw; }
         #editor-modal .editor-container { box-shadow: none; padding: 0; }
-        #editor-modal .editor-content { min-height: 300px; padding: 15px; border: 1px solid #ced4da; border-radius: 4px; }
+        #editor-modal .editor-content { 
+            min-height: 300px; padding: 15px; border: 1px solid #ced4da; 
+            border-radius: 4px; outline: none;
+        }
         .editor-toolbar { margin: 10px 0; display: flex; gap: 5px; flex-wrap: wrap; }
-        .editor-toolbar button { padding: 5px 10px; border: 1px solid #ccc; background: #fff; cursor: pointer; border-radius: 3px; }
+        .editor-toolbar button { 
+            padding: 5px 10px; border: 1px solid #ccc; background: #fff; 
+            cursor: pointer; border-radius: 3px; 
+        }
         .editor-toolbar button:hover { background-color: #e9ecef; }
-        .editor-title-input { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 18px; margin-bottom: 10px; }
+        .editor-title-input { 
+            width: 100%; padding: 10px; border: 1px solid #ced4da; 
+            border-radius: 4px; font-size: 18px; margin-bottom: 10px; 
+        }
         
         blockquote.quote-style-1 {
             border-left: 4px solid #007bff;
@@ -531,7 +540,7 @@
     <a id="download-anchor" style="position: absolute; top: -9999px; left: -9999px;"></a>
 
     <script>
-        // ===== FIREBASE INITIALIZATION =====
+        // ===== FIREBASE CONFIGURATION =====
         const firebaseConfig = {
             apiKey: "AIzaSyDV9wWRsEiS0pAsl1Xw9ee1fQ5Yf9N5mto",
             authDomain: "my-memo-app-6311c.firebaseapp.com",
@@ -541,158 +550,69 @@
             appId: "1:345865782837:web:a9147e6468ff400953937c",
             databaseURL: "https://my-memo-app-6311c-default-rtdb.firebaseio.com"
         };
-
+        
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        const userId = 'user1';
+        let isSyncing = false;
         
-        // ===== GLOBAL APP STATE =====
-        window.appState = {
-            userId: 'user1',
-            isDataLoaded: false,
-            isSyncing: false,
+        // Firebase 동기화 함수
+        function syncToFirebase() {
+            if (isSyncing) return;
+            isSyncing = true;
             
-            async migrateFromLocalStorage() {
-                // localStorage에서 Firebase로 마이그레이션
-                const videoData = localStorage.getItem('videoMemoData');
-                const plainMemos = localStorage.getItem('plainMemosData');
-                const tabsConfig = localStorage.getItem('dynamicTabsConfig');
-                
-                if (videoData || plainMemos || tabsConfig) {
-                    console.log('LocalStorage 데이터 감지, Firebase로 마이그레이션 시작...');
-                    const migrateData = {
-                        videoMemoData: videoData ? JSON.parse(videoData) : [],
-                        plainMemosData: plainMemos ? JSON.parse(plainMemos) : [],
-                        dynamicTabsConfig: tabsConfig ? JSON.parse(tabsConfig) : [],
-                        dynamicTabData: {}
-                    };
-                    
-                    // 동적 탭 데이터도 마이그레이션
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const key = localStorage.key(i);
-                        if (key.startsWith('favoritesData-')) {
-                            const tabId = key.replace('favoritesData-', '');
-                            migrateData.dynamicTabData[`tab-${tabId}`] = JSON.parse(localStorage.getItem(key));
-                        }
-                    }
-                    
-                    await database.ref('users/' + this.userId).set(migrateData);
-                    console.log('마이그레이션 완료!');
+            const syncData = {
+                videoMemoData: JSON.parse(localStorage.getItem('videoMemoData') || '[]'),
+                plainMemosData: JSON.parse(localStorage.getItem('plainMemosData') || '[]'),
+                dynamicTabsConfig: JSON.parse(localStorage.getItem('dynamicTabsConfig') || '[]'),
+                dynamicTabData: {}
+            };
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('favoritesData-')) {
+                    syncData.dynamicTabData[key] = JSON.parse(localStorage.getItem(key) || '[]');
                 }
-            },
-            
-            async loadFromFirebase() {
-                const snapshot = await database.ref('users/' + this.userId).once('value');
-                const data = snapshot.val();
-                
-                if (data) {
-                    return {
-                        videoMemoData: Array.isArray(data.videoMemoData) ? data.videoMemoData : [],
-                        plainMemosData: Array.isArray(data.plainMemosData) ? data.plainMemosData : [],
-                        dynamicTabsConfig: Array.isArray(data.dynamicTabsConfig) ? data.dynamicTabsConfig : [],
-                        dynamicTabData: (data.dynamicTabData && typeof data.dynamicTabData === 'object') ? data.dynamicTabData : {}
-                    };
-                }
-                return null;
-            },
-            
-            async saveToFirebase(data) {
-                if (this.isSyncing) return;
-                this.isSyncing = true;
-                try {
-                    await database.ref('users/' + this.userId).set(data);
-                    console.log('Firebase 저장 완료');
-                } catch (error) {
-                    console.error('Firebase 저장 실패:', error);
-                } finally {
-                    this.isSyncing = false;
-                }
-            },
-            
-            listenToFirebase(callback) {
-                database.ref('users/' + this.userId).on('value', (snapshot) => {
-                    if (this.isSyncing) return;
-                    
-                    const data = snapshot.val();
-                    if (data) {
-                        const cleanData = {
-                            videoMemoData: Array.isArray(data.videoMemoData) ? data.videoMemoData : [],
-                            plainMemosData: Array.isArray(data.plainMemosData) ? data.plainMemosData : [],
-                            dynamicTabsConfig: Array.isArray(data.dynamicTabsConfig) ? data.dynamicTabsConfig : [],
-                            dynamicTabData: (data.dynamicTabData && typeof data.dynamicTabData === 'object') ? data.dynamicTabData : {}
-                        };
-                        callback(cleanData);
-                    }
-                });
             }
+            
+            database.ref('users/' + userId).set(syncData).then(() => {
+                console.log('Firebase 동기화 완료');
+                isSyncing = false;
+            }).catch(error => {
+                console.error('Firebase 동기화 실패:', error);
+                isSyncing = false;
+            });
+        }
+        
+        // localStorage.setItem 오버라이드
+        const originalSetItem = localStorage.setItem;
+        localStorage.setItem = function(key, value) {
+            originalSetItem.apply(this, arguments);
+            setTimeout(syncToFirebase, 300);
         };
+        
+        // Firebase에서 데이터 로드
+        database.ref('users/' + userId).once('value').then(snapshot => {
+            const data = snapshot.val();
+            if (data) {
+                if (data.videoMemoData) localStorage.setItem('videoMemoData', JSON.stringify(data.videoMemoData));
+                if (data.plainMemosData) localStorage.setItem('plainMemosData', JSON.stringify(data.plainMemosData));
+                if (data.dynamicTabsConfig) localStorage.setItem('dynamicTabsConfig', JSON.stringify(data.dynamicTabsConfig));
+                if (data.dynamicTabData) {
+                    for (const [key, value] of Object.entries(data.dynamicTabData)) {
+                        localStorage.setItem(key, JSON.stringify(value));
+                    }
+                }
+            }
+        });
 
         // ===== INITIALIZATION =====
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Firebase에서 데이터 로드
-            await window.appState.migrateFromLocalStorage();
-            const firebaseData = await window.appState.loadFromFirebase();
-            
-            if (firebaseData) {
-                // Firebase 데이터를 localStorage에 동기화
-                localStorage.setItem('videoMemoData', JSON.stringify(firebaseData.videoMemoData));
-                localStorage.setItem('plainMemosData', JSON.stringify(firebaseData.plainMemosData));
-                localStorage.setItem('dynamicTabsConfig', JSON.stringify(firebaseData.dynamicTabsConfig));
-                
-                for (const [tabId, tabData] of Object.entries(firebaseData.dynamicTabData)) {
-                    localStorage.setItem(`favoritesData-${tabId}`, JSON.stringify(tabData));
-                }
-            }
-            
-            // 앱 초기화
+        document.addEventListener('DOMContentLoaded', () => {
             TabManager.init();
             initializeVideoTab();
             loadMemos();
             setupBackupAndRestore();
-            
-            // Firebase 실시간 리스너 시작
-            window.appState.listenToFirebase((data) => {
-                localStorage.setItem('videoMemoData', JSON.stringify(data.videoMemoData));
-                localStorage.setItem('plainMemosData', JSON.stringify(data.plainMemosData));
-                localStorage.setItem('dynamicTabsConfig', JSON.stringify(data.dynamicTabsConfig));
-                
-                for (const [tabId, tabData] of Object.entries(data.dynamicTabData)) {
-                    localStorage.setItem(`favoritesData-${tabId}`, JSON.stringify(tabData));
-                }
-                
-                // UI 새로고침
-                location.reload();
-            });
-            
-            window.appState.isDataLoaded = true;
         });
-
-        // localStorage 변경 감지 후 Firebase 동기화
-        const originalSetItem = localStorage.setItem;
-        localStorage.setItem = function(key, value) {
-            originalSetItem.apply(this, arguments);
-            
-            if (window.appState && window.appState.isDataLoaded) {
-                // Firebase에 동기화
-                setTimeout(async () => {
-                    const syncData = {
-                        videoMemoData: JSON.parse(localStorage.getItem('videoMemoData') || '[]'),
-                        plainMemosData: JSON.parse(localStorage.getItem('plainMemosData') || '[]'),
-                        dynamicTabsConfig: JSON.parse(localStorage.getItem('dynamicTabsConfig') || '[]'),
-                        dynamicTabData: {}
-                    };
-                    
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const storageKey = localStorage.key(i);
-                        if (storageKey.startsWith('favoritesData-')) {
-                            const tabId = storageKey.replace('favoritesData-', '');
-                            syncData.dynamicTabData[tabId] = JSON.parse(localStorage.getItem(storageKey) || '[]');
-                        }
-                    }
-                    
-                    await window.appState.saveToFirebase(syncData);
-                }, 500);
-            }
-        };
 
         let currentObjectUrl = null;
 
@@ -761,8 +681,11 @@
                     if (typeof backupData !== 'object' || backupData === null) throw new Error('Invalid backup file format.');
                     localStorage.clear();
                     for (const key in backupData) {
-                        if (Object.hasOwnProperty.call(backupData, key)) localStorage.setItem(key, backupData[key]);
+                        if (Object.hasOwnProperty.call(backupData, key)) {
+                            originalSetItem.call(localStorage, key, backupData[key]);
+                        }
                     }
+                    syncToFirebase();
                     alert('데이터를 성공적으로 복원했습니다. 페이지를 새로고침합니다.');
                     location.reload();
                 } catch (error) {
@@ -783,7 +706,6 @@
                     tab.classList.add('active');
                     target.classList.add('active');
                     
-                    // 에디터 탭이면 새 글 작성 버튼 표시
                     const tabInstance = TabManager.tabInstances && TabManager.tabInstances[target.id];
                     newPostBtn.style.display = (tabInstance && tabInstance instanceof EditorTab) ? 'inline-flex' : 'none';
                 });
