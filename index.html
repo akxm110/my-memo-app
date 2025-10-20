@@ -569,7 +569,7 @@
             }, 500);
         };
         
-        // Firebase 동기화 함수 (간단 버전)
+        // Firebase 동기화 함수 (자동 파싱 방지)
         function syncToFirebase() {
             if (isSyncing) return;
             isSyncing = true;
@@ -579,7 +579,8 @@
                 const key = localStorage.key(i);
                 // Firebase 내부 키 제외
                 if (key.startsWith('firebase:')) continue;
-                data[key] = localStorage.getItem(key);
+                // 값을 _value로 감싸서 Firebase가 자동 파싱 못하게 함
+                data[key] = { _value: localStorage.getItem(key) };
             }
             
             database.ref('users/' + userId).set(data).then(() => {
@@ -596,11 +597,11 @@
         database.ref('users/' + userId).once('value').then(snapshot => {
             const data = snapshot.val();
             if (data) {
-                for (const key in data) {
-                    // 값이 문자열인지 확인하고 저장
-                    const value = typeof data[key] === 'string' ? data[key] : JSON.stringify(data[key]);
+                // _value를 unwrap해서 localStorage에 저장
+                Object.keys(data).forEach(key => {
+                    const value = data[key]._value || data[key]; // _value가 있으면 unwrap
                     originalSetItem.call(localStorage, key, value);
-                }
+                });
                 console.log('✅ Firebase 데이터 로드 완료');
             }
             isInitialized = true;
@@ -618,7 +619,7 @@
                 let changed = false;
                 for (const key in data) {
                     const currentValue = localStorage.getItem(key);
-                    const newValue = typeof data[key] === 'string' ? data[key] : JSON.stringify(data[key]);
+                    const newValue = data[key]._value || data[key]; // _value unwrap
                     if (currentValue !== newValue) {
                         changed = true;
                         break;
@@ -628,8 +629,7 @@
                 if (changed) {
                     console.log('🔄 다른 기기에서 변경 감지');
                     for (const key in data) {
-                        // 값이 문자열인지 확인하고 저장
-                        const value = typeof data[key] === 'string' ? data[key] : JSON.stringify(data[key]);
+                        const value = data[key]._value || data[key]; // _value unwrap
                         originalSetItem.call(localStorage, key, value);
                     }
                     lastUpdateTime = Date.now();
