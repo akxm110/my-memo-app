@@ -577,6 +577,8 @@
             const data = {};
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
+                // Firebase 내부 키 제외
+                if (key.startsWith('firebase:')) continue;
                 data[key] = localStorage.getItem(key);
             }
             
