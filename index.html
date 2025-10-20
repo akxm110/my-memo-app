@@ -299,23 +299,10 @@
             min-height: 500px;
         }
         .editor-list-panel {
-            flex: 0 0 300px;
+            flex: 0 0 350px;
             display: flex;
             flex-direction: column;
             gap: 10px;
-        }
-        .editor-new-btn {
-            padding: 12px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-        }
-        .editor-new-btn:hover {
-            background-color: #218838;
         }
         .editor-post-list {
             flex: 1;
@@ -329,6 +316,7 @@
             border-bottom: 1px solid #dee2e6;
             cursor: pointer;
             transition: background-color 0.2s;
+            position: relative;
         }
         .editor-post-item:hover {
             background-color: #f8f9fa;
@@ -339,6 +327,15 @@
         }
         .editor-post-title {
             font-weight: bold;
+            margin-bottom: 8px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 15px;
+        }
+        .editor-post-preview {
+            font-size: 13px;
+            color: #6c757d;
             margin-bottom: 5px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -346,17 +343,97 @@
         }
         .editor-post-date {
             font-size: 12px;
-            color: #6c757d;
+            color: #999;
         }
         .editor-content-panel {
             flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
             background-color: #fff;
             border-radius: 8px;
-            padding: 20px;
+            padding: 30px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            overflow-y: auto;
+        }
+        .editor-content-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #dee2e6;
+            padding-bottom: 15px;
+        }
+        .editor-content-body {
+            font-size: 16px;
+            line-height: 1.8;
+            color: #333;
+        }
+        .editor-content-body img {
+            max-width: 100%;
+            height: auto;
+            margin: 15px 0;
+        }
+        .editor-empty-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #adb5bd;
+            font-size: 18px;
+        }
+        
+        /* 에디터 모달 */
+        .editor-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .editor-modal.active {
+            display: flex;
+        }
+        .editor-modal-content {
+            background-color: white;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 900px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .editor-modal-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .editor-modal-header h3 {
+            margin: 0;
+            font-size: 20px;
+        }
+        .editor-modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6c757d;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+        .editor-modal-close:hover {
+            color: #000;
+        }
+        .editor-modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
         }
         .editor-title-input {
             font-size: 24px;
@@ -365,6 +442,8 @@
             border-bottom: 2px solid #dee2e6;
             padding: 10px 0;
             outline: none;
+            width: 100%;
+            margin-bottom: 20px;
         }
         .editor-title-input:focus {
             border-bottom-color: #007bff;
@@ -377,6 +456,7 @@
             border-radius: 6px;
             background-color: #f8f9fa;
             flex-wrap: wrap;
+            margin-bottom: 15px;
         }
         .editor-btn {
             padding: 6px 12px;
@@ -390,28 +470,28 @@
         .editor-btn:hover {
             background-color: #e9ecef;
         }
-        .editor-btn.active {
-            background-color: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
         .editor-textarea {
-            flex: 1;
+            min-height: 300px;
             border: 1px solid #dee2e6;
             border-radius: 6px;
             padding: 15px;
             font-family: inherit;
             font-size: 15px;
             line-height: 1.6;
-            resize: none;
             outline: none;
         }
         .editor-textarea:focus {
             border-color: #007bff;
         }
-        .editor-actions {
+        .editor-textarea:empty:before {
+            content: attr(data-placeholder);
+            color: #adb5bd;
+        }
+        .editor-modal-footer {
+            padding: 20px 30px;
+            border-top: 1px solid #dee2e6;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-end;
             gap: 10px;
         }
         .editor-save-btn {
@@ -427,19 +507,52 @@
         .editor-save-btn:hover {
             background-color: #0056b3;
         }
-        .editor-delete-btn {
+        .editor-cancel-btn {
             padding: 10px 20px;
-            background-color: #dc3545;
+            background-color: #6c757d;
             color: white;
             border: none;
             border-radius: 6px;
             cursor: pointer;
         }
-        .editor-delete-btn:hover {
-            background-color: #c82333;
+        .editor-cancel-btn:hover {
+            background-color: #5a6268;
         }
         .editor-image-upload {
             display: none;
+        }
+        
+        /* 컨텍스트 메뉴 */
+        .context-menu {
+            display: none;
+            position: fixed;
+            background-color: white;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 3000;
+            min-width: 120px;
+        }
+        .context-menu.active {
+            display: block;
+        }
+        .context-menu-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 14px;
+        }
+        .context-menu-item:first-child {
+            border-radius: 6px 6px 0 0;
+        }
+        .context-menu-item:last-child {
+            border-radius: 0 0 6px 6px;
+        }
+        .context-menu-item:hover {
+            background-color: #f8f9fa;
+        }
+        .context-menu-item.delete {
+            color: #dc3545;
         }
 
         /* 모달 스타일 */
@@ -993,6 +1106,9 @@
             reader.readAsText(file);
         }
 
+        // EditorTab 인스턴스 저장
+        window.editorTabInstances = {};
+        
         function initializeTabSwitching() {
             const newPostBtn = document.getElementById('new-post-btn');
             
@@ -1014,8 +1130,10 @@
                         
                         // 버튼 클릭 시 해당 탭의 EditorTab 인스턴스에서 새 글 작성
                         newPostBtn.onclick = () => {
-                            const editorBtn = target.querySelector('.editor-new-btn');
-                            if (editorBtn) editorBtn.click();
+                            const editorInstance = window.editorTabInstances[tabId];
+                            if (editorInstance) {
+                                editorInstance.createNewPost();
+                            }
                         };
                     } else {
                         newPostBtn.style.display = 'none';
@@ -1225,7 +1343,9 @@
         }
         function loadMemos() { 
             try {
-                JSON.parse(localStorage.getItem(memoDataKey) || '[]').forEach(createMemoDOM);
+                const memos = JSON.parse(localStorage.getItem(memoDataKey) || '[]');
+                // 역순으로 로드해서 prepend 시 올바른 순서 유지
+                memos.reverse().forEach(createMemoDOM);
             } catch (error) {
                 console.error('메모 데이터 로드 실패:', error);
                 localStorage.removeItem(memoDataKey);
@@ -1305,7 +1425,8 @@
                     } else if (tabType === 'memo') {
                         new MemoTab(content, tabData.id);
                     } else if (tabType === 'editor') {
-                        new EditorTab(content, tabData.id);
+                        const editorInstance = new EditorTab(content, tabData.id);
+                        window.editorTabInstances[tabData.id] = editorInstance;
                     }
                 });
                 initializeTabSwitching();
@@ -1613,7 +1734,9 @@
             
             loadMemos() {
                 try {
-                    JSON.parse(localStorage.getItem(this.dataKey) || '[]').forEach(text => this.createMemoDOM(text));
+                    const memos = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                    // 역순으로 로드해서 prepend 시 올바른 순서 유지
+                    memos.reverse().forEach(text => this.createMemoDOM(text));
                 } catch (error) {
                     console.error('메모 데이터 로드 실패:', error);
                     localStorage.removeItem(this.dataKey);
@@ -1674,9 +1797,14 @@
                 this.container = containerEl;
                 this.tabId = tabId;
                 this.dataKey = `editorTabData-${this.tabId}`;
+                this.modalId = `editor-modal-${this.tabId}`;
+                this.contextMenuId = `context-menu-${this.tabId}`;
                 this.posts = [];
                 this.currentPostId = null;
+                this.editingPostId = null;
                 this.renderHTML();
+                this.createModal();
+                this.createContextMenu();
                 this.bindElements();
                 this.addEventListeners();
                 this.loadPosts();
@@ -1686,10 +1814,25 @@
                 this.container.innerHTML = `
                     <div class="editor-container">
                         <div class="editor-list-panel">
-                            <button class="editor-new-btn">✍️ 새 글 작성</button>
                             <div class="editor-post-list"></div>
-    </div>
+                        </div>
                         <div class="editor-content-panel">
+                            <div class="editor-empty-state">왼쪽에서 글을 선택하거나 "글쓰기" 버튼을 눌러 새 글을 작성하세요</div>
+                        </div>
+                    </div>`;
+            }
+            
+            createModal() {
+                const modal = document.createElement('div');
+                modal.id = this.modalId;
+                modal.className = 'editor-modal';
+                modal.innerHTML = `
+                    <div class="editor-modal-content">
+                        <div class="editor-modal-header">
+                            <h3>글 작성</h3>
+                            <button class="editor-modal-close">×</button>
+                        </div>
+                        <div class="editor-modal-body">
                             <input type="text" class="editor-title-input" placeholder="제목을 입력하세요">
                             <div class="editor-toolbar">
                                 <button class="editor-btn" data-command="bold"><strong>B</strong></button>
@@ -1701,38 +1844,53 @@
                                 <button class="editor-btn" data-command="image">🖼️ 이미지</button>
                             </div>
                             <div contenteditable="true" class="editor-textarea" data-placeholder="내용을 입력하세요..."></div>
-                            <div class="editor-actions">
-                                <button class="editor-save-btn">저장</button>
-                                <button class="editor-delete-btn">삭제</button>
-                            </div>
                             <input type="file" class="editor-image-upload" accept="image/*">
                         </div>
+                        <div class="editor-modal-footer">
+                            <button class="editor-cancel-btn">취소</button>
+                            <button class="editor-save-btn">저장</button>
+                        </div>
                     </div>`;
+                document.body.appendChild(modal);
+            }
+            
+            createContextMenu() {
+                const menu = document.createElement('div');
+                menu.id = this.contextMenuId;
+                menu.className = 'context-menu';
+                menu.innerHTML = `
+                    <div class="context-menu-item" data-action="edit">수정</div>
+                    <div class="context-menu-item delete" data-action="delete">삭제</div>`;
+                document.body.appendChild(menu);
             }
             
             bindElements() {
-                this.newBtn = this.container.querySelector('.editor-new-btn');
                 this.postList = this.container.querySelector('.editor-post-list');
-                this.titleInput = this.container.querySelector('.editor-title-input');
-                this.toolbar = this.container.querySelector('.editor-toolbar');
-                this.textarea = this.container.querySelector('.editor-textarea');
-                this.saveBtn = this.container.querySelector('.editor-save-btn');
-                this.deleteBtn = this.container.querySelector('.editor-delete-btn');
-                this.imageUpload = this.container.querySelector('.editor-image-upload');
+                this.contentPanel = this.container.querySelector('.editor-content-panel');
+                this.modal = document.getElementById(this.modalId);
+                this.modalClose = this.modal.querySelector('.editor-modal-close');
+                this.modalTitle = this.modal.querySelector('.editor-title-input');
+                this.modalToolbar = this.modal.querySelector('.editor-toolbar');
+                this.modalTextarea = this.modal.querySelector('.editor-textarea');
+                this.modalSaveBtn = this.modal.querySelector('.editor-save-btn');
+                this.modalCancelBtn = this.modal.querySelector('.editor-cancel-btn');
+                this.imageUpload = this.modal.querySelector('.editor-image-upload');
+                this.contextMenu = document.getElementById(this.contextMenuId);
             }
             
             addEventListeners() {
-                // 새 글 작성 버튼
-                this.newBtn.addEventListener('click', () => this.createNewPost());
+                // 모달 닫기
+                this.modalClose.addEventListener('click', () => this.closeModal());
+                this.modalCancelBtn.addEventListener('click', () => this.closeModal());
+                this.modal.addEventListener('click', (e) => {
+                    if (e.target === this.modal) this.closeModal();
+                });
                 
                 // 저장 버튼
-                this.saveBtn.addEventListener('click', () => this.savePost());
-                
-                // 삭제 버튼
-                this.deleteBtn.addEventListener('click', () => this.deletePost());
+                this.modalSaveBtn.addEventListener('click', () => this.savePost());
                 
                 // 툴바 버튼들
-                this.toolbar.addEventListener('click', (e) => {
+                this.modalToolbar.addEventListener('click', (e) => {
                     const btn = e.target.closest('.editor-btn');
                     if (!btn) return;
                     
@@ -1741,7 +1899,7 @@
                         this.imageUpload.click();
                     } else {
                         document.execCommand(command, false, null);
-                        this.textarea.focus();
+                        this.modalTextarea.focus();
                     }
                 });
                 
@@ -1752,12 +1910,32 @@
                 });
                 
                 // 이미지 붙여넣기
-                this.textarea.addEventListener('paste', (e) => {
+                this.modalTextarea.addEventListener('paste', (e) => {
                     const file = Array.from(e.clipboardData.files).find(f => f.type.startsWith('image/'));
                     if (file) {
                         e.preventDefault();
                         this.handleImageUpload(file);
                     }
+                });
+                
+                // 컨텍스트 메뉴 닫기
+                document.addEventListener('click', () => this.hideContextMenu());
+                
+                // 컨텍스트 메뉴 항목 클릭
+                this.contextMenu.addEventListener('click', (e) => {
+                    const item = e.target.closest('.context-menu-item');
+                    if (!item) return;
+                    
+                    const action = item.dataset.action;
+                    const postId = parseInt(this.contextMenu.dataset.postId);
+                    
+                    if (action === 'edit') {
+                        this.editPost(postId);
+                    } else if (action === 'delete') {
+                        this.deletePost(postId);
+                    }
+                    
+                    this.hideContextMenu();
                 });
             }
             
@@ -1768,7 +1946,7 @@
                     img.src = e.target.result;
                     img.style.maxWidth = '100%';
                     img.style.height = 'auto';
-                    this.textarea.appendChild(img);
+                    this.modalTextarea.appendChild(img);
                 };
                 reader.readAsDataURL(file);
                 this.imageUpload.value = '';
@@ -1778,9 +1956,6 @@
                 try {
                     this.posts = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
                     this.renderPostList();
-                    if (this.posts.length > 0) {
-                        this.loadPost(this.posts[0].id);
-                    }
                 } catch (error) {
                     console.error('게시글 로드 실패:', error);
                     this.posts = [];
@@ -1804,74 +1979,133 @@
                     const date = new Date(post.date);
                     const dateStr = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
                     
+                    // 본문에서 HTML 태그 제거하고 텍스트만 추출
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = post.content;
+                    const textContent = tempDiv.textContent || tempDiv.innerText || '';
+                    const preview = textContent.length > 25 ? textContent.substring(0, 25) + '...' : textContent;
+                    
                     item.innerHTML = `
                         <div class="editor-post-title">${escapeHTML(post.title || '제목 없음')}</div>
+                        <div class="editor-post-preview">${escapeHTML(preview)}</div>
                         <div class="editor-post-date">${dateStr}</div>`;
                     
-                    item.addEventListener('click', () => this.loadPost(post.id));
+                    // 클릭으로 본문 보기
+                    item.addEventListener('click', () => this.viewPost(post.id));
+                    
+                    // 우클릭으로 컨텍스트 메뉴
+                    item.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        this.showContextMenu(e, post.id);
+                    });
+                    
                     this.postList.appendChild(item);
                 });
             }
             
-            createNewPost() {
-                const newPost = {
-                    id: Date.now(),
-                    title: '',
-                    content: '',
-                    date: Date.now()
-                };
-                this.posts.unshift(newPost);
-                this.savePosts();
-                this.renderPostList();
-                this.loadPost(newPost.id);
+            openModal() {
+                this.modal.classList.add('active');
+                this.modalTitle.focus();
             }
             
-            loadPost(postId) {
+            closeModal() {
+                this.modal.classList.remove('active');
+                this.editingPostId = null;
+                this.modalTitle.value = '';
+                this.modalTextarea.innerHTML = '';
+            }
+            
+            createNewPost() {
+                this.editingPostId = null;
+                this.modalTitle.value = '';
+                this.modalTextarea.innerHTML = '';
+                this.openModal();
+            }
+            
+            editPost(postId) {
+                const post = this.posts.find(p => p.id === postId);
+                if (!post) return;
+                
+                this.editingPostId = postId;
+                this.modalTitle.value = post.title;
+                this.modalTextarea.innerHTML = post.content;
+                this.openModal();
+            }
+            
+            viewPost(postId) {
                 const post = this.posts.find(p => p.id === postId);
                 if (!post) return;
                 
                 this.currentPostId = postId;
-                this.titleInput.value = post.title;
-                this.textarea.innerHTML = post.content;
                 this.renderPostList();
+                
+                this.contentPanel.innerHTML = `
+                    <div class="editor-content-title">${escapeHTML(post.title || '제목 없음')}</div>
+                    <div class="editor-content-body">${post.content}</div>`;
             }
             
             savePost() {
-                if (!this.currentPostId) {
-                    this.createNewPost();
+                const title = this.modalTitle.value.trim() || '제목 없음';
+                const content = this.modalTextarea.innerHTML.trim();
+                
+                if (!content) {
+                    alert('내용을 입력해주세요.');
                     return;
                 }
                 
-                const post = this.posts.find(p => p.id === this.currentPostId);
-                if (!post) return;
-                
-                post.title = this.titleInput.value.trim() || '제목 없음';
-                post.content = this.textarea.innerHTML;
-                post.date = Date.now();
+                if (this.editingPostId) {
+                    // 수정
+                    const post = this.posts.find(p => p.id === this.editingPostId);
+                    if (post) {
+                        post.title = title;
+                        post.content = content;
+                        post.date = Date.now();
+                    }
+                } else {
+                    // 새 글
+                    const newPost = {
+                        id: Date.now(),
+                        title,
+                        content,
+                        date: Date.now()
+                    };
+                    this.posts.unshift(newPost);
+                    this.currentPostId = newPost.id;
+                }
                 
                 this.savePosts();
                 this.renderPostList();
                 
-                alert('저장되었습니다!');
+                if (this.currentPostId) {
+                    this.viewPost(this.currentPostId);
+                }
+                
+                this.closeModal();
             }
             
-            deletePost() {
-                if (!this.currentPostId) return;
-                
+            deletePost(postId) {
                 if (!confirm('이 글을 삭제하시겠습니까?')) return;
                 
-                this.posts = this.posts.filter(p => p.id !== this.currentPostId);
+                this.posts = this.posts.filter(p => p.id !== postId);
                 this.savePosts();
                 
-                this.currentPostId = null;
-                this.titleInput.value = '';
-                this.textarea.innerHTML = '';
+                if (this.currentPostId === postId) {
+                    this.currentPostId = null;
+                    this.contentPanel.innerHTML = '<div class="editor-empty-state">왼쪽에서 글을 선택하거나 "글쓰기" 버튼을 눌러 새 글을 작성하세요</div>';
+                }
                 
                 this.renderPostList();
-                
-                if (this.posts.length > 0) {
-                    this.loadPost(this.posts[0].id);
-                }
+            }
+            
+            showContextMenu(e, postId) {
+                this.contextMenu.dataset.postId = postId;
+                this.contextMenu.style.left = e.pageX + 'px';
+                this.contextMenu.style.top = e.pageY + 'px';
+                this.contextMenu.classList.add('active');
+            }
+            
+            hideContextMenu() {
+                this.contextMenu.classList.remove('active');
             }
         }
     </script>
