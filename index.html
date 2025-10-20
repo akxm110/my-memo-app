@@ -539,15 +539,36 @@
             reader.onload = async function(e) {
                 try {
                     const backupData = JSON.parse(e.target.result);
+                    
+                    // 데이터 구조 검증
                     window.appState.userData = {
                         videoMemoData: backupData.videoMemoData || [],
                         plainMemosData: backupData.plainMemosData || [],
                         dynamicTabsConfig: backupData.dynamicTabsConfig || [],
                         dynamicTabData: backupData.dynamicTabData || {}
                     };
+                    
+                    // Firebase에 저장
                     await window.appState.saveUserData();
-                    alert('데이터를 성공적으로 복원했습니다.');
+                    
+                    // 저장 완료 후 UI 강제 업데이트
+                    if (window.initializeVideoTab) window.initializeVideoTab();
+                    if (window.initializeMemoTab) window.initializeMemoTab();
+                    if (TabManager && TabManager.render) {
+                        TabManager.loadTabs();
+                        TabManager.render();
+                    }
+                    
+                    alert('데이터를 성공적으로 복원했습니다!');
+                    
+                    // 선택적: 3초 후 페이지 새로고침으로 완전한 동기화 보장
+                    if (confirm('완전한 동기화를 위해 페이지를 새로고침하시겠습니까?')) {
+                        setTimeout(() => {
+                            location.reload();
+                        }, 500);
+                    }
                 } catch (error) {
+                    console.error('Import error:', error);
                     alert('백업 파일을 불러오는 중 오류가 발생했습니다: ' + error.message);
                 }
             };
