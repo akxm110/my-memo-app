@@ -133,22 +133,10 @@
         
         <form id="shareForm">
             <div class="form-group">
-                <label>저장할 위치</label>
-                <select id="saveLocation" required>
-                    <option value="">선택하세요</option>
-                    <option value="bookmarks">📚 북마크</option>
-                    <option value="thumbnails">🖼️ 썸네일</option>
-                    <option value="community">💬 커뮤니티</option>
+                <label></label>
+                <select id="tabSelect" required>
+                    <option value="">탭을 선택하세요</option>
                 </select>
-            </div>
-            
-            <div id="tabSelector" style="display:none;">
-                <div class="form-group">
-                    <label>탭 선택</label>
-                    <select id="tabSelect" required>
-                        <option value="">탭을 선택하세요</option>
-                    </select>
-                </div>
             </div>
             
             <div class="form-group">
@@ -204,25 +192,11 @@
         document.getElementById('url').value = sharedUrl;
         document.getElementById('memo').value = sharedText;
 
-        const saveLocation = document.getElementById('saveLocation');
-        const tabSelector = document.getElementById('tabSelector');
         const tabSelect = document.getElementById('tabSelect');
         const tabInfo = document.getElementById('tabInfo');
 
-        // 저장 위치 변경 시
-        saveLocation.addEventListener('change', async (e) => {
-            const location = e.target.value;
-            
-            if (location === 'bookmarks' || location === 'thumbnails' || location === 'community') {
-                tabSelector.style.display = 'block';
-                await loadTabs(location);
-            } else {
-                tabSelector.style.display = 'none';
-            }
-        });
-
-        // 탭 목록 로드
-        async function loadTabs(type) {
+        // 모든 탭 목록 로드
+        async function loadAllTabs() {
             try {
                 const snapshot = await get(userRef);
                 const userData = snapshot.val();
@@ -232,45 +206,74 @@
                     return;
                 }
 
-                let tabKey, dataKey;
-                if (type === 'bookmarks') {
-                    tabKey = 'bookmarkTabs';
-                    dataKey = 'bookmarkTabData';
-                } else if (type === 'community') {
-                    tabKey = 'communityTabs';
-                    dataKey = 'communityTabData';
-                } else {
-                    tabKey = 'tabs';
-                    dataKey = 'tabData';
-                }
-                
-                let tabs = [];
-                
-                if (userData[tabKey]) {
+                tabSelect.innerHTML = '<option value="">탭을 선택하세요</option>';
+                let hasAnyTab = false;
+
+                // 북마크 탭 로드
+                if (userData.bookmarkTabs) {
                     try {
-                        tabs = JSON.parse(userData[tabKey]);
+                        const bookmarkTabs = JSON.parse(userData.bookmarkTabs);
+                        if (bookmarkTabs.length > 0) {
+                            hasAnyTab = true;
+                            bookmarkTabs.forEach(tab => {
+                                const option = document.createElement('option');
+                                option.value = `bookmarks:${tab.id}`;
+                                option.textContent = `📚 북마크 - ${tab.icon} ${tab.name}`;
+                                tabSelect.appendChild(option);
+                            });
+                        }
                     } catch (e) {
-                        console.error('탭 파싱 오류:', e);
+                        console.error('북마크 탭 파싱 오류:', e);
                     }
                 }
 
-                tabSelect.innerHTML = '<option value="">탭을 선택하세요</option>';
-                
-                if (tabs.length === 0) {
+                // 썸네일 탭 로드
+                if (userData.tabs) {
+                    try {
+                        const thumbnailTabs = JSON.parse(userData.tabs);
+                        if (thumbnailTabs.length > 0) {
+                            hasAnyTab = true;
+                            thumbnailTabs.forEach(tab => {
+                                const option = document.createElement('option');
+                                option.value = `thumbnails:${tab.id}`;
+                                option.textContent = `🖼️ 썸네일 - ${tab.icon} ${tab.name}`;
+                                tabSelect.appendChild(option);
+                            });
+                        }
+                    } catch (e) {
+                        console.error('썸네일 탭 파싱 오류:', e);
+                    }
+                }
+
+                // 커뮤니티 탭 로드
+                if (userData.communityTabs) {
+                    try {
+                        const communityTabs = JSON.parse(userData.communityTabs);
+                        if (communityTabs.length > 0) {
+                            hasAnyTab = true;
+                            communityTabs.forEach(tab => {
+                                const option = document.createElement('option');
+                                option.value = `community:${tab.id}`;
+                                option.textContent = `💬 커뮤니티 - ${tab.icon} ${tab.name}`;
+                                tabSelect.appendChild(option);
+                            });
+                        }
+                    } catch (e) {
+                        console.error('커뮤니티 탭 파싱 오류:', e);
+                    }
+                }
+
+                if (!hasAnyTab) {
                     tabSelect.innerHTML += '<option value="" disabled>탭이 없습니다</option>';
-                } else {
-                    tabs.forEach(tab => {
-                        const option = document.createElement('option');
-                        option.value = tab.id;
-                        option.textContent = `${tab.icon} ${tab.name}`;
-                        tabSelect.appendChild(option);
-                    });
                 }
             } catch (error) {
                 console.error('탭 로드 오류:', error);
                 alert('탭을 불러오는데 실패했습니다.');
             }
         }
+
+        // 페이지 로드 시 모든 탭 로드
+        loadAllTabs();
 
         // 탭 선택 시
         tabSelect.addEventListener('change', (e) => {
@@ -284,19 +287,21 @@
         document.getElementById('shareForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const location = saveLocation.value;
-            const tabId = tabSelect.value;
+            const selectedValue = tabSelect.value;
             const title = document.getElementById('title').value;
             const url = document.getElementById('url').value;
             const memo = document.getElementById('memo').value;
 
-            if (!location) {
-                alert('저장 위치를 선택하세요.');
+            if (!selectedValue) {
+                alert('탭을 선택하세요.');
                 return;
             }
 
-            if (!tabId) {
-                alert('탭을 선택하세요.');
+            // "type:tabId" 형식 파싱
+            const [location, tabId] = selectedValue.split(':');
+
+            if (!location || !tabId) {
+                alert('잘못된 탭 선택입니다.');
                 return;
             }
 
