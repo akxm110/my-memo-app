@@ -2405,6 +2405,10 @@
             
             savePosts() {
                 localStorage.setItem(this.dataKey, JSON.stringify(this.posts));
+                // Firebase 동기화
+                if (!isSyncing && database) {
+                    database.ref(`users/${userId}/${this.dataKey}`).set(JSON.stringify(this.posts));
+                }
             }
             
             renderPostList() {
