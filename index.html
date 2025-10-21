@@ -427,6 +427,20 @@
         @media (max-width: 768px) {
             .editor-post-item {
                 padding: 12px;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }
+            .editor-post-text {
+                flex: 1;
+                min-width: 0; /* flexbox 오버플로우 방지 */
+            }
+            .editor-post-thumbnail {
+                width: 60px;
+                height: 60px;
+                object-fit: cover;
+                border-radius: 8px;
+                flex-shrink: 0;
             }
             .editor-post-title {
                 font-size: 14px;
@@ -2271,10 +2285,26 @@
                     const textContent = tempDiv.textContent || tempDiv.innerText || '';
                     const preview = textContent.length > 50 ? textContent.substring(0, 50) + '...' : textContent;
                     
-                    item.innerHTML = `
-                        <div class="editor-post-title">${escapeHTML(post.title || '제목 없음')}</div>
-                        <div class="editor-post-preview">${escapeHTML(preview)}</div>
-                        <div class="editor-post-date">${dateStr} ${timeStr}</div>`;
+                    // 본문에서 첫 번째 이미지 추출 (모바일용 썸네일)
+                    const imgMatch = post.content.match(/<img[^>]+src=["']([^"']+)["']/i);
+                    const thumbnailSrc = imgMatch ? imgMatch[1] : null;
+                    
+                    // 이미지 있으면: 텍스트 + 썸네일 구조
+                    if (thumbnailSrc) {
+                        item.innerHTML = `
+                            <div class="editor-post-text">
+                                <div class="editor-post-title">${escapeHTML(post.title || '제목 없음')}</div>
+                                <div class="editor-post-preview">${escapeHTML(preview)}</div>
+                                <div class="editor-post-date">${dateStr} ${timeStr}</div>
+                            </div>
+                            <img class="editor-post-thumbnail" src="${thumbnailSrc}" alt="썸네일">`;
+                    } else {
+                        // 이미지 없으면: 기존 구조 유지
+                        item.innerHTML = `
+                            <div class="editor-post-title">${escapeHTML(post.title || '제목 없음')}</div>
+                            <div class="editor-post-preview">${escapeHTML(preview)}</div>
+                            <div class="editor-post-date">${dateStr} ${timeStr}</div>`;
+                    }
                     
                     // 클릭으로 본문 보기
                     item.addEventListener('click', () => this.viewPost(post.id));
