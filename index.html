@@ -1051,20 +1051,23 @@
             isInitialized = true;
         }
 
-        // --- 실시간 동기화 리스너 ---
+        // --- 실시간 동기화 리스너 (기본 설정만) ---
         let lastUpdateTime = Date.now();
         
         database.ref('users/' + userId).on('value', (snapshot) => {
             if (!isInitialized) return; // 초기 로드는 무시
             if (isSyncing) return; // 내가 업데이트 중이면 무시
-            if (Date.now() - lastUpdateTime < 2000) return; // 2초 이내 중복 방지
+            if (Date.now() - lastUpdateTime < 5000) return; // 5초 이내 중복 방지
             
             const data = snapshot.val();
             if (!data) return;
             
+            // 기본 설정 키만 체크 (탭 데이터는 각 탭이 자체적으로 관리)
+            const basicKeys = ['videoMemoData', 'plainMemosData', 'dynamicTabsConfig', 'bookmarkTabs', 'tabs', 'communityTabs'];
+            
             // 변경사항이 있는지 확인
             let hasChanges = false;
-            for (const key in data) {
+            for (const key of basicKeys) {
                 if (data.hasOwnProperty(key)) {
                     const currentValue = localStorage.getItem(key);
                     if (currentValue !== data[key]) {
@@ -1075,21 +1078,17 @@
             }
             
             if (hasChanges) {
-                console.log('🔄 다른 기기에서 변경 감지! 페이지를 새로고침합니다...');
+                console.log('🔄 다른 기기에서 변경 감지! 데이터 업데이트 중...');
                 
-                // 데이터 업데이트
-                for (const key in data) {
+                // 기본 설정만 업데이트 (location.reload 제거!)
+                for (const key of basicKeys) {
                     if (data.hasOwnProperty(key)) {
                         originalSetItem.call(localStorage, key, data[key]);
                     }
                 }
                 
                 lastUpdateTime = Date.now();
-                
-                // 3초 후 자동 새로고침
-                setTimeout(() => {
-                    location.reload();
-                }, 3000);
+                console.log('✅ 데이터 업데이트 완료 (새로고침 없음)');
             }
         });
 
@@ -2028,17 +2027,19 @@
                 this.container = containerEl;
                 this.tabId = tabId;
                 this.dataKey = `editorTabData-${this.tabId}`;
+                this.firebasePath = `users/${userId}/${this.dataKey}`;
                 this.modalId = `editor-modal-${this.tabId}`;
                 this.contextMenuId = `context-menu-${this.tabId}`;
                 this.posts = [];
                 this.currentPostId = null;
                 this.editingPostId = null;
+                this.firebaseListenerActive = false;
                 this.renderHTML();
                 this.createModal();
                 this.createContextMenu();
                 this.bindElements();
                 this.addEventListeners();
-                this.loadPosts();
+                this.initFirebaseListener(); // Firebase 우선
             }
             
             renderHTML() {
@@ -2183,46 +2184,47 @@
                 this.imageUpload.value = '';
             }
             
-            loadPosts() {
-                try {
-                    this.posts = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
-                    this.renderPostList();
-                } catch (error) {
-                    console.error('게시글 로드 실패:', error);
-                    this.posts = [];
+            // Firebase 리스너 초기화 (실시간 동기화)
+            initFirebaseListener() {
+                if (!database) {
+                    console.error('Firebase가 초기화되지 않았습니다');
+                    return;
                 }
-            }
-            
-            savePosts() {
-                localStorage.setItem(this.dataKey, JSON.stringify(this.posts));
-                // Firebase 동기화
-                try {
-                    if (typeof database !== 'undefined' && database) {
-                        const userIdValue = typeof userId !== 'undefined' ? userId : 'user1';
-                        
-                        // isSyncing 플래그 설정
-                        if (typeof window.isSyncing !== 'undefined') {
-                            window.isSyncing = true;
+                
+                const ref = database.ref(this.firebasePath);
+                
+                ref.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    this.posts = [];
+                    
+                    if (data) {
+                        // Firebase에서 개별 항목으로 저장된 데이터 읽기
+                        if (typeof data === 'string') {
+                            // 기존 방식 (전체 JSON) - 호환성 유지
+                            try {
+                                this.posts = JSON.parse(data);
+                            } catch (e) {
+                                console.error('데이터 파싱 오류:', e);
+                            }
+                        } else if (typeof data === 'object') {
+                            // 새 방식 (개별 항목)
+                            this.posts = Object.values(data);
                         }
                         
-                        database.ref(`users/${userIdValue}/${this.dataKey}`).set(JSON.stringify(this.posts))
-                            .then(() => {
-                                console.log('✅ 에디터 데이터 Firebase 저장 완료');
-                                // 플래그 해제
-                                if (typeof window.isSyncing !== 'undefined') {
-                                    setTimeout(() => { window.isSyncing = false; }, 1000);
-                                }
-                            })
-                            .catch(err => {
-                                console.error('Firebase 저장 오류:', err);
-                                if (typeof window.isSyncing !== 'undefined') {
-                                    window.isSyncing = false;
-                                }
-                            });
+                        this.posts.sort((a, b) => b.date - a.date);
                     }
-                } catch (error) {
-                    console.error('Firebase 동기화 오류:', error);
-                }
+                    
+                    this.renderPostList();
+                    
+                    // 현재 보고 있는 글이 있으면 유지
+                    if (this.currentPostId) {
+                        this.viewPost(this.currentPostId);
+                    }
+                    
+                    this.firebaseListenerActive = true;
+                }, (error) => {
+                    console.error('Firebase 리스너 오류:', error);
+                });
             }
             
             renderPostList() {
@@ -2336,48 +2338,75 @@
                     return;
                 }
                 
+                if (!database) {
+                    alert('Firebase 연결 오류');
+                    return;
+                }
+                
                 if (this.editingPostId) {
-                    // 수정
-                    const post = this.posts.find(p => p.id === this.editingPostId);
-                    if (post) {
-                        post.title = title;
-                        post.content = content;
-                        post.date = Date.now();
-                    }
-                } else {
-                    // 새 글
-                    const newPost = {
-                        id: Date.now(),
+                    // 수정 - Firebase에 개별 항목 업데이트
+                    const postData = {
+                        id: this.editingPostId,
                         title,
                         content,
                         date: Date.now()
                     };
-                    this.posts.unshift(newPost);
-                    this.currentPostId = newPost.id;
+                    
+                    database.ref(`${this.firebasePath}/${this.editingPostId}`).set(postData)
+                        .then(() => {
+                            console.log('✅ 글 수정 완료');
+                            this.currentPostId = this.editingPostId;
+                            this.closeModal();
+                        })
+                        .catch(err => {
+                            console.error('수정 오류:', err);
+                            alert('저장 실패');
+                        });
+                } else {
+                    // 새 글 - Firebase에 개별 항목 추가
+                    const newId = Date.now();
+                    const newPost = {
+                        id: newId,
+                        title,
+                        content,
+                        date: newId
+                    };
+                    
+                    database.ref(`${this.firebasePath}/${newId}`).set(newPost)
+                        .then(() => {
+                            console.log('✅ 새 글 저장 완료');
+                            this.currentPostId = newId;
+                            this.closeModal();
+                        })
+                        .catch(err => {
+                            console.error('저장 오류:', err);
+                            alert('저장 실패');
+                        });
                 }
-                
-                this.savePosts();
-                this.renderPostList();
-                
-                if (this.currentPostId) {
-                    this.viewPost(this.currentPostId);
-                }
-                
-                this.closeModal();
             }
             
             deletePost(postId) {
                 if (!confirm('이 글을 삭제하시겠습니까?')) return;
                 
-                this.posts = this.posts.filter(p => p.id !== postId);
-                this.savePosts();
-                
-                if (this.currentPostId === postId) {
-                    this.currentPostId = null;
-                    this.contentPanel.innerHTML = '<div class="editor-empty-state">왼쪽에서 글을 선택하거나 "글쓰기" 버튼을 눌러 새 글을 작성하세요</div>';
+                if (!database) {
+                    alert('Firebase 연결 오류');
+                    return;
                 }
                 
-                this.renderPostList();
+                // Firebase에서 개별 항목 삭제
+                database.ref(`${this.firebasePath}/${postId}`).remove()
+                    .then(() => {
+                        console.log('✅ 글 삭제 완료');
+                        
+                        if (this.currentPostId === postId) {
+                            this.currentPostId = null;
+                            this.contentPanel.innerHTML = '<div class="editor-empty-state">왼쪽에서 글을 선택하거나 "글쓰기" 버튼을 눌러 새 글을 작성하세요</div>';
+                        }
+                    })
+                    .catch(err => {
+                        console.error('삭제 오류:', err);
+                        alert('삭제 실패');
+                    });
             }
             
             showContextMenu(e, postId) {
