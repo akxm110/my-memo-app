@@ -128,14 +128,14 @@
         <h1>📝 공유된 콘텐츠 저장</h1>
         
         <div class="tab-info" id="tabInfo">
-            탭을 선택하세요
+            🔄 탭 목록을 불러오는 중...
         </div>
         
         <form id="shareForm">
             <div class="form-group">
                 <label></label>
                 <select id="tabSelect" required>
-                    <option value="">탭을 선택하세요</option>
+                    <option value="">🔄 로딩 중...</option>
                 </select>
             </div>
             
@@ -197,24 +197,24 @@
 
         // 모든 탭 목록 로드
         async function loadAllTabs() {
-            console.log('🔍 탭 로드 시작...');
+            tabInfo.textContent = '🔄 Firebase 연결 중...';
+            tabInfo.style.color = '#2196F3';
+            
             try {
                 const snapshot = await get(userRef);
                 const userData = snapshot.val();
                 
-                console.log('📦 Firebase 데이터:', userData);
-                
                 if (!userData) {
-                    console.error('❌ userData가 없습니다');
-                    tabSelect.innerHTML = '<option value="">탭이 없습니다</option>';
+                    tabInfo.textContent = '❌ 사용자 데이터가 없습니다';
+                    tabInfo.style.color = '#f44336';
+                    tabSelect.innerHTML = '<option value="">데이터 없음</option>';
                     return;
                 }
 
                 tabSelect.innerHTML = '<option value="">탭을 선택하세요</option>';
-                let hasAnyTab = false;
+                let totalTabs = 0;
 
                 // 북마크 탭 로드
-                console.log('📚 북마크 탭 체크:', userData.bookmarkTabs);
                 if (userData.bookmarkTabs) {
                     try {
                         let bookmarkTabs;
@@ -223,25 +223,23 @@
                         } else {
                             bookmarkTabs = userData.bookmarkTabs;
                         }
-                        console.log('📚 북마크 탭 파싱됨:', bookmarkTabs);
                         
                         if (Array.isArray(bookmarkTabs) && bookmarkTabs.length > 0) {
-                            hasAnyTab = true;
                             bookmarkTabs.forEach(tab => {
                                 const option = document.createElement('option');
                                 option.value = `bookmarks:${tab.id}`;
                                 option.textContent = `📚 북마크 - ${tab.icon} ${tab.name}`;
                                 tabSelect.appendChild(option);
-                                console.log('✅ 북마크 탭 추가:', tab.name);
+                                totalTabs++;
                             });
                         }
                     } catch (e) {
-                        console.error('❌ 북마크 탭 파싱 오류:', e);
+                        tabInfo.textContent = '❌ 북마크 탭 로드 오류: ' + e.message;
+                        tabInfo.style.color = '#f44336';
                     }
                 }
 
                 // 썸네일 탭 로드
-                console.log('🖼️ 썸네일 탭 체크:', userData.tabs);
                 if (userData.tabs) {
                     try {
                         let thumbnailTabs;
@@ -250,25 +248,23 @@
                         } else {
                             thumbnailTabs = userData.tabs;
                         }
-                        console.log('🖼️ 썸네일 탭 파싱됨:', thumbnailTabs);
                         
                         if (Array.isArray(thumbnailTabs) && thumbnailTabs.length > 0) {
-                            hasAnyTab = true;
                             thumbnailTabs.forEach(tab => {
                                 const option = document.createElement('option');
                                 option.value = `thumbnails:${tab.id}`;
                                 option.textContent = `🖼️ 썸네일 - ${tab.icon} ${tab.name}`;
                                 tabSelect.appendChild(option);
-                                console.log('✅ 썸네일 탭 추가:', tab.name);
+                                totalTabs++;
                             });
                         }
                     } catch (e) {
-                        console.error('❌ 썸네일 탭 파싱 오류:', e);
+                        tabInfo.textContent = '❌ 썸네일 탭 로드 오류: ' + e.message;
+                        tabInfo.style.color = '#f44336';
                     }
                 }
 
                 // 커뮤니티 탭 로드
-                console.log('💬 커뮤니티 탭 체크:', userData.communityTabs);
                 if (userData.communityTabs) {
                     try {
                         let communityTabs;
@@ -277,37 +273,38 @@
                         } else {
                             communityTabs = userData.communityTabs;
                         }
-                        console.log('💬 커뮤니티 탭 파싱됨:', communityTabs);
                         
                         if (Array.isArray(communityTabs) && communityTabs.length > 0) {
-                            hasAnyTab = true;
                             communityTabs.forEach(tab => {
                                 const option = document.createElement('option');
                                 option.value = `community:${tab.id}`;
                                 option.textContent = `💬 커뮤니티 - ${tab.icon} ${tab.name}`;
                                 tabSelect.appendChild(option);
-                                console.log('✅ 커뮤니티 탭 추가:', tab.name);
+                                totalTabs++;
                             });
                         }
                     } catch (e) {
-                        console.error('❌ 커뮤니티 탭 파싱 오류:', e);
+                        tabInfo.textContent = '❌ 커뮤니티 탭 로드 오류: ' + e.message;
+                        tabInfo.style.color = '#f44336';
                     }
                 }
 
-                if (!hasAnyTab) {
-                    console.warn('⚠️ 탭이 하나도 없습니다');
-                    tabSelect.innerHTML += '<option value="" disabled>탭이 없습니다</option>';
+                if (totalTabs === 0) {
+                    tabInfo.textContent = '⚠️ PC에서 탭을 먼저 만들어주세요';
+                    tabInfo.style.color = '#ff9800';
+                    tabSelect.innerHTML = '<option value="">탭이 없습니다</option>';
                 } else {
-                    console.log('✅ 탭 로드 완료!');
+                    tabInfo.textContent = `✅ ${totalTabs}개 탭 로드 완료`;
+                    tabInfo.style.color = '#4CAF50';
                 }
             } catch (error) {
-                console.error('❌ 탭 로드 오류:', error);
-                alert('탭을 불러오는데 실패했습니다: ' + error.message);
+                tabInfo.textContent = '❌ 오류: ' + error.message;
+                tabInfo.style.color = '#f44336';
+                tabSelect.innerHTML = '<option value="">로드 실패</option>';
             }
         }
 
         // 페이지 로드 시 모든 탭 로드
-        console.log('🚀 페이지 로드됨, 탭 로드 시작');
         loadAllTabs();
 
         // 탭 선택 시
