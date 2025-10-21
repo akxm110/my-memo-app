@@ -155,7 +155,7 @@
             </div>
             
             <div class="form-group">
-                <label>메모</label>
+                <label>메모 (선택)</label>
                 <textarea id="memo" placeholder="메모를 입력하세요 (선택사항)"></textarea>
             </div>
             
@@ -199,10 +199,25 @@
         const sharedUrl = urlParams.get('url') || '';
         const sharedText = urlParams.get('text') || '';
 
+        // URL 판별 함수
+        function isURL(str) {
+            return str && (str.startsWith('http://') || str.startsWith('https://'));
+        }
+
         // 폼 필드에 데이터 채우기
         document.getElementById('title').value = sharedTitle;
-        document.getElementById('url').value = sharedUrl;
-        document.getElementById('memo').value = sharedText;
+        
+        // URL 필드: url 파라미터 우선, 없으면 text가 URL인지 확인
+        if (sharedUrl) {
+            document.getElementById('url').value = sharedUrl;
+            document.getElementById('memo').value = sharedText;
+        } else if (isURL(sharedText)) {
+            document.getElementById('url').value = sharedText;
+            document.getElementById('memo').value = '';
+        } else {
+            document.getElementById('url').value = sharedUrl;
+            document.getElementById('memo').value = sharedText;
+        }
 
         const tabSelect = document.getElementById('tabSelect');
         const tabInfo = document.getElementById('tabInfo');
