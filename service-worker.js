@@ -1,10 +1,10 @@
 // 서비스 워커 버전
-const CACHE_NAME = 'thumbnail-memo-v5';
+const CACHE_NAME = 'thumbnail-memo-v6';
 const urlsToCache = [
-  './',
-  './index.html',
-  './share-receiver.html',
-  './manifest.json'
+  '/my-memo-app/',
+  '/my-memo-app/index.html',
+  '/my-memo-app/share-receiver.html',
+  '/my-memo-app/manifest.json'
 ];
 
 // 설치 이벤트
