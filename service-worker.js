@@ -1,46 +1,412 @@
-// 서비스 워커 버전
-const CACHE_NAME = 'thumbnail-memo-v15';
-const urlsToCache = [
-  '/my-memo-app/',
-  '/my-memo-app/index.html',
-  '/my-memo-app/share-receiver.html',
-  '/my-memo-app/manifest.json',
-  '/my-memo-app/icon-192.png',
-  '/my-memo-app/icon-512.png'
-];
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>공유된 콘텐츠 저장</title>
+    
+    <!-- Firebase SDK (PC 버전과 동일하게) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 14px;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+        button {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .save-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .cancel-btn {
+            background: #e0e0e0;
+            color: #666;
+        }
+        .cancel-btn:hover {
+            background: #d0d0d0;
+        }
+        .success-message {
+            display: none;
+            background: #4caf50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+            animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .tab-info {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="successMessage" class="success-message">
+            ✅ 저장 완료!
+        </div>
+        
+        <h1>📝 공유된 콘텐츠 저장</h1>
+        
+        <div class="tab-info" id="tabInfo">
+            🔄 탭 목록을 불러오는 중...
+        </div>
+        
+        <form id="shareForm">
+            <div class="form-group">
+                <label></label>
+                <select id="tabSelect" required>
+                    <option value="">🔄 로딩 중...</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>제목</label>
+                <input type="text" id="title" placeholder="제목" required>
+            </div>
+            
+            <div class="form-group">
+                <label>링크</label>
+                <input type="url" id="url" placeholder="https://..." required>
+            </div>
+            
+            <div class="form-group">
+                <label>메모 (선택)</label>
+                <textarea id="memo" placeholder="메모를 입력하세요 (선택사항)"></textarea>
+            </div>
+            
+            <div class="button-group">
+                <button type="button" class="cancel-btn" onclick="window.close()">취소</button>
+                <button type="submit" class="save-btn">저장</button>
+            </div>
+        </form>
+    </div>
 
-// 설치 이벤트
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
-      .then(() => self.skipWaiting())
-  );
-});
+    <script>
+        // Firebase 설정 (index.html과 동일)
+        const firebaseConfig = {
+            apiKey: "AIzaSyA4Sen8lq5VOqWy20UTULk2ToJNhOuxHdc",
+            authDomain: "newmemo-ddeae.firebaseapp.com",
+            projectId: "newmemo-ddeae",
+            storageBucket: "newmemo-ddeae.firebasestorage.app",
+            messagingSenderId: "691170876195",
+            appId: "1:691170876195:web:46b73f11cf7389d5c58a96",
+            databaseURL: "https://newmemo-ddeae-default-rtdb.firebaseio.com"
+        };
 
-// 활성화 이벤트
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
-  );
-});
+        let database, userRef;
+        const userId = 'user1'; // index.html과 동일
+        
+        try {
+            // Firebase 초기화 (compat 방식)
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+            userRef = database.ref(`users/${userId}`);
+            console.log('✅ Firebase 초기화 성공');
+        } catch (error) {
+            console.error('❌ Firebase 초기화 실패:', error);
+            document.getElementById('tabInfo').textContent = '❌ Firebase 초기화 실패: ' + error.message;
+            document.getElementById('tabInfo').style.color = '#f44336';
+        }
 
-// Fetch 이벤트
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // 캐시에 있으면 반환, 없으면 네트워크 요청
-        return response || fetch(event.request);
-      })
-  );
-});
+        // URL 파라미터에서 공유된 데이터 가져오기
+        const urlParams = new URLSearchParams(window.location.search);
+        const sharedTitle = urlParams.get('title') || '';
+        const sharedUrl = urlParams.get('url') || '';
+        const sharedText = urlParams.get('text') || '';
+
+        // URL 판별 함수
+        function isURL(str) {
+            return str && (str.startsWith('http://') || str.startsWith('https://'));
+        }
+
+        // 폼 필드에 데이터 채우기
+        document.getElementById('title').value = sharedTitle;
+        
+        // URL 필드: url 파라미터 우선, 없으면 text가 URL인지 확인
+        if (sharedUrl) {
+            document.getElementById('url').value = sharedUrl;
+            document.getElementById('memo').value = sharedText;
+        } else if (isURL(sharedText)) {
+            document.getElementById('url').value = sharedText;
+            document.getElementById('memo').value = '';
+        } else {
+            document.getElementById('url').value = sharedUrl;
+            document.getElementById('memo').value = sharedText;
+        }
+
+        const tabSelect = document.getElementById('tabSelect');
+        const tabInfo = document.getElementById('tabInfo');
+
+        // 타임아웃 함수
+        function timeout(ms) {
+            return new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('시간 초과 (30초)')), ms)
+            );
+        }
+
+        // 모든 탭 목록 로드 (index.html의 dynamicTabsConfig 사용)
+        async function loadAllTabs() {
+            if (!userRef) {
+                tabInfo.textContent = '❌ Firebase가 초기화되지 않았습니다';
+                tabInfo.style.color = '#f44336';
+                tabSelect.innerHTML = '<option value="">초기화 실패</option>';
+                return;
+            }
+
+            tabInfo.textContent = '🔄 탭 목록 로딩 중...';
+            tabInfo.style.color = '#2196F3';
+            
+            try {
+                console.log('📡 dynamicTabsConfig 요청 시작...');
+                
+                // dynamicTabsConfig 읽기 (30초 타임아웃)
+                const snapshot = await Promise.race([
+                    userRef.child('dynamicTabsConfig').once('value'),
+                    timeout(30000)
+                ]);
+                
+                console.log('✅ Firebase 응답 받음');
+                tabInfo.textContent = '📦 탭 데이터 파싱 중...';
+                
+                let tabs = [];
+                const configData = snapshot.val();
+                
+                if (configData) {
+                    try {
+                        if (typeof configData === 'string') {
+                            tabs = JSON.parse(configData);
+                        } else {
+                            tabs = configData;
+                        }
+                    } catch (e) {
+                        console.error('탭 파싱 오류:', e);
+                    }
+                }
+                
+                console.log('📦 탭 개수:', tabs.length);
+                
+                if (!Array.isArray(tabs) || tabs.length === 0) {
+                    tabInfo.textContent = '⚠️ PC에서 탭을 먼저 만들어주세요';
+                    tabInfo.style.color = '#ff9800';
+                    tabSelect.innerHTML = '<option value="">탭이 없습니다</option>';
+                    return;
+                }
+
+                tabSelect.innerHTML = '<option value="">탭을 선택하세요</option>';
+                
+                tabs.forEach(tab => {
+                    const option = document.createElement('option');
+                    const tabType = tab.type || 'favorites'; // 기본값
+                    
+                    // type:tabId 형식으로 저장
+                    option.value = `${tabType}:${tab.id}`;
+                    
+                    // 타입별 아이콘
+                    let typeIcon = '⭐';
+                    let typeName = '즐겨찾기';
+                    if (tabType === 'memo') {
+                        typeIcon = '📝';
+                        typeName = '메모';
+                    } else if (tabType === 'community') {
+                        typeIcon = '💬';
+                        typeName = '커뮤니티';
+                    } else if (tabType === 'editor') {
+                        typeIcon = '✏️';
+                        typeName = '에디터';
+                    }
+                    
+                    option.textContent = `${typeIcon} ${typeName} - ${tab.icon} ${tab.name}`;
+                    tabSelect.appendChild(option);
+                });
+
+                tabInfo.textContent = `✅ ${tabs.length}개 탭 로드 완료`;
+                tabInfo.style.color = '#4CAF50';
+                
+            } catch (error) {
+                console.error('❌ 탭 로드 오류:', error);
+                tabInfo.textContent = '❌ 오류: ' + error.message;
+                tabInfo.style.color = '#f44336';
+                tabSelect.innerHTML = '<option value="">로드 실패</option>';
+            }
+        }
+
+        // 페이지 로드 시 모든 탭 로드
+        loadAllTabs();
+
+        // 탭 선택 시
+        tabSelect.addEventListener('change', (e) => {
+            const selectedOption = e.target.options[e.target.selectedIndex];
+            if (selectedOption.value) {
+                tabInfo.textContent = `저장 위치: ${selectedOption.textContent}`;
+            }
+        });
+
+        // 폼 제출
+        document.getElementById('shareForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const selectedValue = tabSelect.value;
+            const title = document.getElementById('title').value;
+            const url = document.getElementById('url').value;
+            const memo = document.getElementById('memo').value;
+
+            if (!selectedValue) {
+                alert('탭을 선택하세요.');
+                return;
+            }
+
+            // "type:tabId" 형식 파싱
+            const [location, tabId] = selectedValue.split(':');
+
+            if (!location || !tabId) {
+                alert('잘못된 탭 선택입니다.');
+                return;
+            }
+
+            try {
+                // index.html의 데이터 구조에 맞게 dataKey 설정
+                let dataKey;
+                if (location === 'favorites') {
+                    dataKey = `favoritesData-${tabId}`;
+                } else if (location === 'memo') {
+                    dataKey = `memoTabData-${tabId}`;
+                } else if (location === 'community') {
+                    dataKey = `communityTabData-${tabId}`;
+                } else if (location === 'editor') {
+                    alert('에디터 탭은 모바일 공유를 지원하지 않습니다.');
+                    return;
+                } else {
+                    alert('알 수 없는 탭 유형입니다.');
+                    return;
+                }
+                
+                const itemRef = userRef.child(dataKey);
+                const snapshot = await itemRef.once('value');
+                let items = [];
+                
+                if (snapshot.exists()) {
+                    try {
+                        const val = snapshot.val();
+                        items = typeof val === 'string' ? JSON.parse(val) : val;
+                        if (!Array.isArray(items)) items = [];
+                    } catch (e) {
+                        console.error('데이터 파싱 오류:', e);
+                        items = [];
+                    }
+                }
+
+                const newItem = {
+                    id: Date.now(),
+                    title: title,
+                    link: url,
+                    memo: memo,
+                    date: new Date().toISOString(),
+                    image: null
+                };
+
+                items.unshift(newItem);
+                
+                await itemRef.set(JSON.stringify(items));
+
+                // 성공 메시지 표시
+                const successMessage = document.getElementById('successMessage');
+                successMessage.style.display = 'block';
+                
+                setTimeout(() => {
+                    window.close();
+                }, 1500);
+
+            } catch (error) {
+                console.error('저장 오류:', error);
+                alert('저장에 실패했습니다: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>
 
