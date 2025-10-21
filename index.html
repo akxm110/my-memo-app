@@ -427,6 +427,9 @@
         @media (max-width: 768px) {
             .editor-post-item {
                 padding: 12px;
+            }
+            /* 이미지 있는 글만 flex 레이아웃 */
+            .editor-post-item.has-thumbnail {
                 display: flex;
                 gap: 10px;
                 align-items: center;
@@ -2289,8 +2292,9 @@
                     const imgMatch = post.content.match(/<img[^>]+src=["']([^"']+)["']/i);
                     const thumbnailSrc = imgMatch ? imgMatch[1] : null;
                     
-                    // 이미지 있으면: 텍스트 + 썸네일 구조
+                    // 이미지 있으면: has-thumbnail 클래스 추가 + 텍스트 + 썸네일 구조
                     if (thumbnailSrc) {
+                        item.classList.add('has-thumbnail');
                         item.innerHTML = `
                             <div class="editor-post-text">
                                 <div class="editor-post-title">${escapeHTML(post.title || '제목 없음')}</div>
@@ -2376,31 +2380,33 @@
                 if (!post) return;
                 
                 this.currentPostId = postId;
-                this.renderPostList();
+                this.renderPostList(); // 목록을 다시 그려서 'active' 표시
                 
-                // 모바일: post-selected 클래스 추가
-                const editorContainer = this.container.querySelector('.editor-container');
-                if (editorContainer) {
-                    editorContainer.classList.add('post-selected');
-                }
-                
-                // 모바일: 목록으로 버튼 추가
-                const backButtonHTML = `
-                    <button onclick="window.editorTabInstances['${this.tabId}'].showList()" 
-                            class="editor-back-btn"
-                            style="padding: 8px 15px; margin-bottom: 15px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; display: none;">
-                        ← 목록으로
-                    </button>`;
-                
+                // [수정됨]
+                // 1. PC/모바일 공통: 본문 내용 먼저 채우기
                 this.contentPanel.innerHTML = `
-                    ${backButtonHTML}
                     <div class="editor-content-title">${escapeHTML(post.title || '제목 없음')}</div>
                     <div class="editor-content-body">${post.content}</div>`;
                 
-                // 모바일에서만 버튼 표시
+                // --- 2. 모바일 전용 로직 ---
+                // (PC에서는 이 코드가 실행되지 않으므로 목록이 사라지지 않음)
                 if (window.innerWidth <= 768) {
-                    const backBtn = this.contentPanel.querySelector('.editor-back-btn');
-                    if (backBtn) backBtn.style.display = 'block';
+                    // 모바일: 'post-selected' 클래스 추가
+                    const editorContainer = this.container.querySelector('.editor-container');
+                    if (editorContainer) {
+                        editorContainer.classList.add('post-selected');
+                    }
+                    
+                    // 모바일: '목록으로' 버튼 HTML 생성
+                    const backButtonHTML = `
+                        <button onclick="window.editorTabInstances['${this.tabId}'].showList()" 
+                                class="editor-back-btn"
+                                style="padding: 8px 15px; margin-bottom: 15px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; display: block;">
+                            ← 목록으로
+                        </button>`;
+                    
+                    // 모바일: 본문 상단에 '목록으로' 버튼 삽입
+                    this.contentPanel.insertAdjacentHTML('afterbegin', backButtonHTML);
                 }
             }
             
