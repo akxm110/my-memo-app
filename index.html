@@ -2470,12 +2470,13 @@
                     itemElement.innerHTML = `
                         <div class="item-col community-col-title">${titleDisplay}</div>
                         <div class="item-col community-col-link">${linkDisplay}</div>
-                        <div class="item-col community-col-date">${dateStr}</div>`;
+                        <div class="item-col community-col-date community-menu-trigger">${dateStr}</div>`;
                     
                     this.listContainer.appendChild(itemElement);
                     
-                    // 우클릭 & Long Press 메뉴
-                    contextMenuUtil.attachToElement(itemElement, (action) => {
+                    // 우클릭 & Long Press 메뉴 - 날짜 부분에만 적용
+                    const dateTrigger = itemElement.querySelector('.community-menu-trigger');
+                    contextMenuUtil.attachToElement(dateTrigger, (action) => {
                         if (action === 'delete') {
                             this.deletePost(post.id);
                         } else if (action === 'edit') {
