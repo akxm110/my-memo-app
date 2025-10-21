@@ -2,12 +2,13 @@
   "name": "썸네일 메모장",
   "short_name": "메모장",
   "description": "북마크, 썸네일, 커뮤니티 관리 앱",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/my-memo-app/",
+  "scope": "/my-memo-app/",
+  "id": "/my-memo-app/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0d6efd",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "icons": [
     {
       "src": "https://via.placeholder.com/192/0d6efd/ffffff?text=M",
@@ -23,7 +24,7 @@
     }
   ],
   "share_target": {
-    "action": "share-receiver.html",
+    "action": "/my-memo-app/share-receiver.html",
     "method": "GET",
     "enctype": "application/x-www-form-urlencoded",
     "params": {
