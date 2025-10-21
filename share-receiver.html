@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>공유된 콘텐츠 저장</title>
+    
+    <!-- Firebase SDK (PC 버전과 동일하게) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -161,27 +166,26 @@
         </form>
     </div>
 
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
-        import { getDatabase, ref, get, set } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
-
-        // Firebase 설정
+    <script>
+        // Firebase 설정 (index.html과 동일)
         const firebaseConfig = {
-            apiKey: "AIzaSyDCEQgvwd8a1SbIPcvm3p9CwHRoLLIRs34",
-            authDomain: "gojungwon-92127.firebaseapp.com",
-            databaseURL: "https://gojungwon-92127-default-rtdb.firebaseio.com",
-            projectId: "gojungwon-92127",
-            storageBucket: "gojungwon-92127.firebasestorage.app",
-            messagingSenderId: "1055836798877",
-            appId: "1:1055836798877:web:2dbdc4e03f42ac3dea8f64"
+            apiKey: "AIzaSyA4Sen8lq5VOqWy20UTULk2ToJNhOuxHdc",
+            authDomain: "newmemo-ddeae.firebaseapp.com",
+            projectId: "newmemo-ddeae",
+            storageBucket: "newmemo-ddeae.firebasestorage.app",
+            messagingSenderId: "691170876195",
+            appId: "1:691170876195:web:46b73f11cf7389d5c58a96",
+            databaseURL: "https://newmemo-ddeae-default-rtdb.firebaseio.com"
         };
 
-        let app, database, userRef;
+        let database, userRef;
+        const userId = 'user1'; // index.html과 동일
+        
         try {
-            app = initializeApp(firebaseConfig);
-            database = getDatabase(app);
-            const userId = 'gojungwon5656@gmail.com';
-            userRef = ref(database, `users/${userId.replace(/[.#$[\]]/g, '_')}`);
+            // Firebase 초기화 (compat 방식)
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+            userRef = database.ref(`users/${userId}`);
             console.log('✅ Firebase 초기화 성공');
         } catch (error) {
             console.error('❌ Firebase 초기화 실패:', error);
@@ -210,7 +214,7 @@
             );
         }
 
-        // 모든 탭 목록 로드
+        // 모든 탭 목록 로드 (index.html의 dynamicTabsConfig 사용)
         async function loadAllTabs() {
             if (!userRef) {
                 tabInfo.textContent = '❌ Firebase가 초기화되지 않았습니다';
@@ -219,118 +223,77 @@
                 return;
             }
 
-            tabInfo.textContent = '🔄 Firebase 연결 중... (최대 30초)';
+            tabInfo.textContent = '🔄 탭 목록 로딩 중...';
             tabInfo.style.color = '#2196F3';
             
             try {
-                console.log('📡 Firebase 데이터 요청 시작...');
+                console.log('📡 dynamicTabsConfig 요청 시작...');
                 
-                // 30초 타임아웃 설정
+                // dynamicTabsConfig 읽기 (30초 타임아웃)
                 const snapshot = await Promise.race([
-                    get(userRef),
+                    userRef.child('dynamicTabsConfig').once('value'),
                     timeout(30000)
                 ]);
                 
                 console.log('✅ Firebase 응답 받음');
-                tabInfo.textContent = '📦 데이터 확인 중...';
-                const userData = snapshot.val();
+                tabInfo.textContent = '📦 탭 데이터 파싱 중...';
                 
-                console.log('📦 userData:', userData ? '데이터 있음' : '데이터 없음');
+                let tabs = [];
+                const configData = snapshot.val();
                 
-                if (!userData) {
-                    tabInfo.textContent = '❌ 사용자 데이터가 없습니다 (PC에서 먼저 탭을 만드세요)';
-                    tabInfo.style.color = '#f44336';
-                    tabSelect.innerHTML = '<option value="">데이터 없음</option>';
+                if (configData) {
+                    try {
+                        if (typeof configData === 'string') {
+                            tabs = JSON.parse(configData);
+                        } else {
+                            tabs = configData;
+                        }
+                    } catch (e) {
+                        console.error('탭 파싱 오류:', e);
+                    }
+                }
+                
+                console.log('📦 탭 개수:', tabs.length);
+                
+                if (!Array.isArray(tabs) || tabs.length === 0) {
+                    tabInfo.textContent = '⚠️ PC에서 탭을 먼저 만들어주세요';
+                    tabInfo.style.color = '#ff9800';
+                    tabSelect.innerHTML = '<option value="">탭이 없습니다</option>';
                     return;
                 }
 
                 tabSelect.innerHTML = '<option value="">탭을 선택하세요</option>';
-                let totalTabs = 0;
-
-                // 북마크 탭 로드
-                if (userData.bookmarkTabs) {
-                    try {
-                        let bookmarkTabs;
-                        if (typeof userData.bookmarkTabs === 'string') {
-                            bookmarkTabs = JSON.parse(userData.bookmarkTabs);
-                        } else {
-                            bookmarkTabs = userData.bookmarkTabs;
-                        }
-                        
-                        if (Array.isArray(bookmarkTabs) && bookmarkTabs.length > 0) {
-                            bookmarkTabs.forEach(tab => {
-                                const option = document.createElement('option');
-                                option.value = `bookmarks:${tab.id}`;
-                                option.textContent = `📚 북마크 - ${tab.icon} ${tab.name}`;
-                                tabSelect.appendChild(option);
-                                totalTabs++;
-                            });
-                        }
-                    } catch (e) {
-                        tabInfo.textContent = '❌ 북마크 탭 로드 오류: ' + e.message;
-                        tabInfo.style.color = '#f44336';
+                
+                tabs.forEach(tab => {
+                    const option = document.createElement('option');
+                    const tabType = tab.type || 'favorites'; // 기본값
+                    
+                    // type:tabId 형식으로 저장
+                    option.value = `${tabType}:${tab.id}`;
+                    
+                    // 타입별 아이콘
+                    let typeIcon = '⭐';
+                    let typeName = '즐겨찾기';
+                    if (tabType === 'memo') {
+                        typeIcon = '📝';
+                        typeName = '메모';
+                    } else if (tabType === 'community') {
+                        typeIcon = '💬';
+                        typeName = '커뮤니티';
+                    } else if (tabType === 'editor') {
+                        typeIcon = '✏️';
+                        typeName = '에디터';
                     }
-                }
+                    
+                    option.textContent = `${typeIcon} ${typeName} - ${tab.icon} ${tab.name}`;
+                    tabSelect.appendChild(option);
+                });
 
-                // 썸네일 탭 로드
-                if (userData.tabs) {
-                    try {
-                        let thumbnailTabs;
-                        if (typeof userData.tabs === 'string') {
-                            thumbnailTabs = JSON.parse(userData.tabs);
-                        } else {
-                            thumbnailTabs = userData.tabs;
-                        }
-                        
-                        if (Array.isArray(thumbnailTabs) && thumbnailTabs.length > 0) {
-                            thumbnailTabs.forEach(tab => {
-                                const option = document.createElement('option');
-                                option.value = `thumbnails:${tab.id}`;
-                                option.textContent = `🖼️ 썸네일 - ${tab.icon} ${tab.name}`;
-                                tabSelect.appendChild(option);
-                                totalTabs++;
-                            });
-                        }
-                    } catch (e) {
-                        tabInfo.textContent = '❌ 썸네일 탭 로드 오류: ' + e.message;
-                        tabInfo.style.color = '#f44336';
-                    }
-                }
-
-                // 커뮤니티 탭 로드
-                if (userData.communityTabs) {
-                    try {
-                        let communityTabs;
-                        if (typeof userData.communityTabs === 'string') {
-                            communityTabs = JSON.parse(userData.communityTabs);
-                        } else {
-                            communityTabs = userData.communityTabs;
-                        }
-                        
-                        if (Array.isArray(communityTabs) && communityTabs.length > 0) {
-                            communityTabs.forEach(tab => {
-                                const option = document.createElement('option');
-                                option.value = `community:${tab.id}`;
-                                option.textContent = `💬 커뮤니티 - ${tab.icon} ${tab.name}`;
-                                tabSelect.appendChild(option);
-                                totalTabs++;
-                            });
-                        }
-                    } catch (e) {
-                        tabInfo.textContent = '❌ 커뮤니티 탭 로드 오류: ' + e.message;
-                        tabInfo.style.color = '#f44336';
-                    }
-                }
-
-                if (totalTabs === 0) {
-                    tabInfo.textContent = '⚠️ PC에서 탭을 먼저 만들어주세요';
-                    tabInfo.style.color = '#ff9800';
-                    tabSelect.innerHTML = '<option value="">탭이 없습니다</option>';
-                } else {
-                    tabInfo.textContent = `✅ ${totalTabs}개 탭 로드 완료`;
-                    tabInfo.style.color = '#4CAF50';
-                }
+                tabInfo.textContent = `✅ ${tabs.length}개 탭 로드 완료`;
+                tabInfo.style.color = '#4CAF50';
+                
             } catch (error) {
+                console.error('❌ 탭 로드 오류:', error);
                 tabInfo.textContent = '❌ 오류: ' + error.message;
                 tabInfo.style.color = '#f44336';
                 tabSelect.innerHTML = '<option value="">로드 실패</option>';
@@ -371,24 +334,34 @@
             }
 
             try {
+                // index.html의 데이터 구조에 맞게 dataKey 설정
                 let dataKey;
-                if (location === 'bookmarks') {
-                    dataKey = 'bookmarkTabData';
+                if (location === 'favorites') {
+                    dataKey = `favoritesData-${tabId}`;
+                } else if (location === 'memo') {
+                    dataKey = `memoTabData-${tabId}`;
                 } else if (location === 'community') {
-                    dataKey = 'communityTabData';
+                    dataKey = `communityTabData-${tabId}`;
+                } else if (location === 'editor') {
+                    alert('에디터 탭은 모바일 공유를 지원하지 않습니다.');
+                    return;
                 } else {
-                    dataKey = 'tabData';
+                    alert('알 수 없는 탭 유형입니다.');
+                    return;
                 }
-                const itemKey = `${dataKey}-${tabId}`;
                 
-                const snapshot = await get(ref(database, `users/${userId.replace(/[.#$[\]]/g, '_')}/${itemKey}`));
+                const itemRef = userRef.child(dataKey);
+                const snapshot = await itemRef.once('value');
                 let items = [];
                 
                 if (snapshot.exists()) {
                     try {
-                        items = JSON.parse(snapshot.val());
+                        const val = snapshot.val();
+                        items = typeof val === 'string' ? JSON.parse(val) : val;
+                        if (!Array.isArray(items)) items = [];
                     } catch (e) {
                         console.error('데이터 파싱 오류:', e);
+                        items = [];
                     }
                 }
 
@@ -403,7 +376,7 @@
 
                 items.unshift(newItem);
                 
-                await set(ref(database, `users/${userId.replace(/[.#$[\]]/g, '_')}/${itemKey}`), JSON.stringify(items));
+                await itemRef.set(JSON.stringify(items));
 
                 // 성공 메시지 표시
                 const successMessage = document.getElementById('successMessage');
