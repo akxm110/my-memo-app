@@ -1,394 +1,46 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>공유된 콘텐츠 저장</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .container {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            max-width: 500px;
-            width: 100%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        h1 {
-            font-size: 24px;
-            margin-bottom: 20px;
-            color: #333;
-            text-align: center;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 8px;
-            color: #555;
-            font-size: 14px;
-        }
-        input, textarea, select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 15px;
-            transition: border-color 0.3s;
-        }
-        input:focus, textarea:focus, select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 25px;
-        }
-        button {
-            flex: 1;
-            padding: 14px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .save-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .save-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-        .cancel-btn {
-            background: #e0e0e0;
-            color: #666;
-        }
-        .cancel-btn:hover {
-            background: #d0d0d0;
-        }
-        .success-message {
-            display: none;
-            background: #4caf50;
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-            margin-bottom: 20px;
-            animation: slideDown 0.3s ease;
-        }
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .tab-info {
-            background: #f5f5f5;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-size: 14px;
-            color: #666;
-            text-align: center;
-        }
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div id="successMessage" class="success-message">
-            ✅ 저장 완료!
-        </div>
-        
-        <h1>📝 공유된 콘텐츠 저장</h1>
-        
-        <div class="tab-info" id="tabInfo">
-            탭을 선택하세요
-        </div>
-        
-        <form id="shareForm">
-            <div class="form-group">
-                <label></label>
-                <select id="tabSelect" required>
-                    <option value="">탭을 선택하세요</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label>제목</label>
-                <input type="text" id="title" placeholder="제목" required>
-            </div>
-            
-            <div class="form-group">
-                <label>링크</label>
-                <input type="url" id="url" placeholder="https://..." required>
-            </div>
-            
-            <div class="form-group">
-                <label>메모</label>
-                <textarea id="memo" placeholder="메모를 입력하세요 (선택사항)"></textarea>
-            </div>
-            
-            <div class="button-group">
-                <button type="button" class="cancel-btn" onclick="window.close()">취소</button>
-                <button type="submit" class="save-btn">저장</button>
-            </div>
-        </form>
-    </div>
+// 서비스 워커 버전
+const CACHE_NAME = 'thumbnail-memo-v10';
+const urlsToCache = [
+  '/my-memo-app/',
+  '/my-memo-app/index.html',
+  '/my-memo-app/share-receiver.html',
+  '/my-memo-app/manifest.json',
+  '/my-memo-app/icon-192.png',
+  '/my-memo-app/icon-512.png'
+];
 
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
-        import { getDatabase, ref, get, set } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
+// 설치 이벤트
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(urlsToCache))
+      .then(() => self.skipWaiting())
+  );
+});
 
-        // Firebase 설정
-        const firebaseConfig = {
-            apiKey: "AIzaSyDCEQgvwd8a1SbIPcvm3p9CwHRoLLIRs34",
-            authDomain: "gojungwon-92127.firebaseapp.com",
-            databaseURL: "https://gojungwon-92127-default-rtdb.firebaseio.com",
-            projectId: "gojungwon-92127",
-            storageBucket: "gojungwon-92127.firebasestorage.app",
-            messagingSenderId: "1055836798877",
-            appId: "1:1055836798877:web:2dbdc4e03f42ac3dea8f64"
-        };
+// 활성화 이벤트
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
+});
 
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-        const userId = 'gojungwon5656@gmail.com';
-        const userRef = ref(database, `users/${userId.replace(/[.#$[\]]/g, '_')}`);
-
-        // URL 파라미터에서 공유된 데이터 가져오기
-        const urlParams = new URLSearchParams(window.location.search);
-        const sharedTitle = urlParams.get('title') || '';
-        const sharedUrl = urlParams.get('url') || '';
-        const sharedText = urlParams.get('text') || '';
-
-        // 폼 필드에 데이터 채우기
-        document.getElementById('title').value = sharedTitle;
-        document.getElementById('url').value = sharedUrl;
-        document.getElementById('memo').value = sharedText;
-
-        const tabSelect = document.getElementById('tabSelect');
-        const tabInfo = document.getElementById('tabInfo');
-
-        // 모든 탭 목록 로드
-        async function loadAllTabs() {
-            console.log('🔍 탭 로드 시작...');
-            try {
-                const snapshot = await get(userRef);
-                const userData = snapshot.val();
-                
-                console.log('📦 Firebase 데이터:', userData);
-                
-                if (!userData) {
-                    console.error('❌ userData가 없습니다');
-                    tabSelect.innerHTML = '<option value="">탭이 없습니다</option>';
-                    return;
-                }
-
-                tabSelect.innerHTML = '<option value="">탭을 선택하세요</option>';
-                let hasAnyTab = false;
-
-                // 북마크 탭 로드
-                console.log('📚 북마크 탭 체크:', userData.bookmarkTabs);
-                if (userData.bookmarkTabs) {
-                    try {
-                        let bookmarkTabs;
-                        if (typeof userData.bookmarkTabs === 'string') {
-                            bookmarkTabs = JSON.parse(userData.bookmarkTabs);
-                        } else {
-                            bookmarkTabs = userData.bookmarkTabs;
-                        }
-                        console.log('📚 북마크 탭 파싱됨:', bookmarkTabs);
-                        
-                        if (Array.isArray(bookmarkTabs) && bookmarkTabs.length > 0) {
-                            hasAnyTab = true;
-                            bookmarkTabs.forEach(tab => {
-                                const option = document.createElement('option');
-                                option.value = `bookmarks:${tab.id}`;
-                                option.textContent = `📚 북마크 - ${tab.icon} ${tab.name}`;
-                                tabSelect.appendChild(option);
-                                console.log('✅ 북마크 탭 추가:', tab.name);
-                            });
-                        }
-                    } catch (e) {
-                        console.error('❌ 북마크 탭 파싱 오류:', e);
-                    }
-                }
-
-                // 썸네일 탭 로드
-                console.log('🖼️ 썸네일 탭 체크:', userData.tabs);
-                if (userData.tabs) {
-                    try {
-                        let thumbnailTabs;
-                        if (typeof userData.tabs === 'string') {
-                            thumbnailTabs = JSON.parse(userData.tabs);
-                        } else {
-                            thumbnailTabs = userData.tabs;
-                        }
-                        console.log('🖼️ 썸네일 탭 파싱됨:', thumbnailTabs);
-                        
-                        if (Array.isArray(thumbnailTabs) && thumbnailTabs.length > 0) {
-                            hasAnyTab = true;
-                            thumbnailTabs.forEach(tab => {
-                                const option = document.createElement('option');
-                                option.value = `thumbnails:${tab.id}`;
-                                option.textContent = `🖼️ 썸네일 - ${tab.icon} ${tab.name}`;
-                                tabSelect.appendChild(option);
-                                console.log('✅ 썸네일 탭 추가:', tab.name);
-                            });
-                        }
-                    } catch (e) {
-                        console.error('❌ 썸네일 탭 파싱 오류:', e);
-                    }
-                }
-
-                // 커뮤니티 탭 로드
-                console.log('💬 커뮤니티 탭 체크:', userData.communityTabs);
-                if (userData.communityTabs) {
-                    try {
-                        let communityTabs;
-                        if (typeof userData.communityTabs === 'string') {
-                            communityTabs = JSON.parse(userData.communityTabs);
-                        } else {
-                            communityTabs = userData.communityTabs;
-                        }
-                        console.log('💬 커뮤니티 탭 파싱됨:', communityTabs);
-                        
-                        if (Array.isArray(communityTabs) && communityTabs.length > 0) {
-                            hasAnyTab = true;
-                            communityTabs.forEach(tab => {
-                                const option = document.createElement('option');
-                                option.value = `community:${tab.id}`;
-                                option.textContent = `💬 커뮤니티 - ${tab.icon} ${tab.name}`;
-                                tabSelect.appendChild(option);
-                                console.log('✅ 커뮤니티 탭 추가:', tab.name);
-                            });
-                        }
-                    } catch (e) {
-                        console.error('❌ 커뮤니티 탭 파싱 오류:', e);
-                    }
-                }
-
-                if (!hasAnyTab) {
-                    console.warn('⚠️ 탭이 하나도 없습니다');
-                    tabSelect.innerHTML += '<option value="" disabled>탭이 없습니다</option>';
-                } else {
-                    console.log('✅ 탭 로드 완료!');
-                }
-            } catch (error) {
-                console.error('❌ 탭 로드 오류:', error);
-                alert('탭을 불러오는데 실패했습니다: ' + error.message);
-            }
-        }
-
-        // 페이지 로드 시 모든 탭 로드
-        console.log('🚀 페이지 로드됨, 탭 로드 시작');
-        loadAllTabs();
-
-        // 탭 선택 시
-        tabSelect.addEventListener('change', (e) => {
-            const selectedOption = e.target.options[e.target.selectedIndex];
-            if (selectedOption.value) {
-                tabInfo.textContent = `저장 위치: ${selectedOption.textContent}`;
-            }
-        });
-
-        // 폼 제출
-        document.getElementById('shareForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const selectedValue = tabSelect.value;
-            const title = document.getElementById('title').value;
-            const url = document.getElementById('url').value;
-            const memo = document.getElementById('memo').value;
-
-            if (!selectedValue) {
-                alert('탭을 선택하세요.');
-                return;
-            }
-
-            // "type:tabId" 형식 파싱
-            const [location, tabId] = selectedValue.split(':');
-
-            if (!location || !tabId) {
-                alert('잘못된 탭 선택입니다.');
-                return;
-            }
-
-            try {
-                let dataKey;
-                if (location === 'bookmarks') {
-                    dataKey = 'bookmarkTabData';
-                } else if (location === 'community') {
-                    dataKey = 'communityTabData';
-                } else {
-                    dataKey = 'tabData';
-                }
-                const itemKey = `${dataKey}-${tabId}`;
-                
-                const snapshot = await get(ref(database, `users/${userId.replace(/[.#$[\]]/g, '_')}/${itemKey}`));
-                let items = [];
-                
-                if (snapshot.exists()) {
-                    try {
-                        items = JSON.parse(snapshot.val());
-                    } catch (e) {
-                        console.error('데이터 파싱 오류:', e);
-                    }
-                }
-
-                const newItem = {
-                    id: Date.now(),
-                    title: title,
-                    link: url,
-                    memo: memo,
-                    date: new Date().toISOString(),
-                    image: null
-                };
-
-                items.unshift(newItem);
-                
-                await set(ref(database, `users/${userId.replace(/[.#$[\]]/g, '_')}/${itemKey}`), JSON.stringify(items));
-
-                // 성공 메시지 표시
-                const successMessage = document.getElementById('successMessage');
-                successMessage.style.display = 'block';
-                
-                setTimeout(() => {
-                    window.close();
-                }, 1500);
-
-            } catch (error) {
-                console.error('저장 오류:', error);
-                alert('저장에 실패했습니다: ' + error.message);
-            }
-        });
-    </script>
-</body>
-</html>
+// Fetch 이벤트
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => {
+        // 캐시에 있으면 반환, 없으면 네트워크 요청
+        return response || fetch(event.request);
+      })
+  );
+});
 
