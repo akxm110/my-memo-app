@@ -2462,8 +2462,13 @@
                         `<a href="${escapeHTML(post.link)}" target="_blank" style="color: #0d6efd; text-decoration: none;" title="${escapeHTML(post.link)}">${escapeHTML(post.link)}</a>` : 
                         '-';
                     
+                    // 모바일용: 제목에 링크 추가
+                    const titleDisplay = post.link ? 
+                        `<a href="${escapeHTML(post.link)}" target="_blank" style="color: inherit; text-decoration: none;">${escapeHTML(post.title)}</a>` : 
+                        escapeHTML(post.title);
+                    
                     itemElement.innerHTML = `
-                        <div class="item-col community-col-title">${escapeHTML(post.title)}</div>
+                        <div class="item-col community-col-title">${titleDisplay}</div>
                         <div class="item-col community-col-link">${linkDisplay}</div>
                         <div class="item-col community-col-date">${dateStr}</div>`;
                     
