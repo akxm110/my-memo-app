@@ -176,10 +176,18 @@
             appId: "1:1055836798877:web:2dbdc4e03f42ac3dea8f64"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-        const userId = 'gojungwon5656@gmail.com';
-        const userRef = ref(database, `users/${userId.replace(/[.#$[\]]/g, '_')}`);
+        let app, database, userRef;
+        try {
+            app = initializeApp(firebaseConfig);
+            database = getDatabase(app);
+            const userId = 'gojungwon5656@gmail.com';
+            userRef = ref(database, `users/${userId.replace(/[.#$[\]]/g, '_')}`);
+            console.log('✅ Firebase 초기화 성공');
+        } catch (error) {
+            console.error('❌ Firebase 초기화 실패:', error);
+            document.getElementById('tabInfo').textContent = '❌ Firebase 초기화 실패: ' + error.message;
+            document.getElementById('tabInfo').style.color = '#f44336';
+        }
 
         // URL 파라미터에서 공유된 데이터 가져오기
         const urlParams = new URLSearchParams(window.location.search);
@@ -195,17 +203,42 @@
         const tabSelect = document.getElementById('tabSelect');
         const tabInfo = document.getElementById('tabInfo');
 
+        // 타임아웃 함수
+        function timeout(ms) {
+            return new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('시간 초과 (30초)')), ms)
+            );
+        }
+
         // 모든 탭 목록 로드
         async function loadAllTabs() {
-            tabInfo.textContent = '🔄 Firebase 연결 중...';
+            if (!userRef) {
+                tabInfo.textContent = '❌ Firebase가 초기화되지 않았습니다';
+                tabInfo.style.color = '#f44336';
+                tabSelect.innerHTML = '<option value="">초기화 실패</option>';
+                return;
+            }
+
+            tabInfo.textContent = '🔄 Firebase 연결 중... (최대 30초)';
             tabInfo.style.color = '#2196F3';
             
             try {
-                const snapshot = await get(userRef);
+                console.log('📡 Firebase 데이터 요청 시작...');
+                
+                // 30초 타임아웃 설정
+                const snapshot = await Promise.race([
+                    get(userRef),
+                    timeout(30000)
+                ]);
+                
+                console.log('✅ Firebase 응답 받음');
+                tabInfo.textContent = '📦 데이터 확인 중...';
                 const userData = snapshot.val();
                 
+                console.log('📦 userData:', userData ? '데이터 있음' : '데이터 없음');
+                
                 if (!userData) {
-                    tabInfo.textContent = '❌ 사용자 데이터가 없습니다';
+                    tabInfo.textContent = '❌ 사용자 데이터가 없습니다 (PC에서 먼저 탭을 만드세요)';
                     tabInfo.style.color = '#f44336';
                     tabSelect.innerHTML = '<option value="">데이터 없음</option>';
                     return;
