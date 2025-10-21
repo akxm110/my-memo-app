@@ -840,6 +840,22 @@
                 flex-direction: column;
                 height: auto;
             }
+            
+            /* 모바일: 본문 패널 기본 숨김 */
+            .editor-container .editor-content-panel {
+                display: none;
+            }
+            
+            /* 모바일: 글 선택 시 목록 숨기고 본문 표시 */
+            .editor-container.post-selected .editor-list-panel {
+                display: none;
+            }
+            .editor-container.post-selected .editor-content-panel {
+                display: block;
+                width: 100%;
+                padding: 15px;
+            }
+            
             .editor-list-panel {
                 flex: 0 0 auto;
             }
@@ -951,6 +967,9 @@
         
         let isSyncing = false;
         let isInitialized = false;
+        
+        // 에디터 탭 인스턴스 전역 저장 (모바일 목록↔본문 전환용)
+        window.editorTabInstances = window.editorTabInstances || {};
 
         // --- 손상된 localStorage 데이터 자동 복구 ---
         function cleanupCorruptedData() {
@@ -996,9 +1015,10 @@
                 }
             }
 
-            database.ref('users/' + userId).set(dataToSync)
+            // ✅ update() 사용: 기존 데이터 유지 (communityTabData, editorTabData 삭제 방지)
+            database.ref('users/' + userId).update(dataToSync)
                 .then(() => {
-                    console.log('✅ Firebase 동기화 완료');
+                    console.log('✅ Firebase 동기화 완료 (기존 데이터 유지)');
                     setTimeout(() => { isSyncing = false; }, 1000);
                 })
                 .catch(error => {
@@ -2034,6 +2054,10 @@
                 this.currentPostId = null;
                 this.editingPostId = null;
                 this.firebaseListenerActive = false;
+                
+                // 전역 인스턴스 등록 (모바일 목록↔본문 전환용)
+                window.editorTabInstances[this.tabId] = this;
+                
                 this.renderHTML();
                 this.createModal();
                 this.createContextMenu();
@@ -2324,9 +2348,47 @@
                 this.currentPostId = postId;
                 this.renderPostList();
                 
+                // 모바일: post-selected 클래스 추가
+                const editorContainer = this.container.querySelector('.editor-container');
+                if (editorContainer) {
+                    editorContainer.classList.add('post-selected');
+                }
+                
+                // 모바일: 목록으로 버튼 추가
+                const backButtonHTML = `
+                    <button onclick="window.editorTabInstances['${this.tabId}'].showList()" 
+                            class="editor-back-btn"
+                            style="padding: 8px 15px; margin-bottom: 15px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; display: none;">
+                        ← 목록으로
+                    </button>`;
+                
                 this.contentPanel.innerHTML = `
+                    ${backButtonHTML}
                     <div class="editor-content-title">${escapeHTML(post.title || '제목 없음')}</div>
                     <div class="editor-content-body">${post.content}</div>`;
+                
+                // 모바일에서만 버튼 표시
+                if (window.innerWidth <= 768) {
+                    const backBtn = this.contentPanel.querySelector('.editor-back-btn');
+                    if (backBtn) backBtn.style.display = 'block';
+                }
+            }
+            
+            showList() {
+                // 모바일: post-selected 클래스 제거
+                const editorContainer = this.container.querySelector('.editor-container');
+                if (editorContainer) {
+                    editorContainer.classList.remove('post-selected');
+                }
+                
+                // 선택 해제
+                this.currentPostId = null;
+                
+                // 목록 다시 그리기 (active 제거)
+                this.renderPostList();
+                
+                // 본문 패널 비우기
+                this.contentPanel.innerHTML = '<div class="editor-empty-state">왼쪽에서 글을 선택하거나 "글쓰기" 버튼을 눌러 새 글을 작성하세요</div>';
             }
             
             savePost() {
