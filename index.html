@@ -409,14 +409,38 @@
         .editor-post-preview {
             font-size: 13px;
             color: #6c757d;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             overflow: hidden;
             text-overflow: ellipsis;
-            white-space: nowrap;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            white-space: normal;
+            line-height: 1.4;
         }
         .editor-post-date {
             font-size: 12px;
             color: #999;
+        }
+        
+        /* 모바일: 왼쪽 목록에 더 많은 정보 표시 */
+        @media (max-width: 768px) {
+            .editor-post-item {
+                padding: 12px;
+            }
+            .editor-post-title {
+                font-size: 14px;
+                margin-bottom: 6px;
+            }
+            .editor-post-preview {
+                font-size: 12px;
+                margin-bottom: 6px;
+                -webkit-line-clamp: 3;
+                max-height: 50px;
+            }
+            .editor-post-date {
+                font-size: 11px;
+            }
         }
         .editor-content-panel {
             flex: 1;
@@ -2185,17 +2209,18 @@
                     
                     const date = new Date(post.date);
                     const dateStr = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+                    const timeStr = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
                     
                     // 본문에서 HTML 태그 제거하고 텍스트만 추출
                     const tempDiv = document.createElement('div');
                     tempDiv.innerHTML = post.content;
                     const textContent = tempDiv.textContent || tempDiv.innerText || '';
-                    const preview = textContent.length > 25 ? textContent.substring(0, 25) + '...' : textContent;
+                    const preview = textContent.length > 50 ? textContent.substring(0, 50) + '...' : textContent;
                     
                     item.innerHTML = `
                         <div class="editor-post-title">${escapeHTML(post.title || '제목 없음')}</div>
                         <div class="editor-post-preview">${escapeHTML(preview)}</div>
-                        <div class="editor-post-date">${dateStr}</div>`;
+                        <div class="editor-post-date">${dateStr} ${timeStr}</div>`;
                     
                     // 클릭으로 본문 보기
                     item.addEventListener('click', () => this.viewPost(post.id));
