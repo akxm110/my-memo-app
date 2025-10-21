@@ -138,6 +138,7 @@
                     <option value="">선택하세요</option>
                     <option value="bookmarks">📚 북마크</option>
                     <option value="thumbnails">🖼️ 썸네일</option>
+                    <option value="community">💬 커뮤니티</option>
                 </select>
             </div>
             
@@ -212,7 +213,7 @@
         saveLocation.addEventListener('change', async (e) => {
             const location = e.target.value;
             
-            if (location === 'bookmarks' || location === 'thumbnails') {
+            if (location === 'bookmarks' || location === 'thumbnails' || location === 'community') {
                 tabSelector.style.display = 'block';
                 await loadTabs(location);
             } else {
@@ -231,8 +232,17 @@
                     return;
                 }
 
-                const tabKey = type === 'bookmarks' ? 'bookmarkTabs' : 'tabs';
-                const dataKey = type === 'bookmarks' ? 'bookmarkTabData' : 'tabData';
+                let tabKey, dataKey;
+                if (type === 'bookmarks') {
+                    tabKey = 'bookmarkTabs';
+                    dataKey = 'bookmarkTabData';
+                } else if (type === 'community') {
+                    tabKey = 'communityTabs';
+                    dataKey = 'communityTabData';
+                } else {
+                    tabKey = 'tabs';
+                    dataKey = 'tabData';
+                }
                 
                 let tabs = [];
                 
@@ -291,7 +301,14 @@
             }
 
             try {
-                const dataKey = location === 'bookmarks' ? 'bookmarkTabData' : 'tabData';
+                let dataKey;
+                if (location === 'bookmarks') {
+                    dataKey = 'bookmarkTabData';
+                } else if (location === 'community') {
+                    dataKey = 'communityTabData';
+                } else {
+                    dataKey = 'tabData';
+                }
                 const itemKey = `${dataKey}-${tabId}`;
                 
                 const snapshot = await get(ref(database, `users/${userId.replace(/[.#$[\]]/g, '_')}/${itemKey}`));
