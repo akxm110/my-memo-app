@@ -423,6 +423,14 @@
             color: #999;
         }
         
+        /* PC: 썸네일 숨김 (모바일 전용) */
+        .editor-post-thumbnail {
+            display: none;
+        }
+        .editor-post-text {
+            /* PC에서는 필요 없음 */
+        }
+        
         /* 모바일: 왼쪽 목록에 더 많은 정보 표시 */
         @media (max-width: 768px) {
             .editor-post-item {
@@ -439,6 +447,7 @@
                 min-width: 0; /* flexbox 오버플로우 방지 */
             }
             .editor-post-thumbnail {
+                display: block; /* 모바일에서는 보임 */
                 width: 60px;
                 height: 60px;
                 object-fit: cover;
