@@ -152,6 +152,13 @@
         }
         
         /* 커뮤니티 게시판 - 행 높이 최소화 */
+        /* 커뮤니티 게시판 중앙 정렬 */
+        .community-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
         .community-list-container .list-header,
         .community-list-container .list-item {
             min-height: 35px;
@@ -162,6 +169,28 @@
         .community-list-container .list-header {
             background-color: #f8f9fa;
             font-size: 13px;
+        }
+        
+        /* 커뮤니티 컬럼 크기 */
+        .community-col-title {
+            flex: 1 1 auto;
+        }
+        .community-col-link {
+            flex: 0 0 300px;
+        }
+        .community-col-date {
+            flex: 0 0 120px;
+            text-align: center;
+        }
+        
+        /* 모바일: 링크 숨기기 */
+        @media (max-width: 768px) {
+            .community-col-link {
+                display: none !important;
+            }
+            .community-col-date {
+                flex: 0 0 100px;
+            }
         }
         .list-item:last-child {
             border-bottom: none;
@@ -1362,7 +1391,7 @@
                 <div class="item-col col-title">${escapeHTML(title)}</div>
                 <div class="item-col col-thumbnail">
                     <div class="thumbnail-wrapper">${thumbnailHTML}<a href="${escapeHTML(link)}" target="_blank" class="link-button">링크 보기</a></div>
-    </div>
+        </div>
                 <div class="item-col col-memo">${formatVideoMemo(memo)}</div>
                 <div class="item-col col-actions action-buttons">
                     <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
@@ -1672,7 +1701,7 @@
                         <div class="input-group"><label>사진</label><button class="fav-image-upload-btn">파일 선택</button><input type="file" class="fav-image-input" accept="image/*" style="display:none;"></div>
                         <div class="fav-image-preview-container"><img class="fav-image-preview"><span class="fav-image-clear-btn">X</span></div>
                         <button class="fav-add-btn">추가</button>
-            </div>
+    </div>
                     <div class="actions"><button class="fav-delete-all-btn">전체 삭제</button></div>
                     <div class="items-list fav-list-container">
                         <div class="list-header">
@@ -1835,8 +1864,8 @@
                             <span class="memo-tab-char-counter">0자</span>
                             <div><button class="memo-tab-add-btn">메모 추가</button></div>
                             <button class="memo-tab-delete-all-btn">전체 삭제</button>
-                    </div>
-        </div>
+            </div>
+            </div>
                     <div class="memo-tab-list-container"></div>`;
             }
             
@@ -1961,7 +1990,7 @@
                     <div class="editor-container">
                         <div class="editor-list-panel">
                             <div class="editor-post-list"></div>
-            </div>
+                    </div>
                         <div class="editor-content-panel">
                             <div class="editor-empty-state">왼쪽에서 글을 선택하거나 "글쓰기" 버튼을 눌러 새 글을 작성하세요</div>
         </div>
@@ -2300,13 +2329,11 @@
                     <div class="community-container">
                         <div class="items-list community-list-container">
                             <div class="list-header">
-                                <div class="item-col" style="flex: 0 0 40px; text-align: center;">#</div>
-                                <div class="item-col" style="flex: 0 0 300px;">제목</div>
-                                <div class="item-col" style="flex: 0 0 150px;">태그</div>
-                                <div class="item-col" style="flex: 1 1 auto;">링크</div>
-                                <div class="item-col" style="flex: 0 0 100px; text-align: center;">날짜</div>
-                            </div>
-                        </div>
+                                <div class="item-col community-col-title">제목</div>
+                                <div class="item-col community-col-link">링크</div>
+                                <div class="item-col community-col-date">날짜</div>
+            </div>
+        </div>
                     </div>`;
             }
             
@@ -2321,7 +2348,7 @@
                             <label style="display: block; margin-bottom: 5px; font-weight: bold;">제목</label>
                             <input type="text" class="community-modal-title" placeholder="제목을 입력하세요" 
                                 style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box;">
-                        </div>
+    </div>
                         <div style="margin-bottom: 15px;">
                             <label style="display: block; margin-bottom: 5px; font-weight: bold;">태그</label>
                             <input type="text" class="community-modal-memo" placeholder="태그를 입력하세요 (예: #프린트 #웃인샷)" 
@@ -2394,22 +2421,15 @@
                     const date = new Date(post.date);
                     const dateStr = `${date.getMonth() + 1}월 ${date.getDate()}일`;
                     
-                    // 태그 (memo 필드 사용)
-                    const tagDisplay = post.memo || '-';
-                    
-                    // 링크 (20자 제한)
+                    // 링크 처리
                     const linkDisplay = post.link ? 
-                        (post.link.length > 20 ? 
-                            `<a href="${escapeHTML(post.link)}" target="_blank" style="color: #0d6efd; text-decoration: none;" title="${escapeHTML(post.link)}">${escapeHTML(post.link.substring(0, 20))}...</a>` : 
-                            `<a href="${escapeHTML(post.link)}" target="_blank" style="color: #0d6efd; text-decoration: none;">${escapeHTML(post.link)}</a>`) : 
+                        `<a href="${escapeHTML(post.link)}" target="_blank" style="color: #0d6efd; text-decoration: none;" title="${escapeHTML(post.link)}">${escapeHTML(post.link)}</a>` : 
                         '-';
                     
                     itemElement.innerHTML = `
-                        <div class="item-col" style="flex: 0 0 40px; text-align: center;">${index + 1}</div>
-                        <div class="item-col" style="flex: 0 0 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHTML(post.title)}</div>
-                        <div class="item-col" style="flex: 0 0 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHTML(tagDisplay)}</div>
-                        <div class="item-col" style="flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${linkDisplay}</div>
-                        <div class="item-col" style="flex: 0 0 100px; text-align: center;">${dateStr}</div>`;
+                        <div class="item-col community-col-title">${escapeHTML(post.title)}</div>
+                        <div class="item-col community-col-link" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${linkDisplay}</div>
+                        <div class="item-col community-col-date">${dateStr}</div>`;
                     
                     this.listContainer.appendChild(itemElement);
                     
