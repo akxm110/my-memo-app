@@ -174,22 +174,45 @@
         /* 커뮤니티 컬럼 크기 */
         .community-col-title {
             flex: 1 1 auto;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .community-col-link {
             flex: 0 0 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .community-col-date {
             flex: 0 0 120px;
             text-align: center;
         }
         
-        /* 모바일: 링크 숨기기 */
+        /* 모바일: 링크 숨기기, 제목 전체 너비 */
         @media (max-width: 768px) {
+            .community-container {
+                padding: 0 10px;
+            }
+            
             .community-col-link {
                 display: none !important;
             }
+            
+            .community-col-title {
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+            
             .community-col-date {
-                flex: 0 0 100px;
+                flex: 0 0 90px;
+                font-size: 12px;
+            }
+            
+            .community-list-container .list-header,
+            .community-list-container .list-item {
+                padding: 8px 5px;
+                font-size: 13px;
             }
         }
         .list-item:last-child {
@@ -2432,7 +2455,7 @@
                     
                     itemElement.innerHTML = `
                         <div class="item-col community-col-title">${escapeHTML(post.title)}</div>
-                        <div class="item-col community-col-link" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${linkDisplay}</div>
+                        <div class="item-col community-col-link">${linkDisplay}</div>
                         <div class="item-col community-col-date">${dateStr}</div>`;
                     
                     this.listContainer.appendChild(itemElement);
