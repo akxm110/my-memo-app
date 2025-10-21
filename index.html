@@ -6,7 +6,7 @@
     <title>비디오 & 메모 관리자</title>
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="/my-memo-app/manifest.json">
     <meta name="theme-color" content="#0d6efd">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -2544,7 +2544,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js')
+                navigator.serviceWorker.register('/my-memo-app/service-worker.js', { scope: '/my-memo-app/' })
                     .then(registration => {
                         console.log('✅ Service Worker 등록 성공:', registration.scope);
                     })
