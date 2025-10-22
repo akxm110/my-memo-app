@@ -243,6 +243,7 @@
         #video-tab-content .col-thumbnail { flex: 0 0 90px; text-align: center; }
         #video-tab-content .col-title { flex: 0 0 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         #video-tab-content .col-memo { flex: 0 0 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #video-tab-content .col-date { flex: 0 0 100px; text-align: center; font-size: 13px; color: #6c757d; }
         .memo-link {
             display: inline-block;
             margin: 2px 4px 2px 0;
@@ -357,6 +358,7 @@
         .fav-list-container .col-title { flex: 0 0 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .fav-list-container .col-link { flex: 0 0 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .fav-list-container .col-memo { flex: 0 0 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .fav-list-container .col-date { flex: 0 0 100px; text-align: center; font-size: 13px; color: #6c757d; }
         .fav-list-container .col-actions { flex: 0 0 120px; text-align: right; }
         
         .fav-image-preview-container {
@@ -856,11 +858,13 @@
                 text-decoration: underline;
             }
             
-            /* 메모, 링크, 동작 버튼 숨기기 */
+            /* 메모, 링크, 날짜, 동작 버튼 숨기기 */
             #video-tab-content .col-memo,
+            #video-tab-content .col-date,
             #video-tab-content .col-actions,
             .fav-list-container .col-link,
             .fav-list-container .col-memo,
+            .fav-list-container .col-date,
             .fav-list-container .col-actions {
                 display: none !important;
             }
@@ -1194,9 +1198,35 @@
             
             show(x, y, callback) {
                 this.currentCallback = callback;
-                this.menu.style.left = x + 'px';
-                this.menu.style.top = y + 'px';
                 this.menu.classList.add('active');
+                
+                // 메뉴 크기 가져오기
+                const menuRect = this.menu.getBoundingClientRect();
+                const menuWidth = menuRect.width;
+                const menuHeight = menuRect.height;
+                
+                // 화면 크기
+                const windowWidth = window.innerWidth;
+                const windowHeight = window.innerHeight;
+                
+                // 오른쪽으로 벗어나는 경우
+                let finalX = x;
+                if (x + menuWidth > windowWidth) {
+                    finalX = windowWidth - menuWidth - 10;
+                }
+                
+                // 아래로 벗어나는 경우 - 위쪽에 표시
+                let finalY = y;
+                if (y + menuHeight > windowHeight) {
+                    finalY = y - menuHeight;
+                    // 위쪽에도 공간이 없으면 화면 내 최대한 위쪽에
+                    if (finalY < 0) {
+                        finalY = windowHeight - menuHeight - 10;
+                    }
+                }
+                
+                this.menu.style.left = finalX + 'px';
+                this.menu.style.top = finalY + 'px';
             }
             
             hide() {
@@ -1237,6 +1267,51 @@
         }
         
         const contextMenuUtil = new ContextMenuUtil();
+        
+        // --- UNDO 기능 (Ctrl+Z로 삭제 복구) ---
+        const undoStack = [];
+        const MAX_UNDO_STACK = 10; // 최대 10개까지 복구 가능
+        
+        function addToUndoStack(type, data) {
+            undoStack.push({ type, data, timestamp: Date.now() });
+            if (undoStack.length > MAX_UNDO_STACK) {
+                undoStack.shift(); // 오래된 것 제거
+            }
+        }
+        
+        function undo() {
+            if (undoStack.length === 0) {
+                alert('복구할 항목이 없습니다.');
+                return;
+            }
+            
+            const lastAction = undoStack.pop();
+            
+            if (lastAction.type === 'video') {
+                // 비디오 항목 복구
+                createItemDOM(lastAction.data.title, lastAction.data.link, lastAction.data.memo, lastAction.data.date).then(() => {
+                    saveItems();
+                    alert('삭제한 항목을 복구했습니다.');
+                });
+            } else if (lastAction.type === 'favorite') {
+                // 즐겨찾기 항목 복구
+                const tabInstance = TabManager.tabInstances[lastAction.data.tabId];
+                if (tabInstance && tabInstance.createFavoriteDOM) {
+                    tabInstance.createFavoriteDOM(lastAction.data.item).then(() => {
+                        tabInstance.saveFavorites();
+                        alert('삭제한 항목을 복구했습니다.');
+                    });
+                }
+            }
+        }
+        
+        // Ctrl+Z 키보드 이벤트
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                undo();
+            }
+        });
 
         // --- COMMON ---
         document.addEventListener('DOMContentLoaded', async () => {
@@ -1465,7 +1540,8 @@
                 items.push({
                     title: el.querySelector('.col-title').textContent,
                     link: el.dataset.link,
-                    memo: el.querySelector('.col-memo').dataset.rawMemo || ''
+                    memo: el.querySelector('.col-memo').dataset.rawMemo || '',
+                    date: el.querySelector('.col-date')?.textContent || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' })
                 });
             });
             localStorage.setItem(videoDataKey, JSON.stringify(items));
@@ -1475,7 +1551,7 @@
             try {
                 const items = JSON.parse(localStorage.getItem(videoDataKey) || '[]');
                 for (const item of items) {
-                    await createItemDOM(item.title, item.link, item.memo);
+                    await createItemDOM(item.title, item.link, item.memo, item.date);
                 }
             } catch (error) {
                 console.error('비디오 데이터 로드 실패:', error);
@@ -1487,7 +1563,7 @@
             // 번호 표시 제거됨 - 더 이상 필요 없음
         }
 
-        async function createItemDOM(title, link, memo) {
+        async function createItemDOM(title, link, memo, date) {
             if (document.querySelectorAll('#video-tab-content .list-item').length >= 20) return false;
             const itemElement = document.createElement('div');
             itemElement.className = 'list-item';
@@ -1499,12 +1575,14 @@
                 ? `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${isShort ? 'is-short' : ''}"></div>`
                 : `<div class="no-thumbnail">N/A</div>`;
 
+            const dateStr = date || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' });
             itemElement.innerHTML = `
                 <div class="item-col col-thumbnail">
                     ${thumbnailHTML}
                 </div>
                 <div class="item-col col-title">${escapeHTML(title)}</div>
                 <div class="item-col col-memo">${formatVideoMemo(memo)}</div>
+                <div class="item-col col-date">${dateStr}</div>
                 <div class="item-col col-actions action-buttons">
                     <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
                 </div>`;
@@ -1530,6 +1608,14 @@
             // 우클릭 & Long Press 메뉴
             contextMenuUtil.attachToElement(itemElement, (action) => {
                 if (action === 'delete') {
+                    // Undo 스택에 추가
+                    addToUndoStack('video', {
+                        title: itemElement.querySelector('.col-title').textContent,
+                        link: itemElement.dataset.link,
+                        memo: itemElement.querySelector('.col-memo').dataset.rawMemo || '',
+                        date: itemElement.querySelector('.col-date').textContent
+                    });
+                    
                     itemElement.remove();
                     saveItems();
                     renumberItems();
@@ -1865,7 +1951,8 @@
                     title: el.querySelector('.col-title').textContent,
                     link: el.querySelector('.col-link a')?.href || '',
                     memo: el.querySelector('.col-memo')?.dataset.fullMemo || '',
-                    image: el.querySelector('.thumbnail-container img')?.dataset.customImage || null
+                    image: el.querySelector('.thumbnail-container img')?.dataset.customImage || null,
+                    date: el.querySelector('.col-date')?.textContent || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' })
                 }));
                 localStorage.setItem(this.dataKey, JSON.stringify(favs));
             }
@@ -1899,11 +1986,15 @@
                 const displayedMemo = fav.memo && fav.memo !== '-' ? (fav.memo.length > 30 ? fav.memo.substring(0, 30) + '...' : fav.memo) : '';
                 const memoHTML = displayedMemo ? `<div class="item-col col-memo" data-full-memo="${escapeHTML(fav.memo)}">${escapeHTML(displayedMemo)}</div>` : '';
                 
+                // 날짜 처리
+                const dateStr = fav.date || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' });
+                
                 itemElement.innerHTML = `
                     <div class="item-col col-thumbnail">${thumbnailHTML}</div>
                     <div class="item-col col-title">${escapeHTML(fav.title)}</div>
                     <div class="item-col col-link">${linkHTML}</div>
                     ${memoHTML}
+                    <div class="item-col col-date">${dateStr}</div>
                     <div class="item-col col-actions action-buttons"><button class="btn-edit">수정</button><button class="btn-delete">삭제</button></div>`;
                 this.listContainer.appendChild(itemElement);
                 
@@ -1917,6 +2008,18 @@
                 // 우클릭 & Long Press 메뉴
                 contextMenuUtil.attachToElement(itemElement, (action) => {
                     if (action === 'delete') {
+                        // Undo 스택에 추가
+                        addToUndoStack('favorite', {
+                            tabId: this.tabId,
+                            item: {
+                                title: itemElement.querySelector('.col-title').textContent,
+                                link: itemElement.querySelector('.col-link a')?.href || '',
+                                memo: itemElement.querySelector('.col-memo')?.dataset.fullMemo || '',
+                                image: itemElement.querySelector('.thumbnail-container img')?.dataset.customImage || null,
+                                date: itemElement.querySelector('.col-date')?.textContent
+                            }
+                        });
+                        
                         itemElement.remove();
                         this.saveFavorites();
                         this.renumberFavorites();
