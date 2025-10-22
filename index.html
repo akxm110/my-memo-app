@@ -1484,9 +1484,7 @@
         }
 
         function renumberItems() {
-            document.querySelectorAll('#video-tab-content .list-item').forEach((el, index) => {
-                el.querySelector('.col-index').textContent = index + 1;
-            });
+            // 번호 표시 제거됨 - 더 이상 필요 없음
         }
 
         async function createItemDOM(title, link, memo) {
