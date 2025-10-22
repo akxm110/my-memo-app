@@ -240,9 +240,9 @@
             word-break: break-all;
         }
         .col-index { flex: 0 0 40px; text-align: center; }
-        #video-tab-content .col-title { flex: 1 1 25%; }
-        #video-tab-content .col-thumbnail { flex: 0 0 190px; text-align: center; }
-        #video-tab-content .col-memo { flex: 1 1 25%; }
+        #video-tab-content .col-thumbnail { flex: 0 0 90px; text-align: center; }
+        #video-tab-content .col-title { flex: 0 0 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #video-tab-content .col-memo { flex: 0 0 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .memo-link {
             display: inline-block;
             margin: 2px 4px 2px 0;
@@ -354,9 +354,9 @@
             cursor: pointer; font-size: 16px; font-weight: bold; height: 38px;
         }
         .fav-list-container .col-thumbnail { flex: 0 0 90px; text-align: center; }
-        .fav-list-container .col-title { flex: 1 1 30%; }
-        .fav-list-container .col-link { flex: 1 1 30%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .fav-list-container .col-memo { flex: 1 1 20%; }
+        .fav-list-container .col-title { flex: 0 0 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .fav-list-container .col-link { flex: 0 0 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .fav-list-container .col-memo { flex: 0 0 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .fav-list-container .col-actions { flex: 0 0 120px; text-align: right; }
         
         .fav-image-preview-container {
@@ -815,13 +815,57 @@
             .items-list {
                 width: 100%;
             }
-            .list-item {
-                flex-direction: column;
-                align-items: flex-start;
-                min-height: auto;
-                padding: 10px;
+            /* 비디오 관리 & 즐겨찾기 게시판: 가로 배치 + 썸네일/제목만 표시 */
+            #video-tab-content .list-item,
+            .fav-list-container .list-item {
+                flex-direction: row !important;
+                align-items: center;
+                min-height: 60px;
+                padding: 8px;
+                gap: 10px;
             }
-            /* 커뮤니티 탭은 가로 배치 유지 */
+            
+            /* 썸네일 크기 고정 (PC와 동일) */
+            #video-tab-content .col-thumbnail,
+            .fav-list-container .col-thumbnail {
+                flex: 0 0 70px;
+                margin: 0;
+            }
+            
+            #video-tab-content .thumbnail-container,
+            #video-tab-content .no-thumbnail,
+            .fav-list-container .thumbnail-container,
+            .fav-list-container .no-thumbnail {
+                width: 70px;
+                height: 50px;
+                max-width: 70px;
+            }
+            
+            /* 제목을 클릭 가능하게 + 링크로 이동 */
+            #video-tab-content .col-title,
+            .fav-list-container .col-title {
+                flex: 1;
+                padding: 0 8px;
+                cursor: pointer;
+                color: #007bff;
+                text-decoration: none;
+            }
+            
+            #video-tab-content .col-title:hover,
+            .fav-list-container .col-title:hover {
+                text-decoration: underline;
+            }
+            
+            /* 메모, 링크, 동작 버튼 숨기기 */
+            #video-tab-content .col-memo,
+            #video-tab-content .col-actions,
+            .fav-list-container .col-link,
+            .fav-list-container .col-memo,
+            .fav-list-container .col-actions {
+                display: none !important;
+            }
+            
+            /* 커뮤니티 탭은 기존 스타일 유지 */
             .community-list-container .list-item {
                 flex-direction: row !important;
                 align-items: center;
@@ -829,26 +873,6 @@
             .community-list-container .item-col {
                 width: auto;
                 padding: 0 5px;
-            }
-            .item-col {
-                width: 100%;
-                padding: 5px 0;
-            }
-            .col-index {
-                text-align: left;
-                font-weight: bold;
-            }
-            .col-thumbnail {
-                margin: 10px 0;
-            }
-            .thumbnail-wrapper {
-                width: 100%;
-            }
-            .thumbnail-container, .no-thumbnail {
-                width: 100%;
-                max-width: 300px;
-                height: auto;
-                aspect-ratio: 16/9;
             }
             .col-actions {
                 display: flex;
@@ -1478,17 +1502,23 @@
                 : `<div class="no-thumbnail">N/A</div>`;
 
             itemElement.innerHTML = `
-                <div class="item-col col-index"></div>
-                <div class="item-col col-title">${escapeHTML(title)}</div>
                 <div class="item-col col-thumbnail">
                     ${thumbnailHTML}
                 </div>
+                <div class="item-col col-title">${escapeHTML(title)}</div>
                 <div class="item-col col-memo">${formatVideoMemo(memo)}</div>
                 <div class="item-col col-actions action-buttons">
                     <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
                 </div>`;
             itemsContainer.appendChild(itemElement);
             itemElement.querySelector('.col-memo').dataset.rawMemo = memo;
+            
+            // 모바일: 제목 클릭 시 링크로 이동
+            itemElement.querySelector('.col-title').addEventListener('click', () => {
+                if (window.innerWidth <= 768 && link) {
+                    window.open(link, '_blank');
+                }
+            });
 
             const img = itemElement.querySelector('.thumbnail-container img');
             const youtubeId = getYoutubeVideoId(link);
@@ -1533,7 +1563,7 @@
             document.getElementById('memo-input').value = memo === '-' ? '' : memo;
             addBtn.textContent = '수정 완료';
             currentlyEditingItem = itemElement;
-            document.querySelector('.input-section').scrollIntoView({ behavior: 'smooth' });
+            document.querySelector('.input-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         async function updateItem(itemElement) {
@@ -1878,6 +1908,13 @@
                     ${memoHTML}
                     <div class="item-col col-actions action-buttons"><button class="btn-edit">수정</button><button class="btn-delete">삭제</button></div>`;
                 this.listContainer.appendChild(itemElement);
+                
+                // 모바일: 제목 클릭 시 링크로 이동
+                itemElement.querySelector('.col-title').addEventListener('click', () => {
+                    if (window.innerWidth <= 768 && link) {
+                        window.open(link, '_blank');
+                    }
+                });
                 
                 // 우클릭 & Long Press 메뉴
                 contextMenuUtil.attachToElement(itemElement, (action) => {
