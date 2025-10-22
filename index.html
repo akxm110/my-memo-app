@@ -159,6 +159,18 @@
             padding: 0 20px;
         }
         
+        /* 즐겨찾기 게시판 - 커뮤니티와 동일한 가로 사이즈 */
+        .fav-list-container {
+            max-width: 1200px;
+            margin: 20px auto 0 auto;
+        }
+        
+        /* 비디오 관리 탭 게시판 - 커뮤니티와 동일한 가로 사이즈 */
+        #items-container {
+            max-width: 1200px;
+            margin: 20px auto 0 auto;
+        }
+        
         .community-list-container .list-header,
         .community-list-container .list-item {
             min-height: 35px;
@@ -937,25 +949,7 @@
             <div class="actions">
                  <button id="delete-all-btn">전체 삭제</button>
             </div>
-            <div class="lists-wrapper">
-                <div id="items-container-left" class="items-list">
-                    <div class="list-header">
-                        <div class="item-col col-index">#</div>
-                        <div class="item-col col-title">제목</div>
-                        <div class="item-col col-thumbnail">썸네일</div>
-                        <div class="item-col col-memo">메모</div>
-                        <div class="item-col col-actions" style="text-align:center">동작</div>
-                    </div>
-                </div>
-                <div id="items-container-right" class="items-list">
-                     <div class="list-header">
-                        <div class="item-col col-index">#</div>
-                        <div class="item-col col-title">제목</div>
-                        <div class="item-col col-thumbnail">썸네일</div>
-                        <div class="item-col col-memo">메모</div>
-                        <div class="item-col col-actions" style="text-align:center">동작</div>
-                    </div>
-                </div>
+            <div id="items-container" class="items-list">
             </div>
         </div>
         <div id="memo-tab-content" class="tab-content">
@@ -1404,10 +1398,8 @@
             if (!text) return '-';
             const youtubeUrlRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)[^\s<]+)/g;
             
-            let linkCount = 0;
             const formattedText = escapeHTML(text).replace(youtubeUrlRegex, (url) => {
-                linkCount++;
-                return `<a href="${url}" target="_blank" class="memo-link">링크 ${linkCount}</a>`;
+                return `<a href="${url}" target="_blank" class="memo-link">${url}</a>`;
             });
 
             return formattedText.replace(/\n/g, '<br>');
@@ -1425,8 +1417,7 @@
         // --- VIDEO MEMO LOGIC ---
         const addBtn = document.getElementById('add-btn');
         const deleteAllBtn = document.getElementById('delete-all-btn');
-        const itemsContainerLeft = document.getElementById('items-container-left');
-        const itemsContainerRight = document.getElementById('items-container-right');
+        const itemsContainer = document.getElementById('items-container');
         const videoDataKey = 'videoMemoData';
         let currentlyEditingItem = null;
 
@@ -1439,8 +1430,7 @@
         });
         deleteAllBtn.addEventListener('click', () => {
             if (confirm('모든 항목을 삭제하시겠습니까?')) {
-                itemsContainerLeft.querySelectorAll('.list-item').forEach(i => i.remove());
-                itemsContainerRight.querySelectorAll('.list-item').forEach(i => i.remove());
+                itemsContainer.querySelectorAll('.list-item').forEach(i => i.remove());
                 saveItems(); renumberItems();
             }
         });
@@ -1450,7 +1440,7 @@
             document.querySelectorAll('#video-tab-content .list-item').forEach(el => {
                 items.push({
                     title: el.querySelector('.col-title').textContent,
-                    link: el.querySelector('.link-button').href,
+                    link: el.dataset.link,
                     memo: el.querySelector('.col-memo').dataset.rawMemo || ''
                 });
             });
@@ -1477,9 +1467,9 @@
 
         async function createItemDOM(title, link, memo) {
             if (document.querySelectorAll('#video-tab-content .list-item').length >= 20) return false;
-            const targetContainer = itemsContainerLeft.querySelectorAll('.list-item').length < 10 ? itemsContainerLeft : itemsContainerRight;
             const itemElement = document.createElement('div');
             itemElement.className = 'list-item';
+            itemElement.dataset.link = link;
 
             const thumbnailUrl = await fetchThumbnailUrl(link);
             const isShort = link.includes('/shorts/');
@@ -1491,13 +1481,13 @@
                 <div class="item-col col-index"></div>
                 <div class="item-col col-title">${escapeHTML(title)}</div>
                 <div class="item-col col-thumbnail">
-                    <div class="thumbnail-wrapper">${thumbnailHTML}<a href="${escapeHTML(link)}" target="_blank" class="link-button">링크 보기</a></div>
-        </div>
+                    ${thumbnailHTML}
+                </div>
                 <div class="item-col col-memo">${formatVideoMemo(memo)}</div>
                 <div class="item-col col-actions action-buttons">
                     <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
                 </div>`;
-            targetContainer.appendChild(itemElement);
+            itemsContainer.appendChild(itemElement);
             itemElement.querySelector('.col-memo').dataset.rawMemo = memo;
 
             const img = itemElement.querySelector('.thumbnail-container img');
@@ -1538,7 +1528,7 @@
         
         function editItem(itemElement) {
             document.getElementById('title-input').value = itemElement.querySelector('.col-title').textContent;
-            document.getElementById('link-input').value = itemElement.querySelector('.link-button').href;
+            document.getElementById('link-input').value = itemElement.dataset.link;
             const memo = itemElement.querySelector('.col-memo').dataset.rawMemo;
             document.getElementById('memo-input').value = memo === '-' ? '' : memo;
             addBtn.textContent = '수정 완료';
@@ -1550,20 +1540,20 @@
             const title = document.getElementById('title-input').value.trim(), link = document.getElementById('link-input').value.trim(), memo = document.getElementById('memo-input').value.trim();
             if (!title || !link) return alert('제목과 링크를 입력해주세요.');
             itemElement.querySelector('.col-title').textContent = title;
-            itemElement.querySelector('.link-button').href = link;
+            itemElement.dataset.link = link;
             itemElement.querySelector('.col-memo').innerHTML = formatVideoMemo(memo);
             itemElement.querySelector('.col-memo').dataset.rawMemo = memo;
             
             const thumbnailUrl = await fetchThumbnailUrl(link);
-            const thumbnailWrapper = itemElement.querySelector('.thumbnail-wrapper');
+            const thumbnailContainer = itemElement.querySelector('.col-thumbnail');
             const isShort = link.includes('/shorts/');
 
             const thumbnailHTML = thumbnailUrl
-                ? `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${isShort ? 'is-short' : ''}"></div><a href="${escapeHTML(link)}" target="_blank" class="link-button">링크 보기</a>`
-                : `<div class="no-thumbnail">N/A</div><a href="${escapeHTML(link)}" target="_blank" class="link-button">링크 보기</a>`;
-            thumbnailWrapper.innerHTML = thumbnailHTML;
+                ? `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${isShort ? 'is-short' : ''}"></div>`
+                : `<div class="no-thumbnail">N/A</div>`;
+            thumbnailContainer.innerHTML = thumbnailHTML;
 
-            const newImg = thumbnailWrapper.querySelector('.thumbnail-container img');
+            const newImg = thumbnailContainer.querySelector('.thumbnail-container img');
             const youtubeId = getYoutubeVideoId(link);
             if (newImg && youtubeId) {
                 newImg.onerror = function() {
@@ -1805,10 +1795,6 @@
     </div>
                     <div class="actions"><button class="fav-delete-all-btn">전체 삭제</button></div>
                     <div class="items-list fav-list-container">
-                        <div class="list-header">
-                            <div class="item-col col-index">#</div><div class="item-col col-title">제목</div><div class="item-col col-link">링크</div>
-                            <div class="item-col col-thumbnail">썸네일</div><div class="item-col col-memo">메모</div><div class="item-col col-actions">동작</div>
-            </div>
                     </div>`;
             }
             bindElements() {
