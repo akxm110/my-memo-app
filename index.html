@@ -281,8 +281,8 @@
             background-color: #0056b3;
         }
         .thumbnail-container {
-            width: 170px;
-            height: 90px;
+            width: 70px;
+            height: 50px;
             border-radius: 8px;
             overflow: hidden;
             border: 1px solid #ddd;
@@ -301,8 +301,8 @@
             transform: scale(1.78);
         }
         .no-thumbnail {
-            width: 170px;
-            height: 90px;
+            width: 70px;
+            height: 50px;
             background-color: #f0f0f0;
             border: 1px dashed #ccc;
             color: #999;
@@ -353,17 +353,17 @@
             background-color: #28a745; color: white; padding: 10px 25px; border: none; border-radius: 4px;
             cursor: pointer; font-size: 16px; font-weight: bold; height: 38px;
         }
-        .fav-list-container .col-title { flex: 1 1 25%; }
-        .fav-list-container .col-link { flex: 2 1 30%; }
-        .fav-list-container .col-thumbnail { flex: 0 0 190px; text-align: center; }
+        .fav-list-container .col-thumbnail { flex: 0 0 90px; text-align: center; }
+        .fav-list-container .col-title { flex: 1 1 30%; }
+        .fav-list-container .col-link { flex: 1 1 30%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .fav-list-container .col-memo { flex: 1 1 20%; }
-        .fav-list-container .col-actions { flex: 0 0 160px; text-align: right; }
+        .fav-list-container .col-actions { flex: 0 0 120px; text-align: right; }
         
         .fav-image-preview-container {
             padding-left: 15px; display: flex; flex-direction: column;
             align-items: center; justify-content: center; gap: 5px;
         }
-        .fav-image-preview { max-width: 170px; max-height: 90px; border-radius: 8px; object-fit: cover; }
+        .fav-image-preview { max-width: 70px; max-height: 50px; border-radius: 8px; object-fit: cover; }
         .fav-image-clear-btn { font-size: 10px; cursor: pointer; display: none; }
 
         .tab-management {
@@ -1395,7 +1395,7 @@
         }
 
         function formatVideoMemo(text) {
-            if (!text) return '-';
+            if (!text || text === '-') return '';
             const youtubeUrlRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)[^\s<]+)/g;
             
             const formattedText = escapeHTML(text).replace(youtubeUrlRegex, (url) => {
@@ -1836,7 +1836,7 @@
                 const favs = Array.from(this.listContainer.querySelectorAll('.list-item')).map(el => ({
                     title: el.querySelector('.col-title').textContent,
                     link: el.querySelector('.col-link a')?.href || '',
-                    memo: el.querySelector('.col-memo').dataset.fullMemo || '',
+                    memo: el.querySelector('.col-memo')?.dataset.fullMemo || '',
                     image: el.querySelector('.thumbnail-container img')?.dataset.customImage || null
                 }));
                 localStorage.setItem(this.dataKey, JSON.stringify(favs));
@@ -1849,7 +1849,7 @@
                     localStorage.removeItem(this.dataKey);
                 }
             }
-            renumberFavorites() { this.listContainer.querySelectorAll('.list-item').forEach((el, i) => el.querySelector('.col-index').textContent = i + 1); }
+            renumberFavorites() { /* 번호 표시 제거됨 */ }
             async createFavoriteDOM(fav) {
                 const itemElement = document.createElement('div');
                 itemElement.className = 'list-item';
@@ -1862,13 +1862,20 @@
                     const thumbnailUrl = await fetchThumbnailUrl(link);
                     if (thumbnailUrl) thumbnailHTML = `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${link.includes('/shorts/') ? 'is-short' : ''}"></div>`;
                 }
-                const displayedMemo = fav.memo.length > 30 ? fav.memo.substring(0, 30) + '...' : fav.memo;
+                
+                // 링크 30자 제한
+                const displayedLink = link && link.length > 30 ? link.substring(0, 30) + '...' : link;
+                const linkHTML = link ? `<a href="${escapeHTML(link)}" target="_blank" title="${escapeHTML(link)}">${escapeHTML(displayedLink)}</a>` : '-';
+                
+                // 메모가 "-"가 아니고 내용이 있을 때만 표시
+                const displayedMemo = fav.memo && fav.memo !== '-' ? (fav.memo.length > 30 ? fav.memo.substring(0, 30) + '...' : fav.memo) : '';
+                const memoHTML = displayedMemo ? `<div class="item-col col-memo" data-full-memo="${escapeHTML(fav.memo)}">${escapeHTML(displayedMemo)}</div>` : '';
+                
                 itemElement.innerHTML = `
-                    <div class="item-col col-index"></div>
-                    <div class="item-col col-title">${escapeHTML(fav.title)}</div>
-                    <div class="item-col col-link">${link ? `<a href="${escapeHTML(link)}" target="_blank">${escapeHTML(link)}</a>` : '-'}</div>
                     <div class="item-col col-thumbnail">${thumbnailHTML}</div>
-                    <div class="item-col col-memo" data-full-memo="${escapeHTML(fav.memo)}">${escapeHTML(displayedMemo) || '-'}</div>
+                    <div class="item-col col-title">${escapeHTML(fav.title)}</div>
+                    <div class="item-col col-link">${linkHTML}</div>
+                    ${memoHTML}
                     <div class="item-col col-actions action-buttons"><button class="btn-edit">수정</button><button class="btn-delete">삭제</button></div>`;
                 this.listContainer.appendChild(itemElement);
                 
@@ -1902,7 +1909,7 @@
                 const fav = {
                     title: itemElement.querySelector('.col-title').textContent,
                     link: itemElement.querySelector('.col-link a')?.href || '',
-                    memo: itemElement.querySelector('.col-memo').dataset.fullMemo,
+                    memo: itemElement.querySelector('.col-memo')?.dataset.fullMemo || '',
                     image: itemElement.querySelector('.thumbnail-container img')?.dataset.customImage
                 };
                 this.titleInput.value = fav.title; this.linkInput.value = fav.link; this.memoInput.value = fav.memo;
