@@ -936,9 +936,11 @@
             
             .editor-list-panel {
                 flex: 0 0 auto;
+                max-height: calc(100vh - 300px);
+                overflow-y: auto;
             }
             .editor-post-list {
-                max-height: 300px;
+                max-height: none;
             }
             .editor-toolbar {
                 gap: 3px;
@@ -1708,6 +1710,44 @@
                     }
                 });
             });
+            
+            // 페이지 로드 시 초기 active 탭 확인하여 버튼 표시
+            updateWriteButtonVisibility();
+        }
+        
+        function updateWriteButtonVisibility() {
+            const writeVideoBtn = document.getElementById('write-video-btn');
+            const writeFavBtn = document.getElementById('write-fav-btn');
+            const newPostBtn = document.getElementById('new-post-btn');
+            
+            // 모든 버튼 숨김
+            writeVideoBtn.style.display = 'none';
+            writeFavBtn.style.display = 'none';
+            newPostBtn.style.display = 'none';
+            
+            // 현재 active 탭 찾기
+            const activeTab = document.querySelector('.tab.active');
+            if (!activeTab) return;
+            
+            const target = document.querySelector(activeTab.dataset.tabTarget);
+            if (!target) return;
+            
+            const tabId = target.id;
+            const tabData = TabManager.tabs.find(t => t.id === tabId);
+            
+            // 비디오 관리 탭 (모바일에서만 표시)
+            if (tabId === 'video-tab-content' && window.innerWidth <= 768) {
+                writeVideoBtn.style.display = 'inline-block';
+            }
+            // 즐겨찾기 탭 (모바일에서만 표시)
+            else if (tabData && tabData.type === 'favorites' && window.innerWidth <= 768) {
+                writeFavBtn.style.display = 'inline-block';
+                writeFavBtn.dataset.tabId = tabId;
+            }
+            // 에디터/커뮤니티 탭
+            else if (tabData && (tabData.type === 'editor' || tabData.type === 'community')) {
+                newPostBtn.style.display = 'inline-block';
+            }
         }
 
         function escapeHTML(str) {
@@ -2697,15 +2737,22 @@
                 
                 this.modalTextarea.appendChild(todoItem);
                 this.modalTextarea.appendChild(document.createElement('br'));
-                text.focus();
                 
-                // 커서를 텍스트 끝으로 이동
-                const range = document.createRange();
-                const sel = window.getSelection();
-                range.selectNodeContents(text);
-                range.collapse(false);
-                sel.removeAllRanges();
-                sel.addRange(range);
+                // 커서를 텍스트 시작 위치로 이동
+                setTimeout(() => {
+                    text.focus();
+                    const range = document.createRange();
+                    const sel = window.getSelection();
+                    if (text.childNodes.length > 0) {
+                        range.setStart(text.childNodes[0], 0);
+                        range.collapse(true);
+                    } else {
+                        range.selectNodeContents(text);
+                        range.collapse(true);
+                    }
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }, 10);
             }
             
             bindTodoCheckboxes() {
