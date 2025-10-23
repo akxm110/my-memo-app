@@ -1028,8 +1028,11 @@
         let isSyncing = false;
         let isInitialized = false;
         
-        // 에디터 탭 인스턴스 전역 저장 (모바일 목록↔본문 전환용)
+        // 모든 탭 인스턴스 전역 저장
         window.editorTabInstances = window.editorTabInstances || {};
+        window.communityTabInstances = window.communityTabInstances || {};
+        window.favoritesTabInstances = window.favoritesTabInstances || {};
+        window.memoTabInstances = window.memoTabInstances || {};
 
         // --- 손상된 localStorage 데이터 자동 복구 ---
         function cleanupCorruptedData() {
@@ -1229,11 +1232,20 @@
                 
                 // 아래로 벗어나는 경우 - 위쪽에 표시
                 let finalY = y;
-                if (y + menuHeight > windowHeight) {
-                    finalY = y - menuHeight;
-                    // 위쪽에도 공간이 없으면 화면 내 최대한 위쪽에
-                    if (finalY < 0) {
-                        finalY = windowHeight - menuHeight - 10;
+                // 모바일에서는 항상 터치 지점보다 위에 표시
+                if (window.innerWidth <= 768) {
+                    finalY = y - menuHeight - 20; // 터치 지점보다 20px 위
+                    // 위쪽으로 벗어나면 조금 아래로
+                    if (finalY < 10) {
+                        finalY = 10;
+                    }
+                } else {
+                    // PC에서는 기존 로직
+                    if (y + menuHeight > windowHeight) {
+                        finalY = y - menuHeight;
+                        if (finalY < 0) {
+                            finalY = windowHeight - menuHeight - 10;
+                        }
                     }
                 }
                 
@@ -1307,12 +1319,72 @@
                 });
             } else if (lastAction.type === 'favorite') {
                 // 즐겨찾기 항목 복구
-                const tabInstance = TabManager.tabInstances[lastAction.data.tabId];
+                const tabInstance = window.favoritesTabInstances[lastAction.data.tabId];
                 if (tabInstance && tabInstance.createFavoriteDOM) {
                     tabInstance.createFavoriteDOM(lastAction.data.item).then(() => {
                         tabInstance.saveFavorites();
                         alert('삭제한 항목을 복구했습니다.');
                     });
+                } else {
+                    alert('탭을 찾을 수 없습니다. 해당 탭이 삭제되었을 수 있습니다.');
+                }
+            } else if (lastAction.type === 'memo') {
+                // 메모 항목 복구
+                if (lastAction.data.tabId) {
+                    // MemoTab 클래스의 메모 (동적 탭)
+                    const tabInstance = window.memoTabInstances[lastAction.data.tabId];
+                    if (tabInstance && tabInstance.createMemoDOM) {
+                        tabInstance.createMemoDOM(lastAction.data.text);
+                        tabInstance.saveMemos();
+                        alert('삭제한 메모를 복구했습니다.');
+                    } else {
+                        alert('탭을 찾을 수 없습니다. 해당 탭이 삭제되었을 수 있습니다.');
+                    }
+                } else {
+                    // 기본 메모장 탭
+                    createMemoDOM(lastAction.data.text);
+                    saveMemos();
+                    alert('삭제한 메모를 복구했습니다.');
+                }
+            } else if (lastAction.type === 'editor') {
+                // 에디터 글 복구
+                if (!database) {
+                    alert('Firebase 연결 오류');
+                    return;
+                }
+                const tabInstance = window.editorTabInstances[lastAction.data.tabId];
+                if (tabInstance && tabInstance.firebasePath) {
+                    database.ref(`${tabInstance.firebasePath}/${lastAction.data.postId}`).set(lastAction.data.post)
+                        .then(() => {
+                            console.log('✅ 글 복구 완료');
+                            alert('삭제한 글을 복구했습니다.');
+                        })
+                        .catch(err => {
+                            console.error('복구 오류:', err);
+                            alert('복구 실패');
+                        });
+                } else {
+                    alert('탭을 찾을 수 없습니다. 해당 탭이 삭제되었을 수 있습니다.');
+                }
+            } else if (lastAction.type === 'community') {
+                // 커뮤니티 글 복구
+                if (!database) {
+                    alert('Firebase 연결 오류');
+                    return;
+                }
+                const tabInstance = window.communityTabInstances[lastAction.data.tabId];
+                if (tabInstance && tabInstance.firebasePath) {
+                    database.ref(`${tabInstance.firebasePath}/${lastAction.data.postId}`).set(lastAction.data.post)
+                        .then(() => {
+                            console.log('✅ 게시글 복구 완료');
+                            alert('삭제한 게시글을 복구했습니다.');
+                        })
+                        .catch(err => {
+                            console.error('복구 오류:', err);
+                            alert('복구 실패');
+                        });
+                } else {
+                    alert('탭을 찾을 수 없습니다. 해당 탭이 삭제되었을 수 있습니다.');
                 }
             }
         }
@@ -1444,10 +1516,6 @@
             reader.readAsText(file);
         }
 
-        // EditorTab & CommunityTab 인스턴스 저장
-        window.editorTabInstances = {};
-        window.communityTabInstances = {};
-        
         function initializeTabSwitching() {
             const newPostBtn = document.getElementById('new-post-btn');
             
@@ -1743,6 +1811,12 @@
             // 우클릭 & Long Press 메뉴
             contextMenuUtil.attachToElement(memoItem, (action) => {
                 if (action === 'delete') {
+                    // Undo 스택에 추가
+                    addToUndoStack('memo', {
+                        text: memoItem.dataset.rawText,
+                        date: memoItem.querySelector('.memo-date')?.textContent
+                    });
+                    
                     memoItem.remove();
                     saveMemos();
                 } else if (action === 'edit') {
@@ -1809,9 +1883,11 @@
                     // 탭 타입에 따라 다른 콘텐츠 생성
                     const tabType = tabData.type || 'favorites'; // 기본값: favorites
                     if (tabType === 'favorites') {
-                        new FavoritesTab(content, tabData.id);
+                        const favInstance = new FavoritesTab(content, tabData.id);
+                        window.favoritesTabInstances[tabData.id] = favInstance;
                     } else if (tabType === 'memo') {
-                        new MemoTab(content, tabData.id);
+                        const memoInstance = new MemoTab(content, tabData.id);
+                        window.memoTabInstances[tabData.id] = memoInstance;
                     } else if (tabType === 'editor') {
                         const editorInstance = new EditorTab(content, tabData.id);
                         window.editorTabInstances[tabData.id] = editorInstance;
@@ -2184,6 +2260,13 @@
                 // 우클릭 & Long Press 메뉴
                 contextMenuUtil.attachToElement(memoItem, (action) => {
                     if (action === 'delete') {
+                        // Undo 스택에 추가
+                        addToUndoStack('memo', {
+                            text: memoItem.dataset.rawText,
+                            date: memoItem.querySelector('.memo-date')?.textContent,
+                            tabId: this.tabId
+                        });
+                        
                         memoItem.remove();
                         this.saveMemos();
                     } else if (action === 'edit') {
@@ -2724,8 +2807,21 @@
                     return;
                 }
                 
-                // Firebase에서 개별 항목 삭제
-                database.ref(`${this.firebasePath}/${postId}`).remove()
+                // Undo 스택에 추가하기 위해 먼저 데이터 가져오기
+                database.ref(`${this.firebasePath}/${postId}`).once('value')
+                    .then(snapshot => {
+                        const postData = snapshot.val();
+                        if (postData) {
+                            addToUndoStack('editor', {
+                                tabId: this.tabId,
+                                postId: postId,
+                                post: postData
+                            });
+                        }
+                        
+                        // Firebase에서 개별 항목 삭제
+                        return database.ref(`${this.firebasePath}/${postId}`).remove();
+                    })
                     .then(() => {
                         console.log('✅ 글 삭제 완료');
                         
@@ -3013,8 +3109,21 @@
                     return;
                 }
                 
-                // Firebase에서 개별 항목 삭제
-                database.ref(`${this.firebasePath}/${postId}`).remove()
+                // Undo 스택에 추가하기 위해 먼저 데이터 가져오기
+                database.ref(`${this.firebasePath}/${postId}`).once('value')
+                    .then(snapshot => {
+                        const postData = snapshot.val();
+                        if (postData) {
+                            addToUndoStack('community', {
+                                tabId: this.tabId,
+                                postId: postId,
+                                post: postData
+                            });
+                        }
+                        
+                        // Firebase에서 개별 항목 삭제
+                        return database.ref(`${this.firebasePath}/${postId}`).remove();
+                    })
                     .then(() => {
                         console.log('✅ 게시글 삭제 완료');
                     })
