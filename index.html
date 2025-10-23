@@ -3095,16 +3095,30 @@
                     return;
                 }
                 
-                // Firebase에 'isPinned' 상태만 업데이트
+                // 로컬에서 즉시 업데이트
+                post.isPinned = newPinState;
+                
+                // 다시 정렬
+                this.posts.sort((a, b) => {
+                    if (a.isPinned && !b.isPinned) return -1;
+                    if (!a.isPinned && b.isPinned) return 1;
+                    return b.date - a.date;
+                });
+                
+                // 화면 즉시 갱신
+                this.renderPostList();
+                
+                // Firebase에 'isPinned' 상태 업데이트
                 database.ref(`${this.firebasePath}/${postId}/isPinned`).set(newPinState)
                     .then(() => {
                         console.log('✅ 핀 상태 업데이트 완료');
                     })
                     .catch(err => {
                         console.error('핀 업데이트 실패:', err);
+                        // 실패 시 롤백
+                        post.isPinned = !newPinState;
+                        this.renderPostList();
                     });
-                
-                // 참고: Firebase 리스너가 변경을 감지하고 목록을 자동으로 다시 그립니다.
             }
             
             deletePost(postId) {
@@ -3434,16 +3448,30 @@
                     return;
                 }
                 
-                // Firebase에 'isPinned' 상태만 업데이트
+                // 로컬에서 즉시 업데이트
+                post.isPinned = newPinState;
+                
+                // 다시 정렬
+                this.posts.sort((a, b) => {
+                    if (a.isPinned && !b.isPinned) return -1;
+                    if (!a.isPinned && b.isPinned) return 1;
+                    return b.date - a.date;
+                });
+                
+                // 화면 즉시 갱신
+                this.renderPostList();
+                
+                // Firebase에 'isPinned' 상태 업데이트
                 database.ref(`${this.firebasePath}/${postId}/isPinned`).set(newPinState)
                     .then(() => {
                         console.log('✅ 핀 상태 업데이트 완료');
                     })
                     .catch(err => {
                         console.error('핀 업데이트 실패:', err);
+                        // 실패 시 롤백
+                        post.isPinned = !newPinState;
+                        this.renderPostList();
                     });
-                
-                // 참고: Firebase 리스너가 변경을 감지하고 목록을 자동으로 다시 그립니다.
             }
             
             deletePost(postId) {
@@ -3464,9 +3492,9 @@
                                 postId: postId,
                                 post: postData
                             });
-                }
-                
-                // Firebase에서 개별 항목 삭제
+                        }
+                        
+                        // Firebase에서 개별 항목 삭제
                         return database.ref(`${this.firebasePath}/${postId}`).remove();
                     })
                     .then(() => {
