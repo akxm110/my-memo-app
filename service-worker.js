@@ -1,5 +1,5 @@
 // 서비스 워커 버전
-const CACHE_NAME = 'thumbnail-memo-v43';
+const CACHE_NAME = 'thumbnail-memo-v44';
 const urlsToCache = [
   '/my-memo-app/',
   '/my-memo-app/index.html',
