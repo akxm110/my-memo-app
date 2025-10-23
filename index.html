@@ -1761,6 +1761,7 @@
         }
 
         function escapeHTML(str) {
+            if (!str) return ''; // undefined, null, 빈 문자열 처리
             return str.replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match]));
         }
 
