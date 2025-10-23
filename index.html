@@ -1685,7 +1685,7 @@
                         writeVideoBtn.style.display = 'inline-block';
                     }
                     // 즐겨찾기 탭 (모바일에서만 표시)
-                    else if (tabData && tabData.type === 'favorites' && window.innerWidth <= 768) {
+                    else if (tabData && (tabData.type === 'favorites' || !tabData.type) && window.innerWidth <= 768) {
                         writeFavBtn.style.display = 'inline-block';
                         writeFavBtn.dataset.tabId = tabId; // 탭 ID 저장
                     }
@@ -1740,7 +1740,7 @@
                 writeVideoBtn.style.display = 'inline-block';
             }
             // 즐겨찾기 탭 (모바일에서만 표시)
-            else if (tabData && tabData.type === 'favorites' && window.innerWidth <= 768) {
+            else if (tabData && (tabData.type === 'favorites' || !tabData.type) && window.innerWidth <= 768) {
                 writeFavBtn.style.display = 'inline-block';
                 writeFavBtn.dataset.tabId = tabId;
             }
@@ -2710,7 +2710,7 @@
                 todoItem.style.cssText = 'display: flex; align-items: center; gap: 8px; margin: 8px 0; cursor: pointer;';
                 todoItem.innerHTML = `
                     <input type="checkbox" class="todo-checkbox" style="width: 18px; height: 18px; cursor: pointer;">
-                    <span class="todo-text" contenteditable="true" style="flex: 1; outline: none;"></span>
+                    <span class="todo-text" style="flex: 1; outline: none; min-width: 1px;"></span>
                 `;
                 
                 // 체크박스 토글 기능
