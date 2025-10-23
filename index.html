@@ -1195,7 +1195,7 @@
                 this.menu.className = 'context-menu';
                 this.menu.id = 'common-context-menu';
                 this.menu.innerHTML = `
-                    <div class="context-menu-item" data-action="pin">📌 고정/해제</div>
+                    <div class="context-menu-item" data-action="pin">📌 고정하기</div>
                     <div class="context-menu-item" data-action="edit">수정</div>
                     <div class="context-menu-item delete" data-action="delete">삭제</div>`;
                 document.body.appendChild(this.menu);
@@ -1216,8 +1216,15 @@
                 });
             }
             
-            show(x, y, callback) {
+            show(x, y, callback, isPinned = false) {
                 this.currentCallback = callback;
+                
+                // [수정] 고정 상태에 따라 버튼 텍스트 동적 변경
+                const pinButton = this.menu.querySelector('[data-action="pin"]');
+                if (pinButton) {
+                    pinButton.textContent = isPinned ? '고정 취소' : '📌 고정하기';
+                }
+                
                 this.menu.classList.add('active');
                 
                 // 메뉴 크기 가져오기
@@ -1267,14 +1274,16 @@
                 // 우클릭
                 element.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
-                    this.show(e.pageX, e.pageY, callback);
+                    const isPinned = element.dataset.isPinned === 'true';
+                    this.show(e.pageX, e.pageY, callback, isPinned);
                 });
                 
                 // Long press (모바일)
                 element.addEventListener('touchstart', (e) => {
                     this.longPressTimer = setTimeout(() => {
                         const touch = e.touches[0];
-                        this.show(touch.pageX, touch.pageY, callback);
+                        const isPinned = element.dataset.isPinned === 'true';
+                        this.show(touch.pageX, touch.pageY, callback, isPinned);
                     }, this.longPressDelay);
                 });
                 
@@ -1658,7 +1667,7 @@
                 favImageInput.value = '';
             }
         }
-
+        
         function initializeTabSwitching() {
             const newPostBtn = document.getElementById('new-post-btn');
             const writeVideoBtn = document.getElementById('write-video-btn');
@@ -1865,7 +1874,7 @@
             itemElement.innerHTML = `
                 <div class="item-col col-thumbnail">
                     ${thumbnailHTML}
-                </div>
+        </div>
                 <div class="item-col col-title">${pinIcon}${escapeHTML(title)}</div>
                 <div class="item-col col-memo">${formatVideoMemo(memo)}</div>
                 <div class="item-col col-date">${dateStr}</div>
@@ -2297,7 +2306,7 @@
                     const title = el.querySelector('.col-title').textContent;
                     return {
                         title: title.startsWith('📌 ') ? title.substring(2) : title, // 핀 아이콘 제거하고 저장
-                        link: el.querySelector('.col-link a')?.href || '',
+                    link: el.querySelector('.col-link a')?.href || '',
                         memo: el.querySelector('.col-memo')?.dataset.fullMemo || '',
                         image: el.querySelector('.thumbnail-container img')?.dataset.customImage || null,
                         date: el.querySelector('.col-date')?.textContent || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }),
@@ -2364,7 +2373,7 @@
                     if (fav.insertIndex >= 0 && fav.insertIndex < allItems.length) {
                         this.listContainer.insertBefore(itemElement, allItems[fav.insertIndex]);
                     } else {
-                        this.listContainer.appendChild(itemElement);
+                this.listContainer.appendChild(itemElement);
                     }
                 } else {
                     this.listContainer.appendChild(itemElement);
@@ -2878,6 +2887,7 @@
                         item.classList.add('active');
                     }
                     item.dataset.postId = post.id;
+                    item.dataset.isPinned = post.isPinned || false; // [수정] isPinned 설정
                     
                     const date = new Date(post.date);
                     const dateStr = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
@@ -3114,9 +3124,9 @@
                                 postId: postId,
                                 post: postData
                             });
-                        }
-                        
-                        // Firebase에서 개별 항목 삭제
+                }
+                
+                // Firebase에서 개별 항목 삭제
                         return database.ref(`${this.firebasePath}/${postId}`).remove();
                     })
                     .then(() => {
@@ -3270,6 +3280,7 @@
                     const itemElement = document.createElement('div');
                     itemElement.className = 'list-item';
                     itemElement.dataset.postId = post.id;
+                    itemElement.dataset.isPinned = post.isPinned || false; // [수정] isPinned 설정
                     
                     const date = new Date(post.date);
                     const dateStr = `${date.getMonth() + 1}월 ${date.getDate()}일`;
@@ -3296,7 +3307,9 @@
                     
                     // 우클릭 & Long Press 메뉴 - 날짜 부분에만 적용
                     const dateTrigger = itemElement.querySelector('.community-menu-trigger');
-                    contextMenuUtil.attachToElement(dateTrigger, (action) => {
+                    // [수정] dataTrigger의 부모(itemElement)의 isPinned를 전달
+                    dataTrigger.dataset.isPinned = post.isPinned || false;
+                    contextMenuUtil.attachToElement(dataTrigger, (action) => {
                         if (action === 'delete') {
                             this.deletePost(post.id);
                         } else if (action === 'edit') {
@@ -3439,9 +3452,9 @@
                                 postId: postId,
                                 post: postData
                             });
-                        }
-                        
-                        // Firebase에서 개별 항목 삭제
+                }
+                
+                // Firebase에서 개별 항목 삭제
                         return database.ref(`${this.firebasePath}/${postId}`).remove();
                     })
                     .then(() => {
