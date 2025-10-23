@@ -1232,13 +1232,12 @@
                 
                 // 아래로 벗어나는 경우 - 위쪽에 표시
                 let finalY = y;
-                // 모바일에서는 항상 터치 지점보다 위에 표시
+                // 모바일에서는 화면 상단 중앙에 고정 표시
                 if (window.innerWidth <= 768) {
-                    finalY = y - menuHeight - 20; // 터치 지점보다 20px 위
-                    // 위쪽으로 벗어나면 조금 아래로
-                    if (finalY < 10) {
-                        finalY = 10;
-                    }
+                    // 화면 상단에서 100px 위치에 고정
+                    finalY = 100;
+                    // 화면 중앙에 배치
+                    finalX = (windowWidth - menuWidth) / 2;
                 } else {
                     // PC에서는 기존 로직
                     if (y + menuHeight > windowHeight) {
@@ -1312,16 +1311,18 @@
             const lastAction = undoStack.pop();
             
             if (lastAction.type === 'video') {
-                // 비디오 항목 복구
-                createItemDOM(lastAction.data.title, lastAction.data.link, lastAction.data.memo, lastAction.data.date).then(() => {
+                // 비디오 항목 복구 (원래 위치에)
+                createItemDOM(lastAction.data.title, lastAction.data.link, lastAction.data.memo, lastAction.data.date, lastAction.data.index).then(() => {
                     saveItems();
                     alert('삭제한 항목을 복구했습니다.');
                 });
             } else if (lastAction.type === 'favorite') {
-                // 즐겨찾기 항목 복구
+                // 즐겨찾기 항목 복구 (원래 위치에)
                 const tabInstance = window.favoritesTabInstances[lastAction.data.tabId];
                 if (tabInstance && tabInstance.createFavoriteDOM) {
-                    tabInstance.createFavoriteDOM(lastAction.data.item).then(() => {
+                    // item에 insertIndex 추가
+                    const itemWithIndex = { ...lastAction.data.item, insertIndex: lastAction.data.index };
+                    tabInstance.createFavoriteDOM(itemWithIndex).then(() => {
                         tabInstance.saveFavorites();
                         alert('삭제한 항목을 복구했습니다.');
                     });
@@ -1643,7 +1644,7 @@
             // 번호 표시 제거됨 - 더 이상 필요 없음
         }
 
-        async function createItemDOM(title, link, memo, date) {
+        async function createItemDOM(title, link, memo, date, insertIndex) {
             if (document.querySelectorAll('#video-tab-content .list-item').length >= 20) return false;
             const itemElement = document.createElement('div');
             itemElement.className = 'list-item';
@@ -1666,7 +1667,19 @@
                 <div class="item-col col-actions action-buttons">
                     <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
                 </div>`;
-            itemsContainer.appendChild(itemElement);
+            
+            // insertIndex가 있으면 특정 위치에 삽입, 없으면 끝에 추가
+            if (insertIndex !== undefined && insertIndex !== null) {
+                const allItems = itemsContainer.querySelectorAll('.list-item');
+                if (insertIndex >= 0 && insertIndex < allItems.length) {
+                    itemsContainer.insertBefore(itemElement, allItems[insertIndex]);
+                } else {
+                    itemsContainer.appendChild(itemElement);
+                }
+            } else {
+                itemsContainer.appendChild(itemElement);
+            }
+            
             itemElement.querySelector('.col-memo').dataset.rawMemo = memo;
             
             // 모바일: 제목 클릭 시 링크로 이동
@@ -1688,12 +1701,17 @@
             // 우클릭 & Long Press 메뉴
             contextMenuUtil.attachToElement(itemElement, (action) => {
                 if (action === 'delete') {
-                    // Undo 스택에 추가
+                    // 현재 위치(인덱스) 찾기
+                    const allItems = Array.from(itemsContainer.querySelectorAll('.list-item'));
+                    const itemIndex = allItems.indexOf(itemElement);
+                    
+                    // Undo 스택에 추가 (위치 포함)
                     addToUndoStack('video', {
                         title: itemElement.querySelector('.col-title').textContent,
                         link: itemElement.dataset.link,
                         memo: itemElement.querySelector('.col-memo').dataset.rawMemo || '',
-                        date: itemElement.querySelector('.col-date').textContent
+                        date: itemElement.querySelector('.col-date').textContent,
+                        index: itemIndex
                     });
                     
                     itemElement.remove();
@@ -2098,7 +2116,18 @@
                     ${memoHTML}
                     <div class="item-col col-date">${dateStr}</div>
                     <div class="item-col col-actions action-buttons"><button class="btn-edit">수정</button><button class="btn-delete">삭제</button></div>`;
-                this.listContainer.appendChild(itemElement);
+                
+                // insertIndex가 있으면 특정 위치에 삽입, 없으면 끝에 추가
+                if (fav.insertIndex !== undefined && fav.insertIndex !== null) {
+                    const allItems = this.listContainer.querySelectorAll('.list-item');
+                    if (fav.insertIndex >= 0 && fav.insertIndex < allItems.length) {
+                        this.listContainer.insertBefore(itemElement, allItems[fav.insertIndex]);
+                    } else {
+                        this.listContainer.appendChild(itemElement);
+                    }
+                } else {
+                    this.listContainer.appendChild(itemElement);
+                }
                 
                 // 모바일: 제목 클릭 시 링크로 이동
                 itemElement.querySelector('.col-title').addEventListener('click', () => {
@@ -2110,9 +2139,14 @@
                 // 우클릭 & Long Press 메뉴
                 contextMenuUtil.attachToElement(itemElement, (action) => {
                     if (action === 'delete') {
-                        // Undo 스택에 추가
+                        // 현재 위치(인덱스) 찾기
+                        const allItems = Array.from(this.listContainer.querySelectorAll('.list-item'));
+                        const itemIndex = allItems.indexOf(itemElement);
+                        
+                        // Undo 스택에 추가 (위치 포함)
                         addToUndoStack('favorite', {
                             tabId: this.tabId,
+                            index: itemIndex,
                             item: {
                                 title: itemElement.querySelector('.col-title').textContent,
                                 link: itemElement.querySelector('.col-link a')?.href || '',
