@@ -797,14 +797,14 @@
             .container {
                 padding: 10px;
             }
+            /* 모바일: 비디오 관리 & 즐겨찾기 입력 섹션 숨김 */
+            #video-tab-content .input-section,
+            .fav-list-container ~ .input-section,
+            .dynamic-tab-content .input-section {
+                display: none;
+            }
             .input-section {
                 gap: 10px;
-            }
-            #video-tab-content .input-section {
-                grid-template-columns: 1fr;
-            }
-            .dynamic-tab-content .input-section {
-                grid-template-columns: 1fr;
             }
             .fav-image-preview-container {
                 padding-left: 0;
@@ -965,6 +965,8 @@
     <div class="tab-management">
         <button id="add-tab-btn">+ 탭 추가</button>
         <button id="new-post-btn" style="display: none;">✍️ 새 글 작성</button>
+        <button id="write-video-btn" style="display: none;">✍️ 글쓰기</button>
+        <button id="write-fav-btn" style="display: none;">✍️ 글쓰기</button>
         <button id="rename-tab-btn">✏️ 이름 변경</button>
         <button id="delete-tab-btn">🗑️ 탭 삭제</button>
     </div>
@@ -1406,6 +1408,7 @@
             await loadItems();
             loadMemos();
             setupBackupAndRestore();
+            setupWriteModals(); // 글쓰기 모달 설정
         });
 
         let currentObjectUrl = null;
@@ -1517,8 +1520,146 @@
             reader.readAsText(file);
         }
 
+        function setupWriteModals() {
+            const writeVideoBtn = document.getElementById('write-video-btn');
+            const writeFavBtn = document.getElementById('write-fav-btn');
+            const videoModal = document.getElementById('write-video-modal');
+            const favModal = document.getElementById('write-fav-modal');
+            
+            // 비디오 관리 모달
+            writeVideoBtn.addEventListener('click', () => {
+                videoModal.classList.add('active');
+            });
+            
+            // 즐겨찾기 모달
+            writeFavBtn.addEventListener('click', () => {
+                favModal.classList.add('active');
+            });
+            
+            // 비디오 모달 닫기
+            videoModal.querySelectorAll('.write-modal-close, .editor-cancel-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    videoModal.classList.remove('active');
+                    clearVideoModal();
+                });
+            });
+            
+            videoModal.addEventListener('click', (e) => {
+                if (e.target === videoModal) {
+                    videoModal.classList.remove('active');
+                    clearVideoModal();
+                }
+            });
+            
+            // 즐겨찾기 모달 닫기
+            favModal.querySelectorAll('.write-modal-close, .editor-cancel-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    favModal.classList.remove('active');
+                    clearFavModal();
+                });
+            });
+            
+            favModal.addEventListener('click', (e) => {
+                if (e.target === favModal) {
+                    favModal.classList.remove('active');
+                    clearFavModal();
+                }
+            });
+            
+            // 비디오 저장
+            document.getElementById('save-video-btn').addEventListener('click', async () => {
+                const title = document.getElementById('modal-video-title').value.trim();
+                const link = document.getElementById('modal-video-link').value.trim();
+                const memo = document.getElementById('modal-video-memo').value.trim();
+                
+                if (!title || !link) {
+                    return alert('제목과 링크를 입력해주세요.');
+                }
+                
+                const success = await createItemDOM(title, link, memo);
+                if (success) {
+                    saveItems();
+                    videoModal.classList.remove('active');
+                    clearVideoModal();
+                }
+            });
+            
+            // 즐겨찾기 저장
+            document.getElementById('save-fav-btn').addEventListener('click', () => {
+                const tabId = writeFavBtn.dataset.tabId;
+                const tabInstance = window.favoritesTabInstances[tabId];
+                
+                if (!tabInstance) {
+                    return alert('탭을 찾을 수 없습니다.');
+                }
+                
+                const title = document.getElementById('modal-fav-title').value.trim();
+                const link = document.getElementById('modal-fav-link').value.trim();
+                const memo = document.getElementById('modal-fav-memo').value.trim();
+                const image = window.currentFavImage || null;
+                
+                if (!title) {
+                    return alert('제목을 입력해주세요.');
+                }
+                
+                const newFav = { title, link, memo, image };
+                tabInstance.createFavoriteDOM(newFav).then(() => {
+                    tabInstance.saveFavorites();
+                    favModal.classList.remove('active');
+                    clearFavModal();
+                });
+            });
+            
+            // 즐겨찾기 이미지 업로드
+            const favImageBtn = document.getElementById('modal-fav-image-btn');
+            const favImageInput = document.getElementById('modal-fav-image-input');
+            const favPreview = document.getElementById('modal-fav-preview');
+            const favPreviewContainer = document.getElementById('modal-fav-preview-container');
+            const favClearBtn = document.getElementById('modal-fav-clear-btn');
+            
+            favImageBtn.addEventListener('click', () => favImageInput.click());
+            
+            favImageInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        window.currentFavImage = e.target.result;
+                        favPreview.src = e.target.result;
+                        favPreviewContainer.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            favClearBtn.addEventListener('click', () => {
+                window.currentFavImage = null;
+                favPreview.src = '';
+                favPreviewContainer.style.display = 'none';
+                favImageInput.value = '';
+            });
+            
+            function clearVideoModal() {
+                document.getElementById('modal-video-title').value = '';
+                document.getElementById('modal-video-link').value = '';
+                document.getElementById('modal-video-memo').value = '';
+            }
+            
+            function clearFavModal() {
+                document.getElementById('modal-fav-title').value = '';
+                document.getElementById('modal-fav-link').value = '';
+                document.getElementById('modal-fav-memo').value = '';
+                window.currentFavImage = null;
+                favPreview.src = '';
+                favPreviewContainer.style.display = 'none';
+                favImageInput.value = '';
+            }
+        }
+
         function initializeTabSwitching() {
             const newPostBtn = document.getElementById('new-post-btn');
+            const writeVideoBtn = document.getElementById('write-video-btn');
+            const writeFavBtn = document.getElementById('write-fav-btn');
             
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.addEventListener('click', () => {
@@ -1529,11 +1670,25 @@
                     tab.classList.add('active');
                     target.classList.add('active');
                     
-                    // 글쓰기 탭인지 확인
+                    // 모든 버튼 숨김
+                    newPostBtn.style.display = 'none';
+                    writeVideoBtn.style.display = 'none';
+                    writeFavBtn.style.display = 'none';
+                    
                     const tabId = target.id;
                     const tabData = TabManager.tabs.find(t => t.id === tabId);
                     
-                    if (tabData && (tabData.type === 'editor' || tabData.type === 'community')) {
+                    // 비디오 관리 탭 (모바일에서만 표시)
+                    if (tabId === 'video-tab-content' && window.innerWidth <= 768) {
+                        writeVideoBtn.style.display = 'inline-block';
+                    }
+                    // 즐겨찾기 탭 (모바일에서만 표시)
+                    else if (tabData && tabData.type === 'favorites' && window.innerWidth <= 768) {
+                        writeFavBtn.style.display = 'inline-block';
+                        writeFavBtn.dataset.tabId = tabId; // 탭 ID 저장
+                    }
+                    // 에디터/커뮤니티 탭
+                    else if (tabData && (tabData.type === 'editor' || tabData.type === 'community')) {
                         newPostBtn.style.display = 'inline-block';
                         
                         // 버튼 클릭 시 해당 탭의 인스턴스에서 새 글 작성
@@ -1550,8 +1705,6 @@
                                 }
                             }
                         };
-                    } else {
-                        newPostBtn.style.display = 'none';
                     }
                 });
             });
@@ -2517,7 +2670,7 @@
                 todoItem.style.cssText = 'display: flex; align-items: center; gap: 8px; margin: 8px 0; cursor: pointer;';
                 todoItem.innerHTML = `
                     <input type="checkbox" class="todo-checkbox" style="width: 18px; height: 18px; cursor: pointer;">
-                    <span class="todo-text" contenteditable="true" style="flex: 1; outline: none;">할 일을 입력하세요</span>
+                    <span class="todo-text" contenteditable="true" style="flex: 1; outline: none;"></span>
                 `;
                 
                 // 체크박스 토글 기능
@@ -2531,6 +2684,14 @@
                     } else {
                         text.style.textDecoration = 'none';
                         text.style.color = 'inherit';
+                    }
+                });
+                
+                // 엔터 키로 다음 To-Do 항목 추가
+                text.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.insertTodoList();
                     }
                 });
                 
@@ -3204,6 +3365,71 @@
                 </div>
             </div>
             <button class="modal-close-btn">취소</button>
+        </div>
+    </div>
+
+    <!-- 비디오 관리 글쓰기 모달 -->
+    <div id="write-video-modal" class="modal-overlay">
+        <div class="editor-modal-content" style="max-width: 600px;">
+            <div class="editor-modal-header">
+                <h3>비디오 추가</h3>
+                <button class="write-modal-close">×</button>
+            </div>
+            <div class="editor-modal-body">
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label>제목</label>
+                    <input type="text" id="modal-video-title" placeholder="비디오 제목 입력" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;">
+                </div>
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label>비디오 링크</label>
+                    <input type="text" id="modal-video-link" placeholder="YouTube, Shorts, Vimeo, TikTok 등 URL 입력" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;">
+                </div>
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label>메모</label>
+                    <textarea id="modal-video-memo" placeholder="메모 입력 (선택사항)" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; min-height: 100px; resize: vertical;"></textarea>
+                </div>
+            </div>
+            <div class="editor-modal-footer">
+                <button class="editor-cancel-btn">취소</button>
+                <button class="editor-save-btn" id="save-video-btn">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 즐겨찾기 글쓰기 모달 -->
+    <div id="write-fav-modal" class="modal-overlay">
+        <div class="editor-modal-content" style="max-width: 600px;">
+            <div class="editor-modal-header">
+                <h3>즐겨찾기 추가</h3>
+                <button class="write-modal-close">×</button>
+            </div>
+            <div class="editor-modal-body">
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label>제목</label>
+                    <input type="text" id="modal-fav-title" placeholder="제목 입력" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;">
+                </div>
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label>링크</label>
+                    <input type="text" id="modal-fav-link" placeholder="링크 (선택)" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;">
+                </div>
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label>메모</label>
+                    <input type="text" id="modal-fav-memo" placeholder="메모 (선택)" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;">
+                </div>
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label>사진</label>
+                    <button id="modal-fav-image-btn" style="padding: 10px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">파일 선택</button>
+                    <input type="file" id="modal-fav-image-input" accept="image/*" style="display:none;">
+                    <div id="modal-fav-preview-container" style="margin-top: 10px; display: none;">
+                        <img id="modal-fav-preview" style="max-width: 200px; max-height: 200px;">
+                        <button id="modal-fav-clear-btn" style="margin-left: 10px; padding: 5px 10px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">X</button>
+                    </div>
+                </div>
+            </div>
+            <div class="editor-modal-footer">
+                <button class="editor-cancel-btn">취소</button>
+                <button class="editor-save-btn" id="save-fav-btn">저장</button>
+            </div>
         </div>
     </div>
 
