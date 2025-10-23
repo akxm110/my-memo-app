@@ -1195,6 +1195,7 @@
                 this.menu.className = 'context-menu';
                 this.menu.id = 'common-context-menu';
                 this.menu.innerHTML = `
+                    <div class="context-menu-item" data-action="pin">📌 고정/해제</div>
                     <div class="context-menu-item" data-action="edit">수정</div>
                     <div class="context-menu-item delete" data-action="delete">삭제</div>`;
                 document.body.appendChild(this.menu);
@@ -1811,11 +1812,13 @@
         function saveItems() {
             const items = [];
             document.querySelectorAll('#video-tab-content .list-item').forEach(el => {
+                const title = el.querySelector('.col-title').textContent;
                 items.push({
-                    title: el.querySelector('.col-title').textContent,
+                    title: title.startsWith('📌 ') ? title.substring(2) : title, // 핀 아이콘 제거하고 저장
                     link: el.dataset.link,
                     memo: el.querySelector('.col-memo').dataset.rawMemo || '',
-                    date: el.querySelector('.col-date')?.textContent || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' })
+                    date: el.querySelector('.col-date')?.textContent || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }),
+                    isPinned: el.dataset.isPinned === 'true'
                 });
             });
             localStorage.setItem(videoDataKey, JSON.stringify(items));
@@ -1824,8 +1827,14 @@
         async function loadItems() {
             try {
                 const items = JSON.parse(localStorage.getItem(videoDataKey) || '[]');
+                // [수정] 핀 기준으로 1차 정렬 (고정된 항목이 위로)
+                items.sort((a, b) => {
+                    if (a.isPinned && !b.isPinned) return -1;
+                    if (!a.isPinned && b.isPinned) return 1;
+                    return 0; // 같은 상태면 기존 순서 유지
+                });
                 for (const item of items) {
-                    await createItemDOM(item.title, item.link, item.memo, item.date);
+                    await createItemDOM(item.title, item.link, item.memo, item.date, null, item.isPinned);
                 }
             } catch (error) {
                 console.error('비디오 데이터 로드 실패:', error);
@@ -1837,11 +1846,12 @@
             // 번호 표시 제거됨 - 더 이상 필요 없음
         }
 
-        async function createItemDOM(title, link, memo, date, insertIndex) {
+        async function createItemDOM(title, link, memo, date, insertIndex, isPinned = false) {
             if (document.querySelectorAll('#video-tab-content .list-item').length >= 20) return false;
             const itemElement = document.createElement('div');
             itemElement.className = 'list-item';
             itemElement.dataset.link = link;
+            itemElement.dataset.isPinned = isPinned;
 
             const thumbnailUrl = await fetchThumbnailUrl(link);
             const isShort = link.includes('/shorts/');
@@ -1849,12 +1859,14 @@
                 ? `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${isShort ? 'is-short' : ''}"></div>`
                 : `<div class="no-thumbnail">N/A</div>`;
 
+            // [수정] 핀 아이콘 추가
+            const pinIcon = isPinned ? '📌 ' : '';
             const dateStr = date || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' });
             itemElement.innerHTML = `
                 <div class="item-col col-thumbnail">
                     ${thumbnailHTML}
                 </div>
-                <div class="item-col col-title">${escapeHTML(title)}</div>
+                <div class="item-col col-title">${pinIcon}${escapeHTML(title)}</div>
                 <div class="item-col col-memo">${formatVideoMemo(memo)}</div>
                 <div class="item-col col-date">${dateStr}</div>
                 <div class="item-col col-actions action-buttons">
@@ -1899,11 +1911,13 @@
                     const itemIndex = allItems.indexOf(itemElement);
                     
                     // Undo 스택에 추가 (위치 포함)
+                    const titleText = itemElement.querySelector('.col-title').textContent;
                     addToUndoStack('video', {
-                        title: itemElement.querySelector('.col-title').textContent,
+                        title: titleText.startsWith('📌 ') ? titleText.substring(2) : titleText,
                         link: itemElement.dataset.link,
                         memo: itemElement.querySelector('.col-memo').dataset.rawMemo || '',
                         date: itemElement.querySelector('.col-date').textContent,
+                        isPinned: itemElement.dataset.isPinned === 'true',
                         index: itemIndex
                     });
                     
@@ -1912,6 +1926,25 @@
                     renumberItems();
                 } else if (action === 'edit') {
                     editItem(itemElement);
+                } else if (action === 'pin') {
+                    // 고정/해제 토글
+                    const currentState = itemElement.dataset.isPinned === 'true';
+                    itemElement.dataset.isPinned = !currentState;
+                    
+                    const titleEl = itemElement.querySelector('.col-title');
+                    let titleText = titleEl.textContent;
+                    if (currentState) {
+                        // 고정 해제: 핀 아이콘 제거
+                        titleEl.textContent = titleText.startsWith('📌 ') ? titleText.substring(2) : titleText;
+                    } else {
+                        // 고정: 핀 아이콘 추가
+                        titleEl.textContent = '📌 ' + titleText;
+                    }
+                    
+                    saveItems();
+                    // 목록 다시 로드해서 정렬 반영
+                    itemsContainer.querySelectorAll('.list-item').forEach(el => el.remove());
+                    loadItems();
                 }
             });
             
@@ -2260,18 +2293,29 @@
                 this.currentImage = null; this.imagePreview.src = ''; this.imageInput.value = ''; this.imageClearBtn.style.display = 'none';
             }
             saveFavorites() {
-                const favs = Array.from(this.listContainer.querySelectorAll('.list-item')).map(el => ({
-                    title: el.querySelector('.col-title').textContent,
-                    link: el.querySelector('.col-link a')?.href || '',
-                    memo: el.querySelector('.col-memo')?.dataset.fullMemo || '',
-                    image: el.querySelector('.thumbnail-container img')?.dataset.customImage || null,
-                    date: el.querySelector('.col-date')?.textContent || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' })
-                }));
+                const favs = Array.from(this.listContainer.querySelectorAll('.list-item')).map(el => {
+                    const title = el.querySelector('.col-title').textContent;
+                    return {
+                        title: title.startsWith('📌 ') ? title.substring(2) : title, // 핀 아이콘 제거하고 저장
+                        link: el.querySelector('.col-link a')?.href || '',
+                        memo: el.querySelector('.col-memo')?.dataset.fullMemo || '',
+                        image: el.querySelector('.thumbnail-container img')?.dataset.customImage || null,
+                        date: el.querySelector('.col-date')?.textContent || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }),
+                        isPinned: el.dataset.isPinned === 'true'
+                    };
+                });
                 localStorage.setItem(this.dataKey, JSON.stringify(favs));
             }
             loadFavorites() { 
                 try {
-                    JSON.parse(localStorage.getItem(this.dataKey) || '[]').forEach(fav => this.createFavoriteDOM(fav));
+                    const favs = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                    // [수정] 핀 기준으로 1차 정렬 (고정된 항목이 위로)
+                    favs.sort((a, b) => {
+                        if (a.isPinned && !b.isPinned) return -1;
+                        if (!a.isPinned && b.isPinned) return 1;
+                        return 0; // 같은 상태면 기존 순서 유지
+                    });
+                    favs.forEach(fav => this.createFavoriteDOM(fav));
                 } catch (error) {
                     console.error('즐겨찾기 데이터 로드 실패:', error);
                     localStorage.removeItem(this.dataKey);
@@ -2281,6 +2325,7 @@
             async createFavoriteDOM(fav) {
                 const itemElement = document.createElement('div');
                 itemElement.className = 'list-item';
+                itemElement.dataset.isPinned = fav.isPinned || false;
                 const image = fav.image;
                 const link = fav.link;
                 let thumbnailHTML = '<div class="no-thumbnail">N/A</div>';
@@ -2290,6 +2335,9 @@
                     const thumbnailUrl = await fetchThumbnailUrl(link);
                     if (thumbnailUrl) thumbnailHTML = `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${link.includes('/shorts/') ? 'is-short' : ''}"></div>`;
                 }
+                
+                // [수정] 핀 아이콘 추가
+                const pinIcon = fav.isPinned ? '📌 ' : '';
                 
                 // 링크 30자 제한
                 const displayedLink = link && link.length > 30 ? link.substring(0, 30) + '...' : link;
@@ -2304,7 +2352,7 @@
                 
                 itemElement.innerHTML = `
                     <div class="item-col col-thumbnail">${thumbnailHTML}</div>
-                    <div class="item-col col-title">${escapeHTML(fav.title)}</div>
+                    <div class="item-col col-title">${pinIcon}${escapeHTML(fav.title)}</div>
                     <div class="item-col col-link">${linkHTML}</div>
                     ${memoHTML}
                     <div class="item-col col-date">${dateStr}</div>
@@ -2337,15 +2385,17 @@
                         const itemIndex = allItems.indexOf(itemElement);
                         
                         // Undo 스택에 추가 (위치 포함)
+                        const titleText = itemElement.querySelector('.col-title').textContent;
                         addToUndoStack('favorite', {
                             tabId: this.tabId,
                             index: itemIndex,
                             item: {
-                                title: itemElement.querySelector('.col-title').textContent,
+                                title: titleText.startsWith('📌 ') ? titleText.substring(2) : titleText,
                                 link: itemElement.querySelector('.col-link a')?.href || '',
                                 memo: itemElement.querySelector('.col-memo')?.dataset.fullMemo || '',
                                 image: itemElement.querySelector('.thumbnail-container img')?.dataset.customImage || null,
-                                date: itemElement.querySelector('.col-date')?.textContent
+                                date: itemElement.querySelector('.col-date')?.textContent,
+                                isPinned: itemElement.dataset.isPinned === 'true'
                             }
                         });
                         
@@ -2354,6 +2404,25 @@
                         this.renumberFavorites();
                     } else if (action === 'edit') {
                         this.editFavorite(itemElement);
+                    } else if (action === 'pin') {
+                        // 고정/해제 토글
+                        const currentState = itemElement.dataset.isPinned === 'true';
+                        itemElement.dataset.isPinned = !currentState;
+                        
+                        const titleEl = itemElement.querySelector('.col-title');
+                        let titleText = titleEl.textContent;
+                        if (currentState) {
+                            // 고정 해제: 핀 아이콘 제거
+                            titleEl.textContent = titleText.startsWith('📌 ') ? titleText.substring(2) : titleText;
+                        } else {
+                            // 고정: 핀 아이콘 추가
+                            titleEl.textContent = '📌 ' + titleText;
+                        }
+                        
+                        this.saveFavorites();
+                        // 목록 다시 로드해서 정렬 반영
+                        this.listContainer.querySelectorAll('.list-item').forEach(el => el.remove());
+                        this.loadFavorites();
                     }
                 });
                 
@@ -2553,7 +2622,7 @@
                 
                 this.renderHTML();
                 this.createModal();
-                this.createContextMenu();
+                // createContextMenu() 삭제: 전역 contextMenuUtil 사용
                 this.bindElements();
                 this.addEventListeners();
                 this.initFirebaseListener(); // Firebase 우선
@@ -2604,16 +2673,6 @@
                 document.body.appendChild(modal);
             }
             
-            createContextMenu() {
-                const menu = document.createElement('div');
-                menu.id = this.contextMenuId;
-                menu.className = 'context-menu';
-                menu.innerHTML = `
-                    <div class="context-menu-item" data-action="edit">수정</div>
-                    <div class="context-menu-item delete" data-action="delete">삭제</div>`;
-                document.body.appendChild(menu);
-            }
-            
             bindElements() {
                 this.postList = this.container.querySelector('.editor-post-list');
                 this.contentPanel = this.container.querySelector('.editor-content-panel');
@@ -2625,7 +2684,7 @@
                 this.modalSaveBtn = this.modal.querySelector('.editor-save-btn');
                 this.modalCancelBtn = this.modal.querySelector('.editor-cancel-btn');
                 this.imageUpload = this.modal.querySelector('.editor-image-upload');
-                this.contextMenu = document.getElementById(this.contextMenuId);
+                // this.contextMenu 제거: 전역 contextMenuUtil 사용
             }
             
             addEventListeners() {
@@ -2670,25 +2729,7 @@
                     }
                 });
                 
-                // 컨텍스트 메뉴 닫기
-                document.addEventListener('click', () => this.hideContextMenu());
-                
-                // 컨텍스트 메뉴 항목 클릭
-                this.contextMenu.addEventListener('click', (e) => {
-                    const item = e.target.closest('.context-menu-item');
-                    if (!item) return;
-                    
-                    const action = item.dataset.action;
-                    const postId = parseInt(this.contextMenu.dataset.postId);
-                    
-                    if (action === 'edit') {
-                        this.editPost(postId);
-                    } else if (action === 'delete') {
-                        this.deletePost(postId);
-                    }
-                    
-                    this.hideContextMenu();
-                });
+                // 컨텍스트 메뉴 리스너 제거: 전역 contextMenuUtil 사용
             }
             
             handleImageUpload(file) {
@@ -2736,7 +2777,7 @@
                 });
                 
                 this.modalTextarea.appendChild(todoItem);
-                this.modalTextarea.appendChild(document.createElement('br'));
+                // <br> 태그 삭제: 커서를 아래로 내리는 원인
                 
                 // 커서를 텍스트 시작 위치로 이동
                 setTimeout(() => {
@@ -2807,7 +2848,12 @@
                             this.posts = Object.values(data);
                         }
                         
-                        this.posts.sort((a, b) => b.date - a.date);
+                        // [수정] 핀 기준으로 1차 정렬, 날짜 기준으로 2차 정렬
+                        this.posts.sort((a, b) => {
+                            if (a.isPinned && !b.isPinned) return -1;
+                            if (!a.isPinned && b.isPinned) return 1;
+                            return b.date - a.date; // 둘 다 고정/해제 상태면 날짜순
+                        });
                     }
                     
                     this.renderPostList();
@@ -2843,6 +2889,9 @@
                     const textContent = tempDiv.textContent || tempDiv.innerText || '';
                     const preview = textContent.length > 50 ? textContent.substring(0, 50) + '...' : textContent;
                     
+                    // [수정] 핀 아이콘 추가
+                    const pinIcon = post.isPinned ? '📌 ' : '';
+                    
                     // 본문에서 첫 번째 이미지 추출 (모바일용 썸네일)
                     const imgMatch = post.content.match(/<img[^>]+src=["']([^"']+)["']/i);
                     const thumbnailSrc = imgMatch ? imgMatch[1] : null;
@@ -2852,7 +2901,7 @@
                         item.classList.add('has-thumbnail');
                         item.innerHTML = `
                             <div class="editor-post-text">
-                                <div class="editor-post-title">${escapeHTML(post.title || '제목 없음')}</div>
+                                <div class="editor-post-title">${pinIcon}${escapeHTML(post.title || '제목 없음')}</div>
                                 <div class="editor-post-preview">${escapeHTML(preview)}</div>
                                 <div class="editor-post-date">${dateStr} ${timeStr}</div>
                             </div>
@@ -2860,7 +2909,7 @@
                     } else {
                         // 이미지 없으면: 기존 구조 유지
                         item.innerHTML = `
-                            <div class="editor-post-title">${escapeHTML(post.title || '제목 없음')}</div>
+                            <div class="editor-post-title">${pinIcon}${escapeHTML(post.title || '제목 없음')}</div>
                             <div class="editor-post-preview">${escapeHTML(preview)}</div>
                             <div class="editor-post-date">${dateStr} ${timeStr}</div>`;
                     }
@@ -2868,32 +2917,14 @@
                     // 클릭으로 본문 보기
                     item.addEventListener('click', () => this.viewPost(post.id));
                     
-                    // 우클릭으로 컨텍스트 메뉴
-                    item.addEventListener('contextmenu', (e) => {
-                        e.preventDefault();
-                        this.showContextMenu(e, post.id);
-                    });
-                    
-                    // Long press (모바일)
-                    let longPressTimer = null;
-                    item.addEventListener('touchstart', (e) => {
-                        longPressTimer = setTimeout(() => {
-                            const touch = e.touches[0];
-                            this.showContextMenu({ pageX: touch.pageX, pageY: touch.pageY }, post.id);
-                        }, 1000);
-                    });
-                    
-                    item.addEventListener('touchend', () => {
-                        if (longPressTimer) {
-                            clearTimeout(longPressTimer);
-                            longPressTimer = null;
-                        }
-                    });
-                    
-                    item.addEventListener('touchmove', () => {
-                        if (longPressTimer) {
-                            clearTimeout(longPressTimer);
-                            longPressTimer = null;
+                    // [수정] 전역 contextMenuUtil 사용
+                    contextMenuUtil.attachToElement(item, (action) => {
+                        if (action === 'delete') {
+                            this.deletePost(post.id);
+                        } else if (action === 'edit') {
+                            this.editPost(post.id);
+                        } else if (action === 'pin') {
+                            this.pinPost(post.id);
                         }
                     });
                     
@@ -3041,6 +3072,30 @@
                 }
             }
             
+            pinPost(postId) {
+                const post = this.posts.find(p => p.id === postId);
+                if (!post) return;
+                
+                // 현재 고정 상태의 반대로 설정 (없으면 false로 간주)
+                const newPinState = !post.isPinned;
+                
+                if (!database) {
+                    alert('Firebase 연결 오류');
+                    return;
+                }
+                
+                // Firebase에 'isPinned' 상태만 업데이트
+                database.ref(`${this.firebasePath}/${postId}/isPinned`).set(newPinState)
+                    .then(() => {
+                        console.log('✅ 핀 상태 업데이트 완료');
+                    })
+                    .catch(err => {
+                        console.error('핀 업데이트 실패:', err);
+                    });
+                
+                // 참고: Firebase 리스너가 변경을 감지하고 목록을 자동으로 다시 그립니다.
+            }
+            
             deletePost(postId) {
                 if (!confirm('이 글을 삭제하시겠습니까?')) return;
                 
@@ -3076,17 +3131,6 @@
                         console.error('삭제 오류:', err);
                         alert('삭제 실패');
                     });
-            }
-            
-            showContextMenu(e, postId) {
-                this.contextMenu.dataset.postId = postId;
-                this.contextMenu.style.left = e.pageX + 'px';
-                this.contextMenu.style.top = e.pageY + 'px';
-                this.contextMenu.classList.add('active');
-            }
-            
-            hideContextMenu() {
-                this.contextMenu.classList.remove('active');
             }
         }
 
@@ -3201,7 +3245,12 @@
                             this.posts = Object.values(data);
                         }
                         
-                        this.posts.sort((a, b) => b.date - a.date);
+                        // [수정] 핀 기준으로 1차 정렬, 날짜 기준으로 2차 정렬
+                        this.posts.sort((a, b) => {
+                            if (a.isPinned && !b.isPinned) return -1;
+                            if (!a.isPinned && b.isPinned) return 1;
+                            return b.date - a.date; // 둘 다 고정/해제 상태면 날짜순
+                        });
                     }
                     
                     this.renderPostList();
@@ -3230,10 +3279,13 @@
                         `<a href="${escapeHTML(post.link)}" target="_blank" style="color: #0d6efd; text-decoration: none;" title="${escapeHTML(post.link)}">${escapeHTML(post.link)}</a>` : 
                         '-';
                     
+                    // [수정] 핀 아이콘 추가
+                    const pinIcon = post.isPinned ? '📌 ' : '';
+                    
                     // 모바일용: 제목에 링크 추가
                     const titleDisplay = post.link ? 
-                        `<a href="${escapeHTML(post.link)}" target="_blank" style="color: inherit; text-decoration: none;">${escapeHTML(post.title)}</a>` : 
-                        escapeHTML(post.title);
+                        `<a href="${escapeHTML(post.link)}" target="_blank" style="color: inherit; text-decoration: none;">${pinIcon}${escapeHTML(post.title)}</a>` : 
+                        `${pinIcon}${escapeHTML(post.title)}`;
                     
                     itemElement.innerHTML = `
                         <div class="item-col community-col-title">${titleDisplay}</div>
@@ -3249,6 +3301,8 @@
                             this.deletePost(post.id);
                         } else if (action === 'edit') {
                             this.editPost(post.id);
+                        } else if (action === 'pin') {
+                            this.pinPost(post.id);
                         }
                     });
                 });
@@ -3341,6 +3395,30 @@
                             alert('저장 실패');
                         });
                 }
+            }
+            
+            pinPost(postId) {
+                const post = this.posts.find(p => p.id === postId);
+                if (!post) return;
+                
+                // 현재 고정 상태의 반대로 설정 (없으면 false로 간주)
+                const newPinState = !post.isPinned;
+                
+                if (!database) {
+                    alert('Firebase 연결 오류');
+                    return;
+                }
+                
+                // Firebase에 'isPinned' 상태만 업데이트
+                database.ref(`${this.firebasePath}/${postId}/isPinned`).set(newPinState)
+                    .then(() => {
+                        console.log('✅ 핀 상태 업데이트 완료');
+                    })
+                    .catch(err => {
+                        console.error('핀 업데이트 실패:', err);
+                    });
+                
+                // 참고: Firebase 리스너가 변경을 감지하고 목록을 자동으로 다시 그립니다.
             }
             
             deletePost(postId) {
