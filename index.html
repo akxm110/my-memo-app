@@ -3278,26 +3278,36 @@
                 
                 // 게시글 렌더링
                 this.posts.forEach((post, index) => {
+                    // [수정] 안전한 기본값 설정
+                    const safePost = {
+                        id: post.id,
+                        title: post.title || '제목 없음',
+                        link: post.link || '',
+                        memo: post.memo || '',
+                        date: post.date || Date.now(),
+                        isPinned: post.isPinned || false
+                    };
+                    
                     const itemElement = document.createElement('div');
                     itemElement.className = 'list-item';
-                    itemElement.dataset.postId = post.id;
-                    itemElement.dataset.isPinned = post.isPinned || false; // [수정] isPinned 설정
+                    itemElement.dataset.postId = safePost.id;
+                    itemElement.dataset.isPinned = safePost.isPinned;
                     
-                    const date = new Date(post.date);
+                    const date = new Date(safePost.date);
                     const dateStr = `${date.getMonth() + 1}월 ${date.getDate()}일`;
                     
                     // 링크 처리
-                    const linkDisplay = post.link ? 
-                        `<a href="${escapeHTML(post.link)}" target="_blank" style="color: #0d6efd; text-decoration: none;" title="${escapeHTML(post.link)}">${escapeHTML(post.link)}</a>` : 
+                    const linkDisplay = safePost.link ? 
+                        `<a href="${escapeHTML(safePost.link)}" target="_blank" style="color: #0d6efd; text-decoration: none;" title="${escapeHTML(safePost.link)}">${escapeHTML(safePost.link)}</a>` : 
                         '-';
                     
                     // [수정] 핀 아이콘 추가
-                    const pinIcon = post.isPinned ? '📌 ' : '';
+                    const pinIcon = safePost.isPinned ? '📌 ' : '';
                     
                     // 모바일용: 제목에 링크 추가
-                    const titleDisplay = post.link ? 
-                        `<a href="${escapeHTML(post.link)}" target="_blank" style="color: inherit; text-decoration: none;">${pinIcon}${escapeHTML(post.title)}</a>` : 
-                        `${pinIcon}${escapeHTML(post.title)}`;
+                    const titleDisplay = safePost.link ? 
+                        `<a href="${escapeHTML(safePost.link)}" target="_blank" style="color: inherit; text-decoration: none;">${pinIcon}${escapeHTML(safePost.title)}</a>` : 
+                        `${pinIcon}${escapeHTML(safePost.title)}`;
                     
                     itemElement.innerHTML = `
                         <div class="item-col community-col-title">${titleDisplay}</div>
@@ -3308,17 +3318,18 @@
                     
                     // 우클릭 & Long Press 메뉴 - 날짜 부분에만 적용
                     const dateTrigger = itemElement.querySelector('.community-menu-trigger');
-                    // [수정] dataTrigger의 부모(itemElement)의 isPinned를 전달
-                    dataTrigger.dataset.isPinned = post.isPinned || false;
-                    contextMenuUtil.attachToElement(dataTrigger, (action) => {
-                        if (action === 'delete') {
-                            this.deletePost(post.id);
-                        } else if (action === 'edit') {
-                            this.editPost(post.id);
-                        } else if (action === 'pin') {
-                            this.pinPost(post.id);
-                        }
-                    });
+                    if (dateTrigger) {
+                        dateTrigger.dataset.isPinned = post.isPinned || false;
+                        contextMenuUtil.attachToElement(dateTrigger, (action) => {
+                            if (action === 'delete') {
+                                this.deletePost(post.id);
+                            } else if (action === 'edit') {
+                                this.editPost(post.id);
+                            } else if (action === 'pin') {
+                                this.pinPost(post.id);
+                            }
+                        });
+                    }
                 });
             }
             
