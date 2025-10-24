@@ -2909,8 +2909,14 @@
                     }
                 } catch (error) {
                     console.error('글 로드 실패, 로컬 데이터만 사용:', error);
-                    localStorage.removeItem(this.dataKey); // 손상 시 초기화
-                    this.posts = [];
+                    // ⚠️ localStorage는 삭제하지 않음! 기존 데이터를 유지합니다.
+                    try {
+                        const localData = JSON.parse(originalGetItem.call(localStorage, this.dataKey) || '[]');
+                        this.posts = localData;
+                    } catch (parseError) {
+                        console.error('로컬 데이터 파싱 실패:', parseError);
+                        this.posts = [];
+                    }
                 }
                 
                 // 6. 최종 렌더링
@@ -3381,8 +3387,14 @@
                     }
                 } catch (error) {
                     console.error('글 로드 실패, 로컬 데이터만 사용:', error);
-                    localStorage.removeItem(this.dataKey); // 손상 시 초기화
-                    this.posts = [];
+                    // ⚠️ localStorage는 삭제하지 않음! 기존 데이터를 유지합니다.
+                    try {
+                        const localData = JSON.parse(originalGetItem.call(localStorage, this.dataKey) || '[]');
+                        this.posts = localData;
+                    } catch (parseError) {
+                        console.error('로컬 데이터 파싱 실패:', parseError);
+                        this.posts = [];
+                    }
                 }
                 
                 // 6. 최종 렌더링
