@@ -993,43 +993,19 @@
         </div>
     </div>
     <div class="tabs">
-        <div class="tab active" data-tab-target="#video-tab-content">🎬 비디오 관리</div>
-        <div class="tab" data-tab-target="#memo-tab-content">📝 메모장</div>
+        <div class="tab active" data-tab-target="#memo-tab-content">📝 메모장</div>
         <div class="tab" data-tab-target="#trash-tab-content">🗑️ 휴지통</div>
     </div>
     <div class="tab-management">
         <button id="add-tab-btn">+ 탭 추가</button>
         <button id="new-post-btn" style="display: none;">✍️ 새 글 작성</button>
-        <button id="write-video-btn" style="display: none;">✍️ 글쓰기</button>
         <button id="write-fav-btn" style="display: none;">✍️ 글쓰기</button>
         <button id="rename-tab-btn">✏️ 이름 변경</button>
         <button id="delete-tab-btn">🗑️ 탭 삭제</button>
     </div>
 
     <div class="container">
-        <div id="video-tab-content" class="tab-content active">
-             <div class="input-section">
-                <div class="input-group">
-                    <label for="title-input">제목</label>
-                    <input type="text" id="title-input" placeholder="비디오 제목 입력">
-            </div>
-                <div class="input-group">
-                    <label for="link-input">비디오 링크</label>
-                    <input type="text" id="link-input" placeholder="YouTube, Shorts, Vimeo, TikTok 등 URL 입력">
-                </div>
-                <div class="input-group">
-                    <label for="memo-input">메모</label>
-                    <input type="text" id="memo-input" placeholder="메모 입력 (선택사항)">
-                </div>
-                <button id="add-btn">추가</button>
-            </div>
-            <div class="actions">
-                 <button id="delete-all-btn">전체 삭제</button>
-            </div>
-            <div id="items-container" class="items-list">
-            </div>
-        </div>
-        <div id="memo-tab-content" class="tab-content">
+        <div id="memo-tab-content" class="tab-content active">
             <div class="memo-editor">
                 <h2>새 메모 작성</h2>
                 <textarea id="memo-textarea" placeholder="메모를 입력하세요... (URL은 자동으로 링크로 변환됩니다)"></textarea>
@@ -1581,7 +1557,6 @@
             cleanupCorruptedData(); // 손상된 데이터 먼저 정리
             await loadFromFirebase(); // Firebase 데이터 로드
             TabManager.init();
-            await loadItems();
             loadMemos();
             setupBackupAndRestore();
             setupWriteModals(); // 글쓰기 모달 설정
@@ -1697,34 +1672,12 @@
         }
 
         function setupWriteModals() {
-            const writeVideoBtn = document.getElementById('write-video-btn');
             const writeFavBtn = document.getElementById('write-fav-btn');
-            const videoModal = document.getElementById('write-video-modal');
             const favModal = document.getElementById('write-fav-modal');
-            
-            // 비디오 관리 모달
-            writeVideoBtn.addEventListener('click', () => {
-                videoModal.classList.add('active');
-            });
             
             // 즐겨찾기 모달
             writeFavBtn.addEventListener('click', () => {
                 favModal.classList.add('active');
-            });
-            
-            // 비디오 모달 닫기
-            videoModal.querySelectorAll('.write-modal-close, .editor-cancel-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    videoModal.classList.remove('active');
-                    clearVideoModal();
-                });
-            });
-            
-            videoModal.addEventListener('click', (e) => {
-                if (e.target === videoModal) {
-                    videoModal.classList.remove('active');
-                    clearVideoModal();
-                }
             });
             
             // 즐겨찾기 모달 닫기
@@ -1739,24 +1692,6 @@
                 if (e.target === favModal) {
                     favModal.classList.remove('active');
                     clearFavModal();
-                }
-            });
-            
-            // 비디오 저장
-            document.getElementById('save-video-btn').addEventListener('click', async () => {
-                const title = document.getElementById('modal-video-title').value.trim();
-                const link = document.getElementById('modal-video-link').value.trim();
-                const memo = document.getElementById('modal-video-memo').value.trim();
-                
-                if (!title || !link) {
-                    return alert('제목과 링크를 입력해주세요.');
-                }
-                
-                const success = await createItemDOM(title, link, memo);
-                if (success) {
-                    saveItems();
-                    videoModal.classList.remove('active');
-                    clearVideoModal();
                 }
             });
             
@@ -1834,7 +1769,6 @@
         
         function initializeTabSwitching() {
             const newPostBtn = document.getElementById('new-post-btn');
-            const writeVideoBtn = document.getElementById('write-video-btn');
             const writeFavBtn = document.getElementById('write-fav-btn');
             
             document.querySelectorAll('.tab').forEach(tab => {
@@ -1848,7 +1782,6 @@
                     
                     // 모든 버튼 숨김
                     newPostBtn.style.display = 'none';
-                    writeVideoBtn.style.display = 'none';
                     writeFavBtn.style.display = 'none';
                     
                     const tabId = target.id;
@@ -1859,12 +1792,8 @@
                         trashManager.renderTrash();
                     }
                     
-                    // 비디오 관리 탭 (모바일에서만 표시)
-                    if (tabId === 'video-tab-content' && window.innerWidth <= 768) {
-                        writeVideoBtn.style.display = 'inline-block';
-                    }
                     // 즐겨찾기 탭 (모바일에서만 표시)
-                    else if (tabData && (tabData.type === 'favorites' || !tabData.type) && window.innerWidth <= 768) {
+                    if (tabData && (tabData.type === 'favorites' || !tabData.type) && window.innerWidth <= 768) {
                         writeFavBtn.style.display = 'inline-block';
                         writeFavBtn.dataset.tabId = tabId; // 탭 ID 저장
                     }
@@ -1895,12 +1824,10 @@
         }
         
         function updateWriteButtonVisibility() {
-            const writeVideoBtn = document.getElementById('write-video-btn');
             const writeFavBtn = document.getElementById('write-fav-btn');
             const newPostBtn = document.getElementById('new-post-btn');
             
             // 모든 버튼 숨김
-            writeVideoBtn.style.display = 'none';
             writeFavBtn.style.display = 'none';
             newPostBtn.style.display = 'none';
             
@@ -1914,12 +1841,8 @@
             const tabId = target.id;
             const tabData = TabManager.tabs.find(t => t.id === tabId);
             
-            // 비디오 관리 탭 (모바일에서만 표시)
-            if (tabId === 'video-tab-content' && window.innerWidth <= 768) {
-                writeVideoBtn.style.display = 'inline-block';
-            }
             // 즐겨찾기 탭 (모바일에서만 표시)
-            else if (tabData && (tabData.type === 'favorites' || !tabData.type) && window.innerWidth <= 768) {
+            if (tabData && (tabData.type === 'favorites' || !tabData.type) && window.innerWidth <= 768) {
                 writeFavBtn.style.display = 'inline-block';
                 writeFavBtn.dataset.tabId = tabId;
             }
@@ -1967,223 +1890,7 @@
             return null;
         }
 
-        // --- VIDEO MEMO LOGIC ---
-        const addBtn = document.getElementById('add-btn');
-        const deleteAllBtn = document.getElementById('delete-all-btn');
-        const itemsContainer = document.getElementById('items-container');
-        const videoDataKey = 'videoMemoData';
-        let currentlyEditingItem = null;
-
-        addBtn.addEventListener('click', async () => {
-            if (currentlyEditingItem) {
-                await updateItem(currentlyEditingItem);
-            } else {
-                await addItem();
-            }
-        });
-        deleteAllBtn.addEventListener('click', () => {
-            if (confirm('모든 항목을 삭제하시겠습니까?')) {
-                itemsContainer.querySelectorAll('.list-item').forEach(i => i.remove());
-                saveItems(); renumberItems();
-            }
-        });
-
-        function saveItems() {
-            const items = [];
-            document.querySelectorAll('#video-tab-content .list-item').forEach(el => {
-                const title = el.querySelector('.col-title').textContent;
-                items.push({
-                    title: title.startsWith('📌 ') ? title.substring(2) : title, // 핀 아이콘 제거하고 저장
-                    link: el.dataset.link,
-                    memo: el.querySelector('.col-memo').dataset.rawMemo || '',
-                    date: el.querySelector('.col-date')?.textContent || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }),
-                    isPinned: el.dataset.isPinned === 'true'
-                });
-            });
-            localStorage.setItem(videoDataKey, JSON.stringify(items));
-        }
-
-        async function loadItems() {
-            try {
-                const items = JSON.parse(localStorage.getItem(videoDataKey) || '[]');
-                // [수정] 핀 기준으로 1차 정렬 (고정된 항목이 위로)
-                items.sort((a, b) => {
-                    if (a.isPinned && !b.isPinned) return -1;
-                    if (!a.isPinned && b.isPinned) return 1;
-                    return 0; // 같은 상태면 기존 순서 유지
-                });
-                for (const item of items) {
-                    await createItemDOM(item.title, item.link, item.memo, item.date, null, item.isPinned);
-                }
-            } catch (error) {
-                console.error('비디오 데이터 로드 실패:', error);
-                localStorage.removeItem(videoDataKey);
-            }
-        }
-
-        function renumberItems() {
-            // 번호 표시 제거됨 - 더 이상 필요 없음
-        }
-
-        async function createItemDOM(title, link, memo, date, insertIndex, isPinned = false) {
-            if (document.querySelectorAll('#video-tab-content .list-item').length >= 20) return false;
-            const itemElement = document.createElement('div');
-            itemElement.className = 'list-item';
-            itemElement.dataset.link = link;
-            itemElement.dataset.isPinned = isPinned;
-
-            const thumbnailUrl = await fetchThumbnailUrl(link);
-            const isShort = link.includes('/shorts/');
-            const thumbnailHTML = thumbnailUrl
-                ? `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${isShort ? 'is-short' : ''}"></div>`
-                : `<div class="no-thumbnail">N/A</div>`;
-
-            // [수정] 핀 아이콘 추가
-            const pinIcon = isPinned ? '📌 ' : '';
-            const dateStr = date || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' });
-            itemElement.innerHTML = `
-                <div class="item-col col-thumbnail">
-                    ${thumbnailHTML}
-        </div>
-                <div class="item-col col-title">${pinIcon}${escapeHTML(title)}</div>
-                <div class="item-col col-memo">${formatVideoMemo(memo)}</div>
-                <div class="item-col col-date">${dateStr}</div>
-                <div class="item-col col-actions action-buttons">
-                    <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
-                </div>`;
-            
-            // insertIndex가 있으면 특정 위치에 삽입, 없으면 끝에 추가
-            if (insertIndex !== undefined && insertIndex !== null) {
-                const allItems = itemsContainer.querySelectorAll('.list-item');
-                if (insertIndex >= 0 && insertIndex < allItems.length) {
-                    itemsContainer.insertBefore(itemElement, allItems[insertIndex]);
-                } else {
-                    itemsContainer.appendChild(itemElement);
-                }
-            } else {
-                itemsContainer.appendChild(itemElement);
-            }
-            
-            itemElement.querySelector('.col-memo').dataset.rawMemo = memo;
-            
-            // 모바일: 제목 클릭 시 링크로 이동
-            itemElement.querySelector('.col-title').addEventListener('click', () => {
-                if (window.innerWidth <= 768 && link) {
-                    window.open(link, '_blank');
-                }
-            });
-
-            const img = itemElement.querySelector('.thumbnail-container img');
-            const youtubeId = getYoutubeVideoId(link);
-            if (img && youtubeId) {
-                img.onerror = function() {
-                    this.onerror = null; // Prevent infinite loops
-                    this.src = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
-                };
-            }
-
-            // 우클릭 & Long Press 메뉴
-            contextMenuUtil.attachToElement(itemElement, (action) => {
-                if (action === 'delete') {
-                    // 현재 위치(인덱스) 찾기
-                    const allItems = Array.from(itemsContainer.querySelectorAll('.list-item'));
-                    const itemIndex = allItems.indexOf(itemElement);
-                    
-                    // 휴지통에 추가 (위치 포함)
-                    const titleText = itemElement.querySelector('.col-title').textContent;
-                    trashManager.addToTrash('video', {
-                        title: titleText.startsWith('📌 ') ? titleText.substring(2) : titleText,
-                        link: itemElement.dataset.link,
-                        memo: itemElement.querySelector('.col-memo').dataset.rawMemo || '',
-                        date: itemElement.querySelector('.col-date').textContent,
-                        isPinned: itemElement.dataset.isPinned === 'true',
-                        index: itemIndex
-                    });
-                    
-                    itemElement.remove();
-                    saveItems();
-                    renumberItems();
-                } else if (action === 'edit') {
-                    editItem(itemElement);
-                } else if (action === 'pin') {
-                    // 고정/해제 토글
-                    const currentState = itemElement.dataset.isPinned === 'true';
-                    itemElement.dataset.isPinned = !currentState;
-                    
-                    const titleEl = itemElement.querySelector('.col-title');
-                    let titleText = titleEl.textContent;
-                    if (currentState) {
-                        // 고정 해제: 핀 아이콘 제거
-                        titleEl.textContent = titleText.startsWith('📌 ') ? titleText.substring(2) : titleText;
-                    } else {
-                        // 고정: 핀 아이콘 추가
-                        titleEl.textContent = '📌 ' + titleText;
-                    }
-                    
-                    saveItems();
-                    // 목록 다시 로드해서 정렬 반영
-                    itemsContainer.querySelectorAll('.list-item').forEach(el => el.remove());
-                    loadItems();
-                }
-            });
-            
-            renumberItems();
-            return true;
-        }
-
-        async function addItem() {
-            const titleInput = document.getElementById('title-input'), linkInput = document.getElementById('link-input'), memoInput = document.getElementById('memo-input');
-            const title = titleInput.value.trim(), link = linkInput.value.trim(), memo = memoInput.value.trim();
-            if (!title || !link) return alert('제목과 링크를 입력해주세요.');
-            const success = await createItemDOM(title, link, memo);
-            if (success) {
-                saveItems();
-                titleInput.value = linkInput.value = memoInput.value = '';
-                titleInput.focus();
-            }
-        }
-        
-        function editItem(itemElement) {
-            document.getElementById('title-input').value = itemElement.querySelector('.col-title').textContent;
-            document.getElementById('link-input').value = itemElement.dataset.link;
-            const memo = itemElement.querySelector('.col-memo').dataset.rawMemo;
-            document.getElementById('memo-input').value = memo === '-' ? '' : memo;
-            addBtn.textContent = '수정 완료';
-            currentlyEditingItem = itemElement;
-            document.querySelector('.input-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-
-        async function updateItem(itemElement) {
-            const title = document.getElementById('title-input').value.trim(), link = document.getElementById('link-input').value.trim(), memo = document.getElementById('memo-input').value.trim();
-            if (!title || !link) return alert('제목과 링크를 입력해주세요.');
-            itemElement.querySelector('.col-title').textContent = title;
-            itemElement.dataset.link = link;
-            itemElement.querySelector('.col-memo').innerHTML = formatVideoMemo(memo);
-            itemElement.querySelector('.col-memo').dataset.rawMemo = memo;
-            
-            const thumbnailUrl = await fetchThumbnailUrl(link);
-            const thumbnailContainer = itemElement.querySelector('.col-thumbnail');
-            const isShort = link.includes('/shorts/');
-
-            const thumbnailHTML = thumbnailUrl
-                ? `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${isShort ? 'is-short' : ''}"></div>`
-                : `<div class="no-thumbnail">N/A</div>`;
-            thumbnailContainer.innerHTML = thumbnailHTML;
-
-            const newImg = thumbnailContainer.querySelector('.thumbnail-container img');
-            const youtubeId = getYoutubeVideoId(link);
-            if (newImg && youtubeId) {
-                newImg.onerror = function() {
-                    this.onerror = null; // Prevent infinite loops
-                    this.src = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
-                };
-            }
-
-            saveItems();
-            document.getElementById('title-input').value = document.getElementById('link-input').value = document.getElementById('memo-input').value = '';
-            addBtn.textContent = '추가';
-            currentlyEditingItem = null;
-        }
+        // --- VIDEO MEMO LOGIC (제거됨) ---
 
         // --- PLAIN MEMO LOGIC ---
         const memoTextarea = document.getElementById('memo-textarea'), memoAddBtn = document.getElementById('memo-add-btn');
@@ -3141,32 +2848,38 @@
                     // [수정] null 값인 데이터 건너뛰기
                     if (!post) return;
                     
+                    // [수정] 안전한 기본값 설정
+                    const safePost = {
+                        id: post.id,
+                        title: post.title || '제목 없음',
+                        content: post.content || '',
+                        date: post.date || Date.now(),
+                        isPinned: post.isPinned || false
+                    };
+                    
                     const item = document.createElement('div');
                     item.className = 'editor-post-item';
-                    if (post.id === this.currentPostId) {
+                    if (safePost.id === this.currentPostId) {
                         item.classList.add('active');
                     }
-                    item.dataset.postId = post.id;
-                    item.dataset.isPinned = post.isPinned || false; // [수정] isPinned 설정
+                    item.dataset.postId = safePost.id;
+                    item.dataset.isPinned = safePost.isPinned;
                     
-                    const date = new Date(post.date);
+                    const date = new Date(safePost.date);
                     const dateStr = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
                     const timeStr = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
                     
                     // 본문에서 HTML 태그 제거하고 텍스트만 추출
-                    // [수정] post.content가 null일 경우 대비
-                    const safeContent = post.content || '';
-                    
                     const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = safeContent;
+                    tempDiv.innerHTML = safePost.content;
                     const textContent = tempDiv.textContent || tempDiv.innerText || '';
                     const preview = textContent.length > 50 ? textContent.substring(0, 50) + '...' : textContent;
                     
                     // [수정] 핀 아이콘 추가
-                    const pinIcon = post.isPinned ? '📌 ' : '';
+                    const pinIcon = safePost.isPinned ? '📌 ' : '';
                     
                     // 본문에서 첫 번째 이미지 추출 (모바일용 썸네일)
-                    const imgMatch = safeContent.match(/<img[^>]+src=["']([^"']+)["']/i);
+                    const imgMatch = safePost.content.match(/<img[^>]+src=["']([^"']+)["']/i);
                     const thumbnailSrc = imgMatch ? imgMatch[1] : null;
                     
                     // 이미지 있으면: has-thumbnail 클래스 추가 + 텍스트 + 썸네일 구조
@@ -3174,7 +2887,7 @@
                         item.classList.add('has-thumbnail');
                         item.innerHTML = `
                             <div class="editor-post-text">
-                                <div class="editor-post-title">${pinIcon}${escapeHTML(post.title || '제목 없음')}</div>
+                                <div class="editor-post-title">${pinIcon}${escapeHTML(safePost.title)}</div>
                                 <div class="editor-post-preview">${escapeHTML(preview)}</div>
                                 <div class="editor-post-date">${dateStr} ${timeStr}</div>
                             </div>
@@ -3182,22 +2895,22 @@
                     } else {
                         // 이미지 없으면: 기존 구조 유지
                         item.innerHTML = `
-                            <div class="editor-post-title">${pinIcon}${escapeHTML(post.title || '제목 없음')}</div>
+                            <div class="editor-post-title">${pinIcon}${escapeHTML(safePost.title)}</div>
                             <div class="editor-post-preview">${escapeHTML(preview)}</div>
                             <div class="editor-post-date">${dateStr} ${timeStr}</div>`;
                     }
                     
                     // 클릭으로 본문 보기
-                    item.addEventListener('click', () => this.viewPost(post.id));
+                    item.addEventListener('click', () => this.viewPost(safePost.id));
                     
                     // [수정] 전역 contextMenuUtil 사용
                     contextMenuUtil.attachToElement(item, (action) => {
                         if (action === 'delete') {
-                            this.deletePost(post.id);
+                            this.deletePost(safePost.id);
                         } else if (action === 'edit') {
-                            this.editPost(post.id);
+                            this.editPost(safePost.id);
                         } else if (action === 'pin') {
-                            this.pinPost(post.id);
+                            this.pinPost(safePost.id);
                         }
                     });
                     
@@ -3598,16 +3311,16 @@
                     // 우클릭 & Long Press 메뉴 - 날짜 부분에만 적용
                     const dateTrigger = itemElement.querySelector('.community-menu-trigger');
                     if (dateTrigger) {
-                        dateTrigger.dataset.isPinned = post.isPinned || false;
-                    contextMenuUtil.attachToElement(dateTrigger, (action) => {
-                        if (action === 'delete') {
-                            this.deletePost(post.id);
-                        } else if (action === 'edit') {
-                            this.editPost(post.id);
+                        dateTrigger.dataset.isPinned = safePost.isPinned;
+                        contextMenuUtil.attachToElement(dateTrigger, (action) => {
+                            if (action === 'delete') {
+                                this.deletePost(safePost.id);
+                            } else if (action === 'edit') {
+                                this.editPost(safePost.id);
                             } else if (action === 'pin') {
-                                this.pinPost(post.id);
-                        }
-                    });
+                                this.pinPost(safePost.id);
+                            }
+                        });
                     }
                 });
             }
@@ -3808,34 +3521,6 @@
                 </div>
             </div>
             <button class="modal-close-btn">취소</button>
-        </div>
-    </div>
-
-    <!-- 비디오 관리 글쓰기 모달 -->
-    <div id="write-video-modal" class="modal-overlay">
-        <div class="editor-modal-content" style="max-width: 600px;">
-            <div class="editor-modal-header">
-                <h3>비디오 추가</h3>
-                <button class="write-modal-close">×</button>
-            </div>
-            <div class="editor-modal-body">
-                <div class="input-group" style="margin-bottom: 15px;">
-                    <label>제목</label>
-                    <input type="text" id="modal-video-title" placeholder="비디오 제목 입력" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;">
-                </div>
-                <div class="input-group" style="margin-bottom: 15px;">
-                    <label>비디오 링크</label>
-                    <input type="text" id="modal-video-link" placeholder="YouTube, Shorts, Vimeo, TikTok 등 URL 입력" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px;">
-                </div>
-                <div class="input-group" style="margin-bottom: 15px;">
-                    <label>메모</label>
-                    <textarea id="modal-video-memo" placeholder="메모 입력 (선택사항)" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; min-height: 100px; resize: vertical;"></textarea>
-                </div>
-            </div>
-            <div class="editor-modal-footer">
-                <button class="editor-cancel-btn">취소</button>
-                <button class="editor-save-btn" id="save-video-btn">저장</button>
-            </div>
         </div>
     </div>
 
