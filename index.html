@@ -347,6 +347,38 @@
         }
         .memo-content { white-space: pre-wrap; word-break: break-word; flex-grow: 1; }
         .memo-item-actions button { margin-left: 8px; }
+        /* 휴지통 스타일 */
+        #trash-list-container { margin-top: 20px; }
+        .trash-item {
+            background-color: #fff; padding: 15px; border-radius: 5px; margin-bottom: 10px;
+            border: 1px solid #e9ecef; display: flex; flex-direction: column; gap: 10px;
+        }
+        .trash-item-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #f0f0f0; padding-bottom: 10px;
+        }
+        .trash-item-type {
+            font-size: 12px; padding: 4px 8px; border-radius: 4px; 
+            background-color: #6c757d; color: white; font-weight: bold;
+        }
+        .trash-item-date {
+            font-size: 12px; color: #999;
+        }
+        .trash-item-content {
+            padding: 10px 0; font-size: 14px; color: #495057;
+        }
+        .trash-item-actions {
+            display: flex; gap: 10px;
+        }
+        .trash-item-actions button {
+            flex: 1; padding: 8px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;
+        }
+        .trash-restore-btn {
+            background-color: #28a745; color: white;
+        }
+        .trash-delete-btn {
+            background-color: #dc3545; color: white;
+        }
         .dynamic-tab-content .input-section {
             grid-template-columns: repeat(4, 1fr) auto 1fr;
         }
@@ -963,6 +995,7 @@
     <div class="tabs">
         <div class="tab active" data-tab-target="#video-tab-content">🎬 비디오 관리</div>
         <div class="tab" data-tab-target="#memo-tab-content">📝 메모장</div>
+        <div class="tab" data-tab-target="#trash-tab-content">🗑️ 휴지통</div>
     </div>
     <div class="tab-management">
         <button id="add-tab-btn">+ 탭 추가</button>
@@ -1008,6 +1041,16 @@
             </div>
             <div id="memo-list-container"></div>
             </div>
+        </div>
+        
+        <!-- 휴지통 탭 -->
+        <div id="trash-tab-content" class="tab-content">
+            <div style="background-color: #fff; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h2 style="margin: 0 0 10px 0;">🗑️ 휴지통</h2>
+                <p style="color: #6c757d; margin: 0;">삭제된 항목은 30일 후 자동으로 영구 삭제됩니다.</p>
+                <button id="trash-empty-btn" style="margin-top: 15px; padding: 10px 20px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑️ 휴지통 비우기</button>
+            </div>
+            <div id="trash-list-container"></div>
         </div>
         
     <a id="download-anchor" style="position: absolute; top: -9999px; left: -9999px;"></a>
@@ -1305,112 +1348,233 @@
         
         const contextMenuUtil = new ContextMenuUtil();
         
-        // --- UNDO 기능 (Ctrl+Z로 삭제 복구) ---
-        const undoStack = [];
-        const MAX_UNDO_STACK = 10; // 최대 10개까지 복구 가능
-        
-        function addToUndoStack(type, data) {
-            undoStack.push({ type, data, timestamp: Date.now() });
-            if (undoStack.length > MAX_UNDO_STACK) {
-                undoStack.shift(); // 오래된 것 제거
-            }
-        }
-        
-        function undo() {
-            if (undoStack.length === 0) {
-                alert('복구할 항목이 없습니다.');
-                return;
+        // --- 휴지통 관리 시스템 ---
+        class TrashManager {
+            constructor() {
+                this.trashKey = 'appTrash';
+                this.trashListContainer = document.getElementById('trash-list-container');
+                this.emptyBtn = document.getElementById('trash-empty-btn');
+                this.initEvents();
             }
             
-            const lastAction = undoStack.pop();
-            
-            if (lastAction.type === 'video') {
-                // 비디오 항목 복구 (원래 위치에)
-                createItemDOM(lastAction.data.title, lastAction.data.link, lastAction.data.memo, lastAction.data.date, lastAction.data.index).then(() => {
-                    saveItems();
-                    alert('삭제한 항목을 복구했습니다.');
-                });
-            } else if (lastAction.type === 'favorite') {
-                // 즐겨찾기 항목 복구 (원래 위치에)
-                const tabInstance = window.favoritesTabInstances[lastAction.data.tabId];
-                if (tabInstance && tabInstance.createFavoriteDOM) {
-                    // item에 insertIndex 추가
-                    const itemWithIndex = { ...lastAction.data.item, insertIndex: lastAction.data.index };
-                    tabInstance.createFavoriteDOM(itemWithIndex).then(() => {
-                        tabInstance.saveFavorites();
-                        alert('삭제한 항목을 복구했습니다.');
-                    });
-                } else {
-                    alert('탭을 찾을 수 없습니다. 해당 탭이 삭제되었을 수 있습니다.');
-                }
-            } else if (lastAction.type === 'memo') {
-                // 메모 항목 복구
-                if (lastAction.data.tabId) {
-                    // MemoTab 클래스의 메모 (동적 탭)
-                    const tabInstance = window.memoTabInstances[lastAction.data.tabId];
-                    if (tabInstance && tabInstance.createMemoDOM) {
-                        tabInstance.createMemoDOM(lastAction.data.text);
-                        tabInstance.saveMemos();
-                        alert('삭제한 메모를 복구했습니다.');
-                    } else {
-                        alert('탭을 찾을 수 없습니다. 해당 탭이 삭제되었을 수 있습니다.');
+            initEvents() {
+                // 휴지통 비우기 버튼
+                this.emptyBtn.addEventListener('click', () => {
+                    if (confirm('휴지통을 비우시겠습니까? 모든 항목이 영구적으로 삭제됩니다.')) {
+                        this.emptyTrash();
                     }
-                } else {
-                    // 기본 메모장 탭
-                    createMemoDOM(lastAction.data.text);
-                    saveMemos();
-                    alert('삭제한 메모를 복구했습니다.');
-                }
-            } else if (lastAction.type === 'editor') {
-                // 에디터 글 복구
-                if (!database) {
-                    alert('Firebase 연결 오류');
+                });
+            }
+            
+            // 휴지통에 항목 추가
+            addToTrash(type, data, tabId = null) {
+                const trash = this.getTrash();
+                trash.push({
+                    id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    type: type, // 'video', 'favorite', 'memo', 'editor', 'community'
+                    data: data,
+                    tabId: tabId,
+                    deletedAt: Date.now()
+                });
+                this.saveTrash(trash);
+                this.renderTrash();
+            }
+            
+            // 휴지통 데이터 가져오기
+            getTrash() {
+                const trash = localStorage.getItem(this.trashKey);
+                return trash ? JSON.parse(trash) : [];
+            }
+            
+            // 휴지통 저장
+            saveTrash(trash) {
+                localStorage.setItem(this.trashKey, JSON.stringify(trash));
+            }
+            
+            // 휴지통 렌더링
+            renderTrash() {
+                this.trashListContainer.innerHTML = '';
+                const trash = this.getTrash();
+                
+                if (trash.length === 0) {
+                    this.trashListContainer.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">휴지통이 비어있습니다.</p>';
                     return;
                 }
-                const tabInstance = window.editorTabInstances[lastAction.data.tabId];
-                if (tabInstance && tabInstance.firebasePath) {
-                    database.ref(`${tabInstance.firebasePath}/${lastAction.data.postId}`).set(lastAction.data.post)
-                        .then(() => {
-                            console.log('✅ 글 복구 완료');
-                            alert('삭제한 글을 복구했습니다.');
-                        })
-                        .catch(err => {
-                            console.error('복구 오류:', err);
-                            alert('복구 실패');
-                        });
-                } else {
-                    alert('탭을 찾을 수 없습니다. 해당 탭이 삭제되었을 수 있습니다.');
-                }
-            } else if (lastAction.type === 'community') {
-                // 커뮤니티 글 복구
-                if (!database) {
-                    alert('Firebase 연결 오류');
+                
+                trash.reverse().forEach(item => {
+                    const trashItem = document.createElement('div');
+                    trashItem.className = 'trash-item';
+                    
+                    const typeLabel = {
+                        'video': '🎬 비디오',
+                        'favorite': '⭐ 즐겨찾기',
+                        'memo': '📝 메모',
+                        'editor': '✍️ 에디터',
+                        'community': '👥 커뮤니티'
+                    }[item.type] || item.type;
+                    
+                    const deletedDate = new Date(item.deletedAt).toLocaleString('ko-KR');
+                    
+                    let contentPreview = '';
+                    if (item.type === 'video' || item.type === 'favorite') {
+                        contentPreview = `<strong>${escapeHTML(item.data.title || '제목 없음')}</strong><br><small>${escapeHTML(item.data.link || '')}</small>`;
+                    } else if (item.type === 'memo') {
+                        contentPreview = escapeHTML((item.data.text || '').substring(0, 100)) + (item.data.text && item.data.text.length > 100 ? '...' : '');
+                    } else if (item.type === 'editor' || item.type === 'community') {
+                        contentPreview = `<strong>${escapeHTML(item.data.post?.title || '제목 없음')}</strong>`;
+                    }
+                    
+                    trashItem.innerHTML = `
+                        <div class="trash-item-header">
+                            <span class="trash-item-type">${typeLabel}</span>
+                            <span class="trash-item-date">삭제: ${deletedDate}</span>
+                        </div>
+                        <div class="trash-item-content">${contentPreview}</div>
+                        <div class="trash-item-actions">
+                            <button class="trash-restore-btn" data-id="${item.id}">♻️ 복구</button>
+                            <button class="trash-delete-btn" data-id="${item.id}">🗑️ 영구 삭제</button>
+                        </div>
+                    `;
+                    
+                    // 복구 버튼 이벤트
+                    trashItem.querySelector('.trash-restore-btn').addEventListener('click', () => {
+                        this.restoreItem(item.id);
+                    });
+                    
+                    // 영구 삭제 버튼 이벤트
+                    trashItem.querySelector('.trash-delete-btn').addEventListener('click', () => {
+                        if (confirm('영구적으로 삭제하시겠습니까?')) {
+                            this.permanentlyDelete(item.id);
+                        }
+                    });
+                    
+                    this.trashListContainer.appendChild(trashItem);
+                });
+            }
+            
+            // 항목 복구
+            restoreItem(id) {
+                const trash = this.getTrash();
+                const itemIndex = trash.findIndex(item => item.id === id);
+                
+                if (itemIndex === -1) {
+                    alert('항목을 찾을 수 없습니다.');
                     return;
                 }
-                const tabInstance = window.communityTabInstances[lastAction.data.tabId];
-                if (tabInstance && tabInstance.firebasePath) {
-                    database.ref(`${tabInstance.firebasePath}/${lastAction.data.postId}`).set(lastAction.data.post)
-                        .then(() => {
-                            console.log('✅ 게시글 복구 완료');
-                            alert('삭제한 게시글을 복구했습니다.');
-                        })
-                        .catch(err => {
-                            console.error('복구 오류:', err);
-                            alert('복구 실패');
+                
+                const item = trash[itemIndex];
+                
+                // 타입별로 복구
+                if (item.type === 'video') {
+                    createItemDOM(item.data.title, item.data.link, item.data.memo, item.data.date, item.data.index).then(() => {
+                        saveItems();
+                        trash.splice(itemIndex, 1);
+                        this.saveTrash(trash);
+                        this.renderTrash();
+                        alert('항목을 복구했습니다.');
+                    });
+                } else if (item.type === 'favorite') {
+                    const tabInstance = window.favoritesTabInstances[item.tabId];
+                    if (tabInstance && tabInstance.createFavoriteDOM) {
+                        const itemWithIndex = { ...item.data.item, insertIndex: item.data.index };
+                        tabInstance.createFavoriteDOM(itemWithIndex).then(() => {
+                            tabInstance.saveFavorites();
+                            trash.splice(itemIndex, 1);
+                            this.saveTrash(trash);
+                            this.renderTrash();
+                            alert('항목을 복구했습니다.');
                         });
-                } else {
-                    alert('탭을 찾을 수 없습니다. 해당 탭이 삭제되었을 수 있습니다.');
+                    } else {
+                        alert('탭을 찾을 수 없습니다.');
+                    }
+                } else if (item.type === 'memo') {
+                    if (item.tabId) {
+                        const tabInstance = window.memoTabInstances[item.tabId];
+                        if (tabInstance && tabInstance.createMemoDOM) {
+                            tabInstance.createMemoDOM(item.data.text);
+                            tabInstance.saveMemos();
+                            trash.splice(itemIndex, 1);
+                            this.saveTrash(trash);
+                            this.renderTrash();
+                            alert('메모를 복구했습니다.');
+                        } else {
+                            alert('탭을 찾을 수 없습니다.');
+                        }
+                    } else {
+                        createMemoDOM(item.data.text);
+                        saveMemos();
+                        trash.splice(itemIndex, 1);
+                        this.saveTrash(trash);
+                        this.renderTrash();
+                        alert('메모를 복구했습니다.');
+                    }
+                } else if (item.type === 'editor') {
+                    if (!database) {
+                        alert('Firebase 연결 오류');
+                        return;
+                    }
+                    const tabInstance = window.editorTabInstances[item.tabId];
+                    if (tabInstance && tabInstance.firebasePath) {
+                        database.ref(`${tabInstance.firebasePath}/${item.data.postId}`).set(item.data.post)
+                            .then(() => {
+                                trash.splice(itemIndex, 1);
+                                this.saveTrash(trash);
+                                this.renderTrash();
+                                alert('글을 복구했습니다.');
+                            })
+                            .catch(err => {
+                                console.error('복구 오류:', err);
+                                alert('복구 실패');
+                            });
+                    } else {
+                        alert('탭을 찾을 수 없습니다.');
+                    }
+                } else if (item.type === 'community') {
+                    if (!database) {
+                        alert('Firebase 연결 오류');
+                        return;
+                    }
+                    const tabInstance = window.communityTabInstances[item.tabId];
+                    if (tabInstance && tabInstance.firebasePath) {
+                        database.ref(`${tabInstance.firebasePath}/${item.data.postId}`).set(item.data.post)
+                            .then(() => {
+                                trash.splice(itemIndex, 1);
+                                this.saveTrash(trash);
+                                this.renderTrash();
+                                alert('게시글을 복구했습니다.');
+                            })
+                            .catch(err => {
+                                console.error('복구 오류:', err);
+                                alert('복구 실패');
+                            });
+                    } else {
+                        alert('탭을 찾을 수 없습니다.');
+                    }
                 }
+            }
+            
+            // 영구 삭제
+            permanentlyDelete(id) {
+                const trash = this.getTrash();
+                const itemIndex = trash.findIndex(item => item.id === id);
+                
+                if (itemIndex !== -1) {
+                    trash.splice(itemIndex, 1);
+                    this.saveTrash(trash);
+                    this.renderTrash();
+                    alert('영구적으로 삭제되었습니다.');
+                }
+            }
+            
+            // 휴지통 비우기
+            emptyTrash() {
+                localStorage.removeItem(this.trashKey);
+                this.renderTrash();
+                alert('휴지통이 비워졌습니다.');
             }
         }
         
-        // Ctrl+Z 키보드 이벤트
-        document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-                e.preventDefault();
-                undo();
-            }
-        });
+        const trashManager = new TrashManager();
 
         // --- COMMON ---
         document.addEventListener('DOMContentLoaded', async () => {
@@ -1690,6 +1854,11 @@
                     const tabId = target.id;
                     const tabData = TabManager.tabs.find(t => t.id === tabId);
                     
+                    // 휴지통 탭
+                    if (tabId === 'trash-tab-content') {
+                        trashManager.renderTrash();
+                    }
+                    
                     // 비디오 관리 탭 (모바일에서만 표시)
                     if (tabId === 'video-tab-content' && window.innerWidth <= 768) {
                         writeVideoBtn.style.display = 'inline-block';
@@ -1920,9 +2089,9 @@
                     const allItems = Array.from(itemsContainer.querySelectorAll('.list-item'));
                     const itemIndex = allItems.indexOf(itemElement);
                     
-                    // Undo 스택에 추가 (위치 포함)
+                    // 휴지통에 추가 (위치 포함)
                     const titleText = itemElement.querySelector('.col-title').textContent;
-                    addToUndoStack('video', {
+                    trashManager.addToTrash('video', {
                         title: titleText.startsWith('📌 ') ? titleText.substring(2) : titleText,
                         link: itemElement.dataset.link,
                         memo: itemElement.querySelector('.col-memo').dataset.rawMemo || '',
@@ -2065,8 +2234,8 @@
             // 우클릭 & Long Press 메뉴
             contextMenuUtil.attachToElement(memoItem, (action) => {
                 if (action === 'delete') {
-                    // Undo 스택에 추가
-                    addToUndoStack('memo', {
+                    // 휴지통에 추가
+                    trashManager.addToTrash('memo', {
                         text: memoItem.dataset.rawText,
                         date: memoItem.querySelector('.memo-date')?.textContent
                     });
@@ -2316,15 +2485,57 @@
                 });
                 localStorage.setItem(this.dataKey, JSON.stringify(favs));
             }
-            loadFavorites() { 
+            async loadFavorites() { 
                 try {
-                    const favs = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                    let favs = [];
+                    
+                    // 1. LocalStorage에서 데이터 가져오기
+                    const localData = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                    
+                    // 2. Firebase에서도 데이터 가져오기 (클리퍼로 추가된 글)
+                    if (database && userRef) {
+                        try {
+                            const snapshot = await userRef.child(this.dataKey).once('value');
+                            if (snapshot.exists()) {
+                                const firebaseData = snapshot.val();
+                                const firebaseFavs = typeof firebaseData === 'string' ? JSON.parse(firebaseData) : firebaseData;
+                                
+                                if (Array.isArray(firebaseFavs) && firebaseFavs.length > 0) {
+                                    console.log(`✅ Firebase에서 ${firebaseFavs.length}개 클리핑 글 발견`);
+                                    
+                                    // 3. Firebase 데이터와 LocalStorage 병합 (중복 제거)
+                                    const localIds = new Set(localData.map(f => f.id || f.link));
+                                    const newFirebaseFavs = firebaseFavs.filter(f => !localIds.has(f.id || f.link));
+                                    
+                                    favs = [...newFirebaseFavs, ...localData];
+                                    
+                                    // 4. 병합된 데이터를 LocalStorage에 저장
+                                    localStorage.setItem(this.dataKey, JSON.stringify(favs));
+                                    
+                                    // 5. Firebase 데이터 삭제 (이제 LocalStorage로 이관됨)
+                                    await userRef.child(this.dataKey).remove();
+                                    console.log('✅ Firebase → LocalStorage 동기화 완료');
+                                } else {
+                                    favs = localData;
+                                }
+                            } else {
+                                favs = localData;
+                            }
+                        } catch (fbError) {
+                            console.warn('Firebase 동기화 실패, LocalStorage만 사용:', fbError);
+                            favs = localData;
+                        }
+                    } else {
+                        favs = localData;
+                    }
+                    
                     // [수정] 핀 기준으로 1차 정렬 (고정된 항목이 위로)
                     favs.sort((a, b) => {
                         if (a.isPinned && !b.isPinned) return -1;
                         if (!a.isPinned && b.isPinned) return 1;
                         return 0; // 같은 상태면 기존 순서 유지
                     });
+                    
                     favs.forEach(fav => this.createFavoriteDOM(fav));
                 } catch (error) {
                     console.error('즐겨찾기 데이터 로드 실패:', error);
@@ -2394,9 +2605,9 @@
                         const allItems = Array.from(this.listContainer.querySelectorAll('.list-item'));
                         const itemIndex = allItems.indexOf(itemElement);
                         
-                        // Undo 스택에 추가 (위치 포함)
+                        // 휴지통에 추가 (위치 포함)
                         const titleText = itemElement.querySelector('.col-title').textContent;
-                        addToUndoStack('favorite', {
+                        trashManager.addToTrash('favorite', {
                             tabId: this.tabId,
                             index: itemIndex,
                             item: {
@@ -2542,9 +2753,54 @@
                 localStorage.setItem(this.dataKey, JSON.stringify(memos));
             }
             
-            loadMemos() {
+            async loadMemos() {
                 try {
-                    const memos = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                    let memos = [];
+                    
+                    // 1. LocalStorage에서 데이터 가져오기
+                    const localData = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                    
+                    // 2. Firebase에서도 데이터 가져오기 (클리퍼로 추가된 글)
+                    if (database && userRef) {
+                        try {
+                            const snapshot = await userRef.child(this.dataKey).once('value');
+                            if (snapshot.exists()) {
+                                const firebaseData = snapshot.val();
+                                const firebaseMemos = typeof firebaseData === 'string' ? JSON.parse(firebaseData) : firebaseData;
+                                
+                                if (Array.isArray(firebaseMemos) && firebaseMemos.length > 0) {
+                                    console.log(`✅ Firebase에서 ${firebaseMemos.length}개 클리핑 메모 발견`);
+                                    
+                                    // Firebase 메모를 텍스트로 변환 (객체일 경우)
+                                    const firebaseTexts = firebaseMemos.map(m => {
+                                        if (typeof m === 'string') return m;
+                                        // 객체면 제목과 링크로 변환
+                                        return `${m.title || ''}\n${m.link || ''}\n${m.memo || ''}`.trim();
+                                    });
+                                    
+                                    // 3. Firebase 데이터와 LocalStorage 병합
+                                    memos = [...firebaseTexts, ...localData];
+                                    
+                                    // 4. 병합된 데이터를 LocalStorage에 저장
+                                    localStorage.setItem(this.dataKey, JSON.stringify(memos));
+                                    
+                                    // 5. Firebase 데이터 삭제
+                                    await userRef.child(this.dataKey).remove();
+                                    console.log('✅ Firebase → LocalStorage 동기화 완료 (메모)');
+                                } else {
+                                    memos = localData;
+                                }
+                            } else {
+                                memos = localData;
+                            }
+                        } catch (fbError) {
+                            console.warn('Firebase 동기화 실패, LocalStorage만 사용:', fbError);
+                            memos = localData;
+                        }
+                    } else {
+                        memos = localData;
+                    }
+                    
                     // 역순으로 로드해서 prepend 시 올바른 순서 유지
                     memos.reverse().forEach(text => this.createMemoDOM(text));
                 } catch (error) {
@@ -2566,12 +2822,12 @@
                 // 우클릭 & Long Press 메뉴
                 contextMenuUtil.attachToElement(memoItem, (action) => {
                     if (action === 'delete') {
-                        // Undo 스택에 추가
-                        addToUndoStack('memo', {
+                        // 휴지통에 추가
+                        trashManager.addToTrash('memo', {
                             text: memoItem.dataset.rawText,
                             date: memoItem.querySelector('.memo-date')?.textContent,
                             tabId: this.tabId
-                        });
+                        }, this.tabId);
                         
                         memoItem.remove();
                         this.saveMemos();
@@ -2882,6 +3138,9 @@
             renderPostList() {
                 this.postList.innerHTML = '';
                 this.posts.forEach(post => {
+                    // [수정] null 값인 데이터 건너뛰기
+                    if (!post) return;
+                    
                     const item = document.createElement('div');
                     item.className = 'editor-post-item';
                     if (post.id === this.currentPostId) {
@@ -2895,8 +3154,11 @@
                     const timeStr = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
                     
                     // 본문에서 HTML 태그 제거하고 텍스트만 추출
+                    // [수정] post.content가 null일 경우 대비
+                    const safeContent = post.content || '';
+                    
                     const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = post.content;
+                    tempDiv.innerHTML = safeContent;
                     const textContent = tempDiv.textContent || tempDiv.innerText || '';
                     const preview = textContent.length > 50 ? textContent.substring(0, 50) + '...' : textContent;
                     
@@ -2904,7 +3166,7 @@
                     const pinIcon = post.isPinned ? '📌 ' : '';
                     
                     // 본문에서 첫 번째 이미지 추출 (모바일용 썸네일)
-                    const imgMatch = post.content.match(/<img[^>]+src=["']([^"']+)["']/i);
+                    const imgMatch = safeContent.match(/<img[^>]+src=["']([^"']+)["']/i);
                     const thumbnailSrc = imgMatch ? imgMatch[1] : null;
                     
                     // 이미지 있으면: has-thumbnail 클래스 추가 + 텍스트 + 썸네일 구조
@@ -3129,16 +3391,16 @@
                     return;
                 }
                 
-                // Undo 스택에 추가하기 위해 먼저 데이터 가져오기
+                // 휴지통에 추가하기 위해 먼저 데이터 가져오기
                 database.ref(`${this.firebasePath}/${postId}`).once('value')
                     .then(snapshot => {
                         const postData = snapshot.val();
                         if (postData) {
-                            addToUndoStack('editor', {
+                            trashManager.addToTrash('editor', {
                                 tabId: this.tabId,
                                 postId: postId,
                                 post: postData
-                            });
+                            }, this.tabId);
                 }
                 
                 // Firebase에서 개별 항목 삭제
@@ -3292,6 +3554,9 @@
                 
                 // 게시글 렌더링
                 this.posts.forEach((post, index) => {
+                    // [수정] null 값인 데이터 건너뛰기
+                    if (!post) return;
+                    
                     // [수정] 안전한 기본값 설정
                     const safePost = {
                         id: post.id,
@@ -3334,15 +3599,15 @@
                     const dateTrigger = itemElement.querySelector('.community-menu-trigger');
                     if (dateTrigger) {
                         dateTrigger.dataset.isPinned = post.isPinned || false;
-                        contextMenuUtil.attachToElement(dateTrigger, (action) => {
-                            if (action === 'delete') {
-                                this.deletePost(post.id);
-                            } else if (action === 'edit') {
-                                this.editPost(post.id);
+                    contextMenuUtil.attachToElement(dateTrigger, (action) => {
+                        if (action === 'delete') {
+                            this.deletePost(post.id);
+                        } else if (action === 'edit') {
+                            this.editPost(post.id);
                             } else if (action === 'pin') {
                                 this.pinPost(post.id);
-                            }
-                        });
+                        }
+                    });
                     }
                 });
             }
@@ -3482,19 +3747,19 @@
                     return;
                 }
                 
-                // Undo 스택에 추가하기 위해 먼저 데이터 가져오기
+                // 휴지통에 추가하기 위해 먼저 데이터 가져오기
                 database.ref(`${this.firebasePath}/${postId}`).once('value')
                     .then(snapshot => {
                         const postData = snapshot.val();
                         if (postData) {
-                            addToUndoStack('community', {
+                            trashManager.addToTrash('community', {
                                 tabId: this.tabId,
                                 postId: postId,
                                 post: postData
-                            });
-                        }
-                        
-                        // Firebase에서 개별 항목 삭제
+                            }, this.tabId);
+                }
+                
+                // Firebase에서 개별 항목 삭제
                         return database.ref(`${this.firebasePath}/${postId}`).remove();
                     })
                     .then(() => {
