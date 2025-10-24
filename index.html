@@ -2851,14 +2851,14 @@
                     if (database) {
                         const snapshot = await database.ref(this.firebasePath).once('value');
                         if (snapshot.exists()) {
-                            const data = snapshot.val();
+                    const data = snapshot.val();
                             let firebasePosts = [];
-                            
+                    
                             // 데이터 파싱 및 ID 주입
-                            if (typeof data === 'string') {
-                                try {
+                        if (typeof data === 'string') {
+                            try {
                                     firebasePosts = JSON.parse(data);
-                                } catch (e) {
+                            } catch (e) {
                                     console.error('Firebase 문자열 파싱 오류:', e);
                                 }
                             } else if (typeof data === 'object' && data !== null) {
@@ -2876,15 +2876,25 @@
                                 const localIds = new Set(this.posts.map(p => p.id));
                                 const newFirebasePosts = firebasePosts.filter(p => !localIds.has(p.id));
                                 
-                                if (newFirebasePosts.length > 0) {
-                                    console.log(`✅ EditorTab: ${newFirebasePosts.length}개의 새 클리퍼 글 병합`);
-                                    this.posts = [...newFirebasePosts, ...this.posts];
-                                    // 4. 병합된 리스트를 LocalStorage에 저장
-                                    this.savePostsToLocal(); 
-                                }
-                                
-                                // 5. Firebase 데이터 삭제 (가져오기 완료)
+                                // 4. ⭐ Firebase 데이터 먼저 삭제 (용량 초과 오류 방지)
                                 await database.ref(this.firebasePath).remove();
+                                console.log('✅ Firebase 클리퍼 데이터 삭제 완료');
+                                
+                                if (newFirebasePosts.length > 0) {
+                                    console.log(`✅ EditorTab: ${newFirebasePosts.length}개의 새 클리퍼 글 병합 시도`);
+                                    
+                                    // 5. LocalStorage에 저장 시도 (용량 초과 시 클리퍼 데이터 무시)
+                                    try {
+                                        this.posts = [...newFirebasePosts, ...this.posts];
+                                        this.savePostsToLocal();
+                                        console.log('✅ 클리퍼 글 병합 성공');
+                                    } catch (saveError) {
+                                        console.error('⚠️ LocalStorage 용량 초과, 클리퍼 데이터 무시:', saveError);
+                                        // ⭐ 사용자 글은 유지, 클리퍼 데이터만 무시
+                                        this.posts = this.posts.filter(p => !newFirebasePosts.includes(p));
+                                        alert('⚠️ 저장 공간이 부족하여 클리퍼 글을 가져올 수 없습니다.\n\n휴지통을 비우거나 오래된 글을 삭제해주세요.');
+                                    }
+                                }
                             }
                         }
                     }
@@ -2895,11 +2905,11 @@
                 }
                 
                 // 6. 최종 렌더링
-                this.renderPostList();
-                
-                if (this.currentPostId) {
-                    this.viewPost(this.currentPostId);
-                }
+                    this.renderPostList();
+                    
+                    if (this.currentPostId) {
+                        this.viewPost(this.currentPostId);
+                    }
             }
             
             renderPostList() {
@@ -3070,7 +3080,7 @@
                     alert('내용을 입력해주세요.');
                     return;
                 }
-
+                
                 let savedPostId = this.editingPostId;
                 
                 if (this.editingPostId) {
@@ -3097,7 +3107,7 @@
                 
                 this.savePostsToLocal(); // LocalStorage에 저장
                 this.renderPostList(); // 목록 새로고침
-                this.closeModal();
+                            this.closeModal();
                 
                 if (savedPostId) {
                     this.currentPostId = savedPostId;
@@ -3136,11 +3146,11 @@
                 
                 // 3. LocalStorage에 저장
                 this.savePostsToLocal();
-                
-                if (this.currentPostId === postId) {
-                    this.currentPostId = null;
-                    this.contentPanel.innerHTML = '<div class="editor-empty-state">왼쪽에서 글을 선택하거나 "글쓰기" 버튼을 눌러 새 글을 작성하세요</div>';
-                }
+                        
+                        if (this.currentPostId === postId) {
+                            this.currentPostId = null;
+                            this.contentPanel.innerHTML = '<div class="editor-empty-state">왼쪽에서 글을 선택하거나 "글쓰기" 버튼을 눌러 새 글을 작성하세요</div>';
+                        }
                 this.renderPostList();
             }
         }
@@ -3265,9 +3275,9 @@
                     // 2. Firebase에서 클리퍼 데이터 확인
                     const snapshot = await database.ref(this.firebasePath).once('value');
                     if (snapshot.exists()) {
-                        const data = snapshot.val();
+                    const data = snapshot.val();
                         let firebasePosts = [];
-                        
+                    
                         // 데이터 파싱 및 ID 주입
                         if (typeof data === 'string') {
                             firebasePosts = JSON.parse(data);
@@ -3286,15 +3296,25 @@
                             const localIds = new Set(this.posts.map(p => p.id));
                             const newFirebasePosts = firebasePosts.filter(p => !localIds.has(p.id));
                             
+                            // 4. ⭐ Firebase 데이터 먼저 삭제 (용량 초과 오류 방지)
+                            await database.ref(this.firebasePath).remove();
+                            console.log('✅ Firebase 클리퍼 데이터 삭제 완료');
+                            
                             if (newFirebasePosts.length > 0) {
                                 console.log(`✅ CommunityTab: ${newFirebasePosts.length}개의 새 클리퍼 글 병합`);
-                                this.posts = [...newFirebasePosts, ...this.posts];
-                                // 4. 병합된 리스트를 LocalStorage에 저장
-                                this.savePostsToLocal(); 
+                                
+                                // 5. LocalStorage에 저장 시도 (용량 초과 시 클리퍼 데이터만 무시)
+                                try {
+                                    this.posts = [...newFirebasePosts, ...this.posts];
+                                    this.savePostsToLocal();
+                                    console.log('✅ 클리퍼 글 병합 성공');
+                                } catch (saveError) {
+                                    console.error('⚠️ LocalStorage 용량 초과, 클리퍼 데이터 무시:', saveError);
+                                    // ⭐ 사용자 글은 유지, 클리퍼 데이터만 무시
+                                    this.posts = this.posts.filter(p => !newFirebasePosts.includes(p));
+                                    alert('⚠️ 저장 공간이 부족하여 클리퍼 글을 가져올 수 없습니다.\n\n휴지통을 비우거나 오래된 글을 삭제해주세요.');
+                                }
                             }
-                            
-                            // 5. Firebase 데이터 삭제 (가져오기 완료)
-                            await database.ref(this.firebasePath).remove();
                         }
                     }
                 } catch (error) {
@@ -3304,7 +3324,7 @@
                 }
                 
                 // 6. 최종 렌더링
-                this.renderPostList();
+                    this.renderPostList();
             }
             
             renderPostList() {
@@ -3359,15 +3379,15 @@
                     const dateTrigger = itemElement.querySelector('.community-menu-trigger');
                     if (dateTrigger) {
                         dateTrigger.dataset.isPinned = safePost.isPinned;
-                        contextMenuUtil.attachToElement(dateTrigger, (action) => {
-                            if (action === 'delete') {
+                    contextMenuUtil.attachToElement(dateTrigger, (action) => {
+                        if (action === 'delete') {
                                 this.deletePost(safePost.id);
-                            } else if (action === 'edit') {
+                        } else if (action === 'edit') {
                                 this.editPost(safePost.id);
                             } else if (action === 'pin') {
                                 this.pinPost(safePost.id);
-                            }
-                        });
+                        }
+                    });
                     }
                 });
             }
@@ -3408,12 +3428,12 @@
                 const title = this.modalTitle.value.trim();
                 const memo = this.modalMemo.value.trim();
                 const link = this.modalLink.value.trim();
-
+                
                 if (!title) {
                     alert('제목을 입력해주세요.');
                     return;
                 }
-
+                
                 if (this.editingPostId) {
                     // 수정
                     const post = this.posts.find(p => p.id === this.editingPostId);
@@ -3436,10 +3456,10 @@
                     };
                     this.posts.push(newPost);
                 }
-
+                    
                 this.savePostsToLocal(); // LocalStorage에 저장
                 this.renderPostList(); // 목록 새로고침
-                this.closeModal();
+                            this.closeModal();
             }
             
             pinPost(postId) {
@@ -3456,7 +3476,7 @@
             
             deletePost(postId) {
                 if (!confirm('이 게시글을 삭제하시겠습니까?')) return;
-
+                
                 const postIndex = this.posts.findIndex(p => p.id === postId);
                 if (postIndex === -1) return;
 
