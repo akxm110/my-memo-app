@@ -1142,7 +1142,16 @@
                     
                     for (const key in data) {
                         if (data.hasOwnProperty(key)) {
-                            originalSetItem.call(localStorage, key, data[key]);
+                            const value = data[key];
+                            
+                            // 1. 값이 객체(배열 포함)이고 null이 아닌지 확인합니다.
+                            if (typeof value === 'object' && value !== null) {
+                                // 2. 객체면 JSON 문자열로 변환하여 저장합니다.
+                                originalSetItem.call(localStorage, key, JSON.stringify(value));
+                            } else {
+                                // 3. 문자열이나 숫자 등 다른 값은 그대로 저장합니다.
+                                originalSetItem.call(localStorage, key, value);
+                            }
                         }
                     }
                     
@@ -2809,48 +2818,70 @@
             // LocalStorage 우선 데이터 로드 (Firebase는 클리퍼 병합용)
             async loadPosts() {
                 try {
-                    // 1. LocalStorage에서 데이터 먼저 로드
-                    const localData = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                    // 1. LocalStorage에서 데이터 먼저 로드 (안전하게)
+                    let localData = [];
+                    try {
+                        const stored = localStorage.getItem(this.dataKey);
+                        if (stored) {
+                            localData = JSON.parse(stored);
+                            if (!Array.isArray(localData)) {
+                                console.warn('LocalStorage 데이터가 배열이 아님, 초기화');
+                                localData = [];
+                                localStorage.removeItem(this.dataKey);
+                            }
+                        }
+                    } catch (parseError) {
+                        console.error('LocalStorage 파싱 오류, 초기화:', parseError);
+                        localData = [];
+                        localStorage.removeItem(this.dataKey);
+                    }
                     this.posts = localData;
 
                     // 2. Firebase에서 클리퍼 데이터 확인
-                    const snapshot = await database.ref(this.firebasePath).once('value');
-                    if (snapshot.exists()) {
-                        const data = snapshot.val();
-                        let firebasePosts = [];
-                        
-                        // 데이터 파싱 및 ID 주입
-                        if (typeof data === 'string') {
-                            firebasePosts = JSON.parse(data);
-                        } else if (typeof data === 'object') {
-                            for (const key in data) {
-                                if (data.hasOwnProperty(key) && typeof data[key] === 'object') {
-                                    const post = data[key];
-                                    if (!post.id) post.id = key;
-                                    firebasePosts.push(post);
+                    if (database) {
+                        const snapshot = await database.ref(this.firebasePath).once('value');
+                        if (snapshot.exists()) {
+                            const data = snapshot.val();
+                            let firebasePosts = [];
+                            
+                            // 데이터 파싱 및 ID 주입
+                            if (typeof data === 'string') {
+                                try {
+                                    firebasePosts = JSON.parse(data);
+                                } catch (e) {
+                                    console.error('Firebase 문자열 파싱 오류:', e);
+                                }
+                            } else if (typeof data === 'object' && data !== null) {
+                                for (const key in data) {
+                                    if (data.hasOwnProperty(key) && typeof data[key] === 'object') {
+                                        const post = data[key];
+                                        if (!post.id) post.id = key;
+                                        firebasePosts.push(post);
+                                    }
                                 }
                             }
-                        }
 
-                        if (firebasePosts.length > 0) {
-                            // 3. LocalStorage 데이터와 병합 (중복 제외)
-                            const localIds = new Set(this.posts.map(p => p.id));
-                            const newFirebasePosts = firebasePosts.filter(p => !localIds.has(p.id));
-                            
-                            if (newFirebasePosts.length > 0) {
-                                console.log(`✅ EditorTab: ${newFirebasePosts.length}개의 새 클리퍼 글 병합`);
-                                this.posts = [...newFirebasePosts, ...this.posts];
-                                // 4. 병합된 리스트를 LocalStorage에 저장
-                                this.savePostsToLocal(); 
+                            if (firebasePosts.length > 0) {
+                                // 3. LocalStorage 데이터와 병합 (중복 제외)
+                                const localIds = new Set(this.posts.map(p => p.id));
+                                const newFirebasePosts = firebasePosts.filter(p => !localIds.has(p.id));
+                                
+                                if (newFirebasePosts.length > 0) {
+                                    console.log(`✅ EditorTab: ${newFirebasePosts.length}개의 새 클리퍼 글 병합`);
+                                    this.posts = [...newFirebasePosts, ...this.posts];
+                                    // 4. 병합된 리스트를 LocalStorage에 저장
+                                    this.savePostsToLocal(); 
+                                }
+                                
+                                // 5. Firebase 데이터 삭제 (가져오기 완료)
+                                await database.ref(this.firebasePath).remove();
                             }
-                            
-                            // 5. Firebase 데이터 삭제 (가져오기 완료)
-                            await database.ref(this.firebasePath).remove();
                         }
                     }
                 } catch (error) {
-                    console.error('글 로드 실패, LocalStorage만 사용:', error);
-                    this.posts = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                    console.error('EditorTab 로드 오류:', error);
+                    // 최악의 경우 빈 배열로 시작
+                    this.posts = [];
                 }
                 
                 // 6. 최종 렌더링
