@@ -3196,10 +3196,22 @@
             }
             
             deletePost(postId) {
+                console.log('🗑️ 삭제 시도 - postId:', postId, 'type:', typeof postId);
+                console.log('📋 현재 posts:', this.posts.map(p => ({ id: p.id, type: typeof p.id, title: p.title })));
+                
                 if (!confirm('이 글을 삭제하시겠습니까?')) return;
                 
-                const postIndex = this.posts.findIndex(p => p.id === postId);
-                if (postIndex === -1) return;
+                const postIndex = this.posts.findIndex(p => {
+                    console.log(`비교: p.id(${p.id}, ${typeof p.id}) === postId(${postId}, ${typeof postId}) = ${p.id === postId}`);
+                    return p.id === postId;
+                });
+                console.log('✅ 찾은 인덱스:', postIndex);
+                
+                if (postIndex === -1) {
+                    console.error('❌ 삭제 실패: 글을 찾을 수 없습니다.');
+                    alert('삭제 실패: 글을 찾을 수 없습니다. 콘솔을 확인해주세요.');
+                    return;
+                }
                 
                 // 1. 휴지통에 추가
                 const postData = this.posts[postIndex];
@@ -3572,10 +3584,22 @@
             }
             
             deletePost(postId) {
+                console.log('🗑️ [Community] 삭제 시도 - postId:', postId, 'type:', typeof postId);
+                console.log('📋 [Community] 현재 posts:', this.posts.map(p => ({ id: p.id, type: typeof p.id, title: p.title })));
+                
                 if (!confirm('이 게시글을 삭제하시겠습니까?')) return;
 
-                const postIndex = this.posts.findIndex(p => p.id === postId);
-                if (postIndex === -1) return;
+                const postIndex = this.posts.findIndex(p => {
+                    console.log(`[Community] 비교: p.id(${p.id}, ${typeof p.id}) === postId(${postId}, ${typeof postId}) = ${p.id === postId}`);
+                    return p.id === postId;
+                });
+                console.log('✅ [Community] 찾은 인덱스:', postIndex);
+                
+                if (postIndex === -1) {
+                    console.error('❌ [Community] 삭제 실패: 글을 찾을 수 없습니다.');
+                    alert('삭제 실패: 글을 찾을 수 없습니다. 콘솔을 확인해주세요.');
+                    return;
+                }
 
                 // 1. 휴지통에 추가
                 const postData = this.posts[postIndex];
