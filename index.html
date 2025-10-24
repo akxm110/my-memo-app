@@ -2879,9 +2879,9 @@
                         }
                     }
                 } catch (error) {
-                    console.error('EditorTab 로드 오류:', error);
-                    // 최악의 경우 빈 배열로 시작
-                    this.posts = [];
+                    console.error('글 로드 실패, LocalStorage 파싱 오류. 데이터를 초기화합니다:', error);
+                    localStorage.removeItem(this.dataKey); // 손상된 데이터를 즉시 삭제
+                    this.posts = []; // 빈 배열로 안전하게 초기화
                 }
                 
                 // 6. 최종 렌더링
@@ -3233,8 +3233,23 @@
             // LocalStorage 우선 데이터 로드 (Firebase는 클리퍼 병합용)
             async loadPosts() {
                 try {
-                    // 1. LocalStorage에서 데이터 먼저 로드
-                    const localData = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                    // 1. LocalStorage에서 데이터 먼저 로드 (안전하게)
+                    let localData = [];
+                    try {
+                        const stored = localStorage.getItem(this.dataKey);
+                        if (stored) {
+                            localData = JSON.parse(stored);
+                            if (!Array.isArray(localData)) {
+                                console.warn('LocalStorage 데이터가 배열이 아님, 초기화');
+                                localData = [];
+                                localStorage.removeItem(this.dataKey);
+                            }
+                        }
+                    } catch (parseError) {
+                        console.error('LocalStorage 파싱 오류, 초기화:', parseError);
+                        localData = [];
+                        localStorage.removeItem(this.dataKey);
+                    }
                     this.posts = localData;
 
                     // 2. Firebase에서 클리퍼 데이터 확인
@@ -3273,8 +3288,9 @@
                         }
                     }
                 } catch (error) {
-                    console.error('글 로드 실패, LocalStorage만 사용:', error);
-                    this.posts = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                    console.error('글 로드 실패, LocalStorage 파싱 오류. 데이터를 초기화합니다:', error);
+                    localStorage.removeItem(this.dataKey); // 손상된 데이터를 즉시 삭제
+                    this.posts = []; // 빈 배열로 안전하게 초기화
                 }
                 
                 // 6. 최종 렌더링
