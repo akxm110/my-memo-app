@@ -1919,7 +1919,15 @@
                 text: el.dataset.rawText,
                 date: el.dataset.date || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' })
             }));
-            localStorage.setItem(memoDataKey, JSON.stringify(memos));
+            const memosStr = JSON.stringify(memos); // 1. 문자열로 변환
+
+            localStorage.setItem(memoDataKey, memosStr); // 2. 로컬에 저장 (기존 로직)
+            
+            // 3. Firebase에 즉시 동기화 (추가된 코드)
+            if (database && isInitialized) {
+                database.ref('users/' + userId + '/' + memoDataKey).set(memosStr)
+                    .catch(e => console.error(`❌ ${memoDataKey} 즉시 동기화 실패:`, e));
+            }
         }
         function loadMemos() { 
             try {
@@ -2008,7 +2016,23 @@
                     this.saveTabs();
                 }
             },
-            saveTabs() { localStorage.setItem(this.tabConfigKey, JSON.stringify(this.tabs)); },
+            saveTabs() { 
+                const configStr = JSON.stringify(this.tabs);
+                
+                // 1. 로컬에 저장
+                localStorage.setItem(this.tabConfigKey, configStr); 
+                
+                // 2. Firebase에 즉시 동기화 (추가된 코드)
+                if (database && isInitialized) {
+                    database.ref('users/' + userId + '/' + this.tabConfigKey).set(configStr)
+                        .then(() => {
+                            console.log('✅ 탭 설정 즉시 동기화 완료.');
+                        })
+                        .catch(e => {
+                            console.error('❌ 탭 설정 즉시 동기화 실패:', e);
+                        });
+                }
+            },
             render() {
                 this.tabsContainer.querySelectorAll('.dynamic-tab').forEach(t => t.remove());
                 this.contentContainer.querySelectorAll('.dynamic-tab-content').forEach(c => c.remove());
@@ -2196,14 +2220,22 @@
                     const title = el.querySelector('.col-title').textContent;
                     return {
                         title: title.startsWith('📌 ') ? title.substring(2) : title, // 핀 아이콘 제거하고 저장
-                    link: el.querySelector('.col-link a')?.href || '',
+                        link: el.querySelector('.col-link a')?.href || '',
                         memo: el.querySelector('.col-memo')?.dataset.fullMemo || '',
                         image: el.querySelector('.thumbnail-container img')?.dataset.customImage || null,
                         date: el.querySelector('.col-date')?.textContent || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }),
                         isPinned: el.dataset.isPinned === 'true'
                     };
                 });
-                localStorage.setItem(this.dataKey, JSON.stringify(favs));
+                const favsStr = JSON.stringify(favs); // 1. 문자열로 변환
+
+                localStorage.setItem(this.dataKey, favsStr); // 2. 로컬에 저장
+                
+                // 3. Firebase에 즉시 동기화 (추가된 코드)
+                if (database && isInitialized) {
+                    database.ref('users/' + userId + '/' + this.dataKey).set(favsStr)
+                        .catch(e => console.error(`❌ ${this.dataKey} 즉시 동기화 실패:`, e));
+                }
             }
             async loadFavorites() { 
                 try {
@@ -2470,7 +2502,15 @@
             
             saveMemos() {
                 const memos = Array.from(this.listContainer.querySelectorAll('.memo-item')).map(el => el.dataset.rawText);
-                localStorage.setItem(this.dataKey, JSON.stringify(memos));
+                const memosStr = JSON.stringify(memos); // 1. 문자열로 변환
+
+                localStorage.setItem(this.dataKey, memosStr); // 2. 로컬에 저장
+                
+                // 3. Firebase에 즉시 동기화 (추가된 코드)
+                if (database && isInitialized) {
+                    database.ref('users/' + userId + '/' + this.dataKey).set(memosStr)
+                        .catch(e => console.error(`❌ ${this.dataKey} 즉시 동기화 실패:`, e));
+                }
             }
             
             async loadMemos() {
