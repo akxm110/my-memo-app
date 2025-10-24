@@ -1047,6 +1047,7 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const userId = 'user1'; // 단일 사용자
+        const userRef = database.ref('users/' + userId); // userRef 정의 추가
         
         let isSyncing = false;
         let isInitialized = false;
