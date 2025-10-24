@@ -2651,7 +2651,7 @@
                 // createContextMenu() 삭제: 전역 contextMenuUtil 사용
                 this.bindElements();
                 this.addEventListeners();
-                this.initFirebaseListener(); // Firebase 우선으로 변경
+                this.loadPosts(); // LocalStorage 우선으로 변경
             }
             
             renderHTML() {
@@ -2847,8 +2847,82 @@
                 });
             }
             
-            // Firebase 실시간 리스너 초기화
-            initFirebaseListener() {
+            // LocalStorage에 저장하는 헬퍼 함수
+            savePostsToLocal() {
+                // 정렬 후 저장
+                this.posts.sort((a, b) => {
+                    if (a.isPinned && !b.isPinned) return -1;
+                    if (!a.isPinned && b.isPinned) return 1;
+                    return b.date - a.date;
+                });
+                
+                const dataStr = JSON.stringify(this.posts);
+                originalSetItem.call(localStorage, this.dataKey, dataStr);
+
+                // Firebase에 즉시 동기화
+                if (database && isInitialized) {
+                    database.ref('users/' + userId + '/' + this.dataKey).set(dataStr)
+                        .catch(e => console.error(`❌ ${this.dataKey} 즉시 동기화 실패:`, e));
+                }
+            }
+            
+            // LocalStorage 우선 데이터 로드 (Firebase는 클리퍼 병합용)
+            async loadPosts() {
+                try {
+                    // 1. 로컬 데이터 먼저 로드
+                    const localData = JSON.parse(originalGetItem.call(localStorage, this.dataKey) || '[]');
+                    this.posts = localData;
+
+                    // 2. Firebase에서 클리퍼 데이터 확인 (1회성)
+                    const snapshot = await database.ref(this.firebasePath).once('value');
+                    if (snapshot.exists()) {
+                        const data = snapshot.val();
+                        let firebasePosts = [];
+                        
+                        if (typeof data === 'string') {
+                            firebasePosts = JSON.parse(data);
+                        } else if (typeof data === 'object') {
+                            for (const key in data) {
+                                if (data.hasOwnProperty(key) && typeof data[key] === 'object') {
+                                    const post = data[key];
+                                    if (!post.id) post.id = key;
+                                    firebasePosts.push(post);
+                                }
+                            }
+                        }
+
+                        if (firebasePosts.length > 0) {
+                            // 3. 로컬 데이터와 병합 (중복 제외)
+                            const localIds = new Set(this.posts.map(p => p.id));
+                            const newFirebasePosts = firebasePosts.filter(p => !localIds.has(p.id));
+                            
+                            if (newFirebasePosts.length > 0) {
+                                console.log(`✅ EditorTab: ${newFirebasePosts.length}개의 새 클리퍼 글 병합`);
+                                this.posts = [...newFirebasePosts, ...this.posts];
+                                // 4. 병합된 리스트를 로컬에 저장 (및 Firebase에 동기화)
+                                this.savePostsToLocal(); 
+                            }
+                            
+                            // 5. Firebase 데이터 삭제 (가져오기 완료)
+                            await database.ref(this.firebasePath).remove();
+                        }
+                    }
+                } catch (error) {
+                    console.error('글 로드 실패, 로컬 데이터만 사용:', error);
+                    localStorage.removeItem(this.dataKey); // 손상 시 초기화
+                    this.posts = [];
+                }
+                
+                // 6. 최종 렌더링
+                this.renderPostList();
+                
+                if (this.currentPostId) {
+                    this.viewPost(this.currentPostId);
+                }
+            }
+            
+            // [삭제됨] 아래 initFirebaseListener는 더 이상 사용하지 않습니다
+            _oldInitFirebaseListener() {
                 if (!database) {
                     console.error('Firebase DB가 초기화되지 않았습니다.');
                     return;
@@ -3073,40 +3147,21 @@
                     alert('내용을 입력해주세요.');
                     return;
                 }
-                
-                if (!database) {
-                    alert('Firebase 연결 오류');
-                    return;
-                }
 
                 let savedPostId = this.editingPostId;
-
+                
                 if (this.editingPostId) {
                     // 수정
                     const post = this.posts.find(p => p.id === this.editingPostId);
-                    const postData = {
-                        id: this.editingPostId,
-                        title,
-                        content,
-                        date: Date.now(),
-                        isPinned: post ? post.isPinned : false
-                    };
-                    
-                    database.ref(`${this.firebasePath}/${this.editingPostId}`).set(postData)
-                        .then(() => {
-                            this.closeModal();
-                            this.currentPostId = savedPostId;
-                            // viewPost는 리스너가 자동으로 호출하여 갱신합니다.
-                        })
-                        .catch(e => {
-                            console.error('업데이트 실패:', e);
-                            alert('저장에 실패했습니다.');
-                        });
+                    if (post) {
+                        post.title = title;
+                        post.content = content;
+                        post.date = Date.now();
+                        // isPinned 상태는 유지됨
+                    }
                 } else {
                     // 새 글
-                    const newPostRef = database.ref(this.firebasePath).push();
-                    const newId = newPostRef.key;
-                    savedPostId = newId;
+                    const newId = Date.now().toString(); // ID를 문자열로
                     const newPost = {
                         id: newId,
                         title,
@@ -3114,17 +3169,17 @@
                         date: Date.now(),
                         isPinned: false
                     };
-                    
-                    newPostRef.set(newPost)
-                        .then(() => {
-                            this.closeModal();
-                            this.currentPostId = savedPostId;
-                            // viewPost는 리스너가 자동으로 호출하여 갱신합니다.
-                        })
-                        .catch(e => {
-                            console.error('저장 실패:', e);
-                            alert('저장에 실패했습니다.');
-                        });
+                    this.posts.push(newPost);
+                    savedPostId = newId;
+                }
+                
+                this.savePostsToLocal(); // 로컬스토리지에 저장 (및 Firebase 동기화)
+                this.renderPostList(); // 목록 새로고침
+                this.closeModal();
+                
+                if (savedPostId) {
+                    this.currentPostId = savedPostId;
+                    this.viewPost(savedPostId); // 저장된 글 바로 보기
                 }
             }
             
@@ -3132,14 +3187,12 @@
                 const post = this.posts.find(p => p.id === postId);
                 if (!post) return;
                 
-                const newPinnedState = !post.isPinned;
+                // 로컬 데이터 변경
+                post.isPinned = !post.isPinned;
                 
-                database.ref(`${this.firebasePath}/${postId}/isPinned`).set(newPinnedState)
-                    .catch(e => {
-                        console.error('핀 업데이트 실패:', e);
-                        alert('핀 상태 변경에 실패했습니다.');
-                    });
-                // 렌더링은 리스너가 자동으로 처리
+                // 로컬에 저장 (savePostsToLocal이 정렬 및 Firebase 동기화 담당)
+                this.savePostsToLocal();
+                this.renderPostList();
             }
             
             deletePost(postId) {
@@ -3148,7 +3201,7 @@
                 const postIndex = this.posts.findIndex(p => p.id === postId);
                 if (postIndex === -1) return;
                 
-                // 1. 휴지통에 추가 (로컬 기능)
+                // 1. 휴지통에 추가
                 const postData = this.posts[postIndex];
                 trashManager.addToTrash('editor', {
                     tabId: this.tabId,
@@ -3156,19 +3209,17 @@
                     post: postData
                 }, this.tabId);
                 
-                // 2. Firebase에서 삭제
-                database.ref(`${this.firebasePath}/${postId}`).remove()
-                    .catch(e => {
-                        console.error('삭제 실패:', e);
-                        alert('삭제에 실패했습니다.');
-                    });
+                // 2. 로컬 배열에서 삭제
+                this.posts.splice(postIndex, 1);
                 
-                // 3. 만약 보고 있던 글이면 뷰 초기화 (리스너가 처리하기 전에)
+                // 3. 로컬스토리지에 저장 (및 Firebase 동기화)
+                this.savePostsToLocal();
+                
                 if (this.currentPostId === postId) {
                     this.currentPostId = null;
                     this.showList();
                 }
-                // 렌더링은 리스너가 자동으로 처리
+                this.renderPostList();
             }
         }
 
@@ -3188,7 +3239,7 @@
                 this.createModal();
                 this.bindElements();
                 this.addEventListeners();
-                this.initFirebaseListener(); // Firebase 우선으로 변경
+                this.loadPosts(); // LocalStorage 우선으로 변경
             }
             
             renderHTML() {
@@ -3256,8 +3307,78 @@
                 });
             }
             
-            // Firebase 실시간 리스너 초기화
-            initFirebaseListener() {
+            // LocalStorage에 저장하는 헬퍼 함수
+            savePostsToLocal() {
+                // 정렬 후 저장
+                this.posts.sort((a, b) => {
+                    if (a.isPinned && !b.isPinned) return -1;
+                    if (!a.isPinned && b.isPinned) return 1;
+                    return b.date - a.date;
+                });
+
+                const dataStr = JSON.stringify(this.posts);
+                originalSetItem.call(localStorage, this.dataKey, dataStr);
+
+                // Firebase에 즉시 동기화
+                if (database && isInitialized) {
+                    database.ref('users/' + userId + '/' + this.dataKey).set(dataStr)
+                        .catch(e => console.error(`❌ ${this.dataKey} 즉시 동기화 실패:`, e));
+                }
+            }
+            
+            // LocalStorage 우선 데이터 로드 (Firebase는 클리퍼 병합용)
+            async loadPosts() {
+                try {
+                    // 1. 로컬 데이터 먼저 로드
+                    const localData = JSON.parse(originalGetItem.call(localStorage, this.dataKey) || '[]');
+                    this.posts = localData;
+
+                    // 2. Firebase에서 클리퍼 데이터 확인 (1회성)
+                    const snapshot = await database.ref(this.firebasePath).once('value');
+                    if (snapshot.exists()) {
+                        const data = snapshot.val();
+                        let firebasePosts = [];
+                        
+                        if (typeof data === 'string') {
+                            firebasePosts = JSON.parse(data);
+                        } else if (typeof data === 'object') {
+                            for (const key in data) {
+                                if (data.hasOwnProperty(key) && typeof data[key] === 'object') {
+                                    const post = data[key];
+                                    if (!post.id) post.id = key;
+                                    firebasePosts.push(post);
+                                }
+                            }
+                        }
+
+                        if (firebasePosts.length > 0) {
+                            // 3. 로컬 데이터와 병합 (중복 제외)
+                            const localIds = new Set(this.posts.map(p => p.id));
+                            const newFirebasePosts = firebasePosts.filter(p => !localIds.has(p.id));
+                            
+                            if (newFirebasePosts.length > 0) {
+                                console.log(`✅ CommunityTab: ${newFirebasePosts.length}개의 새 클리퍼 글 병합`);
+                                this.posts = [...newFirebasePosts, ...this.posts];
+                                // 4. 병합된 리스트를 로컬에 저장 (및 Firebase에 동기화)
+                                this.savePostsToLocal(); 
+                            }
+                            
+                            // 5. Firebase 데이터 삭제 (가져오기 완료)
+                            await database.ref(this.firebasePath).remove();
+                        }
+                    }
+                } catch (error) {
+                    console.error('글 로드 실패, 로컬 데이터만 사용:', error);
+                    localStorage.removeItem(this.dataKey); // 손상 시 초기화
+                    this.posts = [];
+                }
+                
+                // 6. 최종 렌더링
+                this.renderPostList();
+            }
+            
+            // [삭제됨] 아래 initFirebaseListener는 더 이상 사용하지 않습니다
+            _oldInitFirebaseListener() {
                 if (!database) {
                     console.error('Firebase DB가 초기화되지 않았습니다.');
                     return;
@@ -3405,41 +3526,25 @@
                 const title = this.modalTitle.value.trim();
                 const memo = this.modalMemo.value.trim();
                 const link = this.modalLink.value.trim();
-                
+
                 if (!title) {
                     alert('제목을 입력해주세요.');
                     return;
                 }
-                
-                if (!database) {
-                    alert('Firebase 연결 오류');
-                    return;
-                }
 
                 if (this.editingPostId) {
-                    // 수정 - Firebase에 개별 항목 업데이트
+                    // 수정
                     const post = this.posts.find(p => p.id === this.editingPostId);
-                    const postData = {
-                        id: this.editingPostId,
-                        title,
-                        memo,
-                        link,
-                        date: Date.now(),
-                        isPinned: post ? post.isPinned : false
-                    };
-                    
-                    database.ref(`${this.firebasePath}/${this.editingPostId}`).set(postData)
-                        .then(() => {
-                            this.closeModal();
-                        })
-                        .catch(e => {
-                            console.error('업데이트 실패:', e);
-                            alert('저장에 실패했습니다.');
-                        });
+                    if (post) {
+                        post.title = title;
+                        post.memo = memo;
+                        post.link = link;
+                        post.date = Date.now();
+                        // isPinned 상태는 유지됨
+                    }
                 } else {
-                    // 새 글 - Firebase에 push
-                    const newPostRef = database.ref(this.firebasePath).push();
-                    const newId = newPostRef.key;
+                    // 새 글
+                    const newId = Date.now().toString();
                     const newPost = {
                         id: newId,
                         title,
@@ -3448,41 +3553,31 @@
                         date: Date.now(),
                         isPinned: false
                     };
-                    
-                    newPostRef.set(newPost)
-                        .then(() => {
-                            this.closeModal();
-                        })
-                        .catch(e => {
-                            console.error('저장 실패:', e);
-                            alert('저장에 실패했습니다.');
-                        });
+                    this.posts.push(newPost);
                 }
-                // 렌더링은 리스너가 자동으로 처리
+
+                this.savePostsToLocal(); // 로컬스토리지에 저장 (및 Firebase 동기화)
+                this.renderPostList(); // 목록 새로고침
+                this.closeModal();
             }
             
             pinPost(postId) {
                 const post = this.posts.find(p => p.id === postId);
                 if (!post) return;
-                
-                const newPinnedState = !post.isPinned;
-                
-                // Firebase에 업데이트
-                database.ref(`${this.firebasePath}/${postId}/isPinned`).set(newPinnedState)
-                    .catch(e => {
-                        console.error('핀 업데이트 실패:', e);
-                        alert('핀 상태 변경에 실패했습니다.');
-                    });
-                // 렌더링은 리스너가 자동으로 처리
+
+                post.isPinned = !post.isPinned;
+
+                this.savePostsToLocal();
+                this.renderPostList();
             }
             
             deletePost(postId) {
                 if (!confirm('이 게시글을 삭제하시겠습니까?')) return;
-                
+
                 const postIndex = this.posts.findIndex(p => p.id === postId);
                 if (postIndex === -1) return;
 
-                // 1. 휴지통에 추가 (로컬 기능)
+                // 1. 휴지통에 추가
                 const postData = this.posts[postIndex];
                 trashManager.addToTrash('community', {
                     tabId: this.tabId,
@@ -3490,13 +3585,12 @@
                     post: postData
                 }, this.tabId);
 
-                // 2. Firebase에서 삭제
-                database.ref(`${this.firebasePath}/${postId}`).remove()
-                    .catch(e => {
-                        console.error('삭제 실패:', e);
-                        alert('삭제에 실패했습니다.');
-                    });
-                // 렌더링은 리스너가 자동으로 처리
+                // 2. 로컬 배열에서 삭제
+                this.posts.splice(postIndex, 1);
+
+                // 3. 로컬스토리지에 저장 (및 Firebase 동기화)
+                this.savePostsToLocal();
+                this.renderPostList();
             }
         }
     </script>
