@@ -1058,15 +1058,20 @@
         window.favoritesTabInstances = window.favoritesTabInstances || {};
         window.memoTabInstances = window.memoTabInstances || {};
 
-        // --- 손상된 localStorage 데이터 자동 복구 ---
+        // --- 손상된 localStorage 데이터 자동 복구 (비활성화됨) ---
         function cleanupCorruptedData() {
+            // ⚠️ 이 함수는 의도치 않은 데이터 삭제를 방지하기 위해 비활성화되었습니다.
+            console.log('ℹ️ cleanupCorruptedData() 호출됨 (비활성화 상태)');
+            return;
+            
+            // 아래 코드는 실행되지 않습니다
             const allKeys = [];
             for (let i = 0; i < localStorage.length; i++) {
                 allKeys.push(localStorage.key(i));
             }
             
             allKeys.forEach(key => {
-                if (key.startsWith('firebase:')) return; // Firebase 내부 키는 무시
+                if (key.startsWith('firebase:')) return;
                 
                 const value = localStorage.getItem(key);
                 if (value && (value.includes('[object Object]') || value === '[object Object]')) {
