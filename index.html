@@ -15,6 +15,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     
     <style>
         body {
@@ -1046,8 +1047,9 @@
         // Firebase 초기화
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        const userId = 'user1'; // 단일 사용자
-        const userRef = database.ref('users/' + userId); // userRef 정의 추가
+        const auth = firebase.auth(); // Auth 서비스 가져오기
+        let userId; // userId를 전역 변수로 선언 (익명 로그인 후 할당)
+        let userRef; // userRef를 전역 변수로 선언 (익명 로그인 후 할당)
         
         let isSyncing = false;
         let isInitialized = false;
@@ -1566,13 +1568,32 @@
         const trashManager = new TrashManager();
 
         // --- COMMON ---
-        document.addEventListener('DOMContentLoaded', async () => {
+        document.addEventListener('DOMContentLoaded', () => {
             cleanupCorruptedData(); // 손상된 데이터 먼저 정리
-            await loadFromFirebase(); // Firebase 데이터 로드
-            TabManager.init();
-            loadMemos();
-            setupBackupAndRestore();
-            setupWriteModals(); // 글쓰기 모달 설정
+
+            // 인증 상태 변경 감지
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    // 사용자가 익명 로그인됨
+                    userId = user.uid; // 실제 고유 ID 사용
+                    userRef = database.ref('users/' + userId);
+                    console.log("✅ Authenticated anonymously. User ID:", userId);
+
+                    // 로그인이 완료된 *후에* 앱 초기화
+                    await loadFromFirebase(); 
+                    TabManager.init();
+                    loadMemos();
+                    setupBackupAndRestore();
+                    setupWriteModals(); 
+
+                } else {
+                    // 로그인 시도
+                    console.log("🔐 Signing in anonymously...");
+                    auth.signInAnonymously().catch((error) => {
+                        console.error("❌ Anonymous Sign-In Error:", error);
+                    });
+                }
+            });
         });
 
         let currentObjectUrl = null;
@@ -2651,7 +2672,7 @@
                 // createContextMenu() 삭제: 전역 contextMenuUtil 사용
                 this.bindElements();
                 this.addEventListeners();
-                this.loadPosts(); // LocalStorage 우선으로 변경
+                this.initFirebaseListener(); // Firebase 실시간 동기화
             }
             
             renderHTML() {
@@ -3183,7 +3204,7 @@
                 this.createModal();
                 this.bindElements();
                 this.addEventListeners();
-                this.loadPosts(); // LocalStorage 우선으로 변경
+                this.initFirebaseListener(); // Firebase 실시간 동기화
             }
             
             renderHTML() {
