@@ -15,7 +15,6 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     
     <style>
         body {
@@ -1047,9 +1046,8 @@
         // Firebase 초기화
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        const auth = firebase.auth(); // Auth 서비스 가져오기
-        let userId; // userId를 전역 변수로 선언 (익명 로그인 후 할당)
-        let userRef; // userRef를 전역 변수로 선언 (익명 로그인 후 할당)
+        const userId = 'user1'; // 단일 사용자
+        const userRef = database.ref('users/' + userId); // userRef 정의 추가
         
         let isSyncing = false;
         let isInitialized = false;
@@ -1116,9 +1114,8 @@
                 });
         }
 
-        // localStorage 원본 메서드 저장
+        // localStorage.setItem 오버라이드 (자동 동기화)
         const originalSetItem = localStorage.setItem;
-        const originalGetItem = localStorage.getItem;
         let syncTimer = null;
 
         localStorage.setItem = function(key, value) {
@@ -1145,18 +1142,7 @@
                     
                     for (const key in data) {
                         if (data.hasOwnProperty(key)) {
-                            // ⭐ [수정됨] Firebase 데이터로 LocalStorage를 덮어씁니다. (Firebase 우선)
-                            
-                            const value = data[key];
-                            
-                            // 1. 값이 객체(배열 포함)이고 null이 아닌지 확인합니다.
-                            if (typeof value === 'object' && value !== null) {
-                                // 2. 객체면 JSON 문자열로 변환하여 저장합니다.
-                                originalSetItem.call(localStorage, key, JSON.stringify(value));
-                            } else {
-                                // 3. 문자열이나 숫자 등 다른 값은 그대로 저장합니다.
-                                originalSetItem.call(localStorage, key, value);
-                            }
+                            originalSetItem.call(localStorage, key, data[key]);
                         }
                     }
                     
@@ -1568,32 +1554,13 @@
         const trashManager = new TrashManager();
 
         // --- COMMON ---
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             cleanupCorruptedData(); // 손상된 데이터 먼저 정리
-
-            // 인증 상태 변경 감지
-            auth.onAuthStateChanged(async (user) => {
-                if (user) {
-                    // 사용자가 익명 로그인됨
-                    userId = user.uid; // 실제 고유 ID 사용
-                    userRef = database.ref('users/' + userId);
-                    console.log("✅ Authenticated anonymously. User ID:", userId);
-
-                    // 로그인이 완료된 *후에* 앱 초기화
-                    await loadFromFirebase(); 
-                    TabManager.init();
-                    loadMemos();
-                    setupBackupAndRestore();
-                    setupWriteModals(); 
-
-                } else {
-                    // 로그인 시도
-                    console.log("🔐 Signing in anonymously...");
-                    auth.signInAnonymously().catch((error) => {
-                        console.error("❌ Anonymous Sign-In Error:", error);
-                    });
-                }
-            });
+            await loadFromFirebase(); // Firebase 데이터 로드
+            TabManager.init();
+            loadMemos();
+            setupBackupAndRestore();
+            setupWriteModals(); // 글쓰기 모달 설정
         });
 
         let currentObjectUrl = null;
@@ -1940,15 +1907,7 @@
                 text: el.dataset.rawText,
                 date: el.dataset.date || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' })
             }));
-            const memosStr = JSON.stringify(memos); // 1. 문자열로 변환
-
-            localStorage.setItem(memoDataKey, memosStr); // 2. 로컬에 저장 (기존 로직)
-            
-            // 3. Firebase에 즉시 동기화 (추가된 코드)
-            if (database && isInitialized) {
-                database.ref('users/' + userId + '/' + memoDataKey).set(memosStr)
-                    .catch(e => console.error(`❌ ${memoDataKey} 즉시 동기화 실패:`, e));
-            }
+            localStorage.setItem(memoDataKey, JSON.stringify(memos));
         }
         function loadMemos() { 
             try {
@@ -2037,23 +1996,7 @@
                     this.saveTabs();
                 }
             },
-            saveTabs() { 
-                const configStr = JSON.stringify(this.tabs);
-                
-                // 1. 로컬에 저장
-                localStorage.setItem(this.tabConfigKey, configStr); 
-                
-                // 2. Firebase에 즉시 동기화 (추가된 코드)
-                if (database && isInitialized) {
-                    database.ref('users/' + userId + '/' + this.tabConfigKey).set(configStr)
-                        .then(() => {
-                            console.log('✅ 탭 설정 즉시 동기화 완료.');
-                        })
-                        .catch(e => {
-                            console.error('❌ 탭 설정 즉시 동기화 실패:', e);
-                        });
-                }
-            },
+            saveTabs() { localStorage.setItem(this.tabConfigKey, JSON.stringify(this.tabs)); },
             render() {
                 this.tabsContainer.querySelectorAll('.dynamic-tab').forEach(t => t.remove());
                 this.contentContainer.querySelectorAll('.dynamic-tab-content').forEach(c => c.remove());
@@ -2241,22 +2184,14 @@
                     const title = el.querySelector('.col-title').textContent;
                     return {
                         title: title.startsWith('📌 ') ? title.substring(2) : title, // 핀 아이콘 제거하고 저장
-                        link: el.querySelector('.col-link a')?.href || '',
+                    link: el.querySelector('.col-link a')?.href || '',
                         memo: el.querySelector('.col-memo')?.dataset.fullMemo || '',
                         image: el.querySelector('.thumbnail-container img')?.dataset.customImage || null,
                         date: el.querySelector('.col-date')?.textContent || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }),
                         isPinned: el.dataset.isPinned === 'true'
                     };
                 });
-                const favsStr = JSON.stringify(favs); // 1. 문자열로 변환
-
-                localStorage.setItem(this.dataKey, favsStr); // 2. 로컬에 저장
-                
-                // 3. Firebase에 즉시 동기화 (추가된 코드)
-                if (database && isInitialized) {
-                    database.ref('users/' + userId + '/' + this.dataKey).set(favsStr)
-                        .catch(e => console.error(`❌ ${this.dataKey} 즉시 동기화 실패:`, e));
-                }
+                localStorage.setItem(this.dataKey, JSON.stringify(favs));
             }
             async loadFavorites() { 
                 try {
@@ -2523,15 +2458,7 @@
             
             saveMemos() {
                 const memos = Array.from(this.listContainer.querySelectorAll('.memo-item')).map(el => el.dataset.rawText);
-                const memosStr = JSON.stringify(memos); // 1. 문자열로 변환
-
-                localStorage.setItem(this.dataKey, memosStr); // 2. 로컬에 저장
-                
-                // 3. Firebase에 즉시 동기화 (추가된 코드)
-                if (database && isInitialized) {
-                    database.ref('users/' + userId + '/' + this.dataKey).set(memosStr)
-                        .catch(e => console.error(`❌ ${this.dataKey} 즉시 동기화 실패:`, e));
-                }
+                localStorage.setItem(this.dataKey, JSON.stringify(memos));
             }
             
             async loadMemos() {
@@ -2672,7 +2599,7 @@
                 // createContextMenu() 삭제: 전역 contextMenuUtil 사용
                 this.bindElements();
                 this.addEventListeners();
-                this.initFirebaseListener(); // Firebase 실시간 동기화
+                this.loadPosts(); // LocalStorage 우선으로 변경
             }
             
             renderHTML() {
@@ -2868,61 +2795,70 @@
                 });
             }
             
-            // Firebase 실시간 리스너
-            initFirebaseListener() {
-                if (!database) {
-                    console.error('Firebase DB가 초기화되지 않았습니다.');
-                    return;
-                }
-                if (this.firebaseListenerActive) return; // 중복 리스너 방지
-                
-                const ref = database.ref(this.firebasePath);
-                ref.on('value', (snapshot) => {
-                    this.posts = [];
-                    const data = snapshot.val();
-                    
-                    if (data) {
+            // LocalStorage에 저장하는 헬퍼 함수
+            savePostsToLocal() {
+                // 정렬 후 저장
+                this.posts.sort((a, b) => {
+                    if (a.isPinned && !b.isPinned) return -1;
+                    if (!a.isPinned && b.isPinned) return 1;
+                    return b.date - a.date;
+                });
+                localStorage.setItem(this.dataKey, JSON.stringify(this.posts));
+            }
+            
+            // LocalStorage 우선 데이터 로드 (Firebase는 클리퍼 병합용)
+            async loadPosts() {
+                try {
+                    // 1. LocalStorage에서 데이터 먼저 로드
+                    const localData = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                    this.posts = localData;
+
+                    // 2. Firebase에서 클리퍼 데이터 확인
+                    const snapshot = await database.ref(this.firebasePath).once('value');
+                    if (snapshot.exists()) {
+                        const data = snapshot.val();
+                        let firebasePosts = [];
+                        
+                        // 데이터 파싱 및 ID 주입
                         if (typeof data === 'string') {
-                            try {
-                                this.posts = JSON.parse(data);
-                            } catch (e) { console.error('Firebase 데이터 파싱 오류:', e); }
+                            firebasePosts = JSON.parse(data);
                         } else if (typeof data === 'object') {
-                            // 새 방식 (개별 항목)
                             for (const key in data) {
                                 if (data.hasOwnProperty(key) && typeof data[key] === 'object') {
                                     const post = data[key];
-                                    // 클리퍼 등으로 인해 id가 없는 경우, Firebase key를 id로 사용
-                                    if (!post.id) {
-                                        post.id = key;
-                                    }
-                                    this.posts.push(post);
+                                    if (!post.id) post.id = key;
+                                    firebasePosts.push(post);
                                 }
                             }
                         }
+
+                        if (firebasePosts.length > 0) {
+                            // 3. LocalStorage 데이터와 병합 (중복 제외)
+                            const localIds = new Set(this.posts.map(p => p.id));
+                            const newFirebasePosts = firebasePosts.filter(p => !localIds.has(p.id));
+                            
+                            if (newFirebasePosts.length > 0) {
+                                console.log(`✅ EditorTab: ${newFirebasePosts.length}개의 새 클리퍼 글 병합`);
+                                this.posts = [...newFirebasePosts, ...this.posts];
+                                // 4. 병합된 리스트를 LocalStorage에 저장
+                                this.savePostsToLocal(); 
+                            }
+                            
+                            // 5. Firebase 데이터 삭제 (가져오기 완료)
+                            await database.ref(this.firebasePath).remove();
+                        }
                     }
-                    
-                    // 정렬
-                    this.posts.sort((a, b) => {
-                        if (a.isPinned && !b.isPinned) return -1;
-                        if (!a.isPinned && b.isPinned) return 1;
-                        return b.date - a.date;
-                    });
-                    
-                    this.renderPostList();
-                    
-                    // 현재 보고 있던 글이 있으면 다시 렌더링
-                    if (this.currentPostId && this.posts.find(p => p.id === this.currentPostId)) {
-                        this.viewPost(this.currentPostId);
-                    } else if (this.currentPostId) {
-                        // 보고 있던 글이 삭제됐으면 목록으로
-                        this.currentPostId = null;
-                        this.showList();
-                    }
-                }, (error) => {
-                    console.error(`[${this.tabId}] Firebase 리스너 오류:`, error);
-                });
+                } catch (error) {
+                    console.error('글 로드 실패, LocalStorage만 사용:', error);
+                    this.posts = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                }
                 
-                this.firebaseListenerActive = true;
+                // 6. 최종 렌더링
+                this.renderPostList();
+                
+                if (this.currentPostId) {
+                    this.viewPost(this.currentPostId);
+                }
             }
             
             renderPostList() {
@@ -3094,56 +3030,37 @@
                     return;
                 }
 
-                if (!database) {
-                    alert('Firebase 연결 오류');
-                    return;
-                }
-
                 let savedPostId = this.editingPostId;
                 
                 if (this.editingPostId) {
                     // 수정
                     const post = this.posts.find(p => p.id === this.editingPostId);
-                    const postData = {
-                        id: this.editingPostId,
-                        title,
-                        content,
-                        date: Date.now(),
-                        isPinned: post ? post.isPinned : false
-                    };
-                    
-                    database.ref(`${this.firebasePath}/${this.editingPostId}`).set(postData)
-                        .then(() => {
-                            this.closeModal();
-                            this.currentPostId = savedPostId;
-                        })
-                        .catch(e => {
-                            console.error('업데이트 실패:', e);
-                            alert('저장에 실패했습니다.');
-                        });
+                    if (post) {
+                        post.title = title;
+                        post.content = content;
+                        post.date = Date.now();
+                    }
                 } else {
                     // 새 글
-                    const newPostRef = database.ref(this.firebasePath).push();
-                    const newId = newPostRef.key;
-                    savedPostId = newId;
-                    
+                    const newId = Date.now();
                     const newPost = {
                         id: newId,
                         title,
                         content,
-                        date: Date.now(),
+                        date: newId,
                         isPinned: false
                     };
-                    
-                    newPostRef.set(newPost)
-                        .then(() => {
-                            this.closeModal();
-                            this.currentPostId = savedPostId;
-                        })
-                        .catch(e => {
-                            console.error('저장 실패:', e);
-                            alert('저장에 실패했습니다.');
-                        });
+                    this.posts.push(newPost);
+                    savedPostId = newId;
+                }
+                
+                this.savePostsToLocal(); // LocalStorage에 저장
+                this.renderPostList(); // 목록 새로고침
+                this.closeModal();
+                
+                if (savedPostId) {
+                    this.currentPostId = savedPostId;
+                    this.viewPost(savedPostId); // 저장된 글 바로 보기
                 }
             }
             
@@ -3151,12 +3068,12 @@
                 const post = this.posts.find(p => p.id === postId);
                 if (!post) return;
                 
-                const newPinnedState = !post.isPinned;
-                database.ref(`${this.firebasePath}/${postId}/isPinned`).set(newPinnedState)
-                    .catch(e => {
-                        console.error('핀 업데이트 실패:', e);
-                        alert('핀 상태 변경에 실패했습니다.');
-                    });
+                // 로컬 데이터 변경
+                post.isPinned = !post.isPinned;
+                
+                // LocalStorage에 저장 (savePostsToLocal이 정렬까지 담당)
+                this.savePostsToLocal();
+                this.renderPostList();
             }
             
             deletePost(postId) {
@@ -3173,18 +3090,17 @@
                     post: postData
                 }, this.tabId);
                 
-                // 2. Firebase에서 삭제
-                database.ref(`${this.firebasePath}/${postId}`).remove()
-                    .catch(e => {
-                        console.error('삭제 실패:', e);
-                        alert('삭제에 실패했습니다.');
-                    });
+                // 2. LocalStorage 배열에서 삭제
+                this.posts.splice(postIndex, 1);
                 
-                // 3. 보고 있던 글이면 뷰 초기화
+                // 3. LocalStorage에 저장
+                this.savePostsToLocal();
+                
                 if (this.currentPostId === postId) {
                     this.currentPostId = null;
-                    this.showList();
+                    this.contentPanel.innerHTML = '<div class="editor-empty-state">왼쪽에서 글을 선택하거나 "글쓰기" 버튼을 눌러 새 글을 작성하세요</div>';
                 }
+                this.renderPostList();
             }
         }
 
@@ -3204,7 +3120,7 @@
                 this.createModal();
                 this.bindElements();
                 this.addEventListeners();
-                this.initFirebaseListener(); // Firebase 실시간 동기화
+                this.loadPosts(); // LocalStorage 우선으로 변경
             }
             
             renderHTML() {
@@ -3272,52 +3188,66 @@
                 });
             }
             
-            // Firebase 실시간 리스너
-            initFirebaseListener() {
-                if (!database) {
-                    console.error('Firebase DB가 초기화되지 않았습니다.');
-                    return;
-                }
-                if (this.firebaseListenerActive) return; // 중복 리스너 방지
-                
-                const ref = database.ref(this.firebasePath);
-                ref.on('value', (snapshot) => {
-                    this.posts = [];
-                    const data = snapshot.val();
-                    
-                    if (data) {
+            // LocalStorage에 저장하는 헬퍼 함수
+            savePostsToLocal() {
+                // 정렬 후 저장
+                this.posts.sort((a, b) => {
+                    if (a.isPinned && !b.isPinned) return -1;
+                    if (!a.isPinned && b.isPinned) return 1;
+                    return b.date - a.date;
+                });
+                localStorage.setItem(this.dataKey, JSON.stringify(this.posts));
+            }
+            
+            // LocalStorage 우선 데이터 로드 (Firebase는 클리퍼 병합용)
+            async loadPosts() {
+                try {
+                    // 1. LocalStorage에서 데이터 먼저 로드
+                    const localData = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                    this.posts = localData;
+
+                    // 2. Firebase에서 클리퍼 데이터 확인
+                    const snapshot = await database.ref(this.firebasePath).once('value');
+                    if (snapshot.exists()) {
+                        const data = snapshot.val();
+                        let firebasePosts = [];
+                        
+                        // 데이터 파싱 및 ID 주입
                         if (typeof data === 'string') {
-                            try {
-                                this.posts = JSON.parse(data);
-                            } catch (e) { console.error('Firebase 데이터 파싱 오류:', e); }
+                            firebasePosts = JSON.parse(data);
                         } else if (typeof data === 'object') {
-                            // 새 방식 (개별 항목)
                             for (const key in data) {
                                 if (data.hasOwnProperty(key) && typeof data[key] === 'object') {
                                     const post = data[key];
-                                    // 클리퍼 등으로 인해 id가 없는 경우, Firebase key를 id로 사용
-                                    if (!post.id) {
-                                        post.id = key;
-                                    }
-                                    this.posts.push(post);
+                                    if (!post.id) post.id = key;
+                                    firebasePosts.push(post);
                                 }
                             }
                         }
+
+                        if (firebasePosts.length > 0) {
+                            // 3. LocalStorage 데이터와 병합 (중복 제외)
+                            const localIds = new Set(this.posts.map(p => p.id));
+                            const newFirebasePosts = firebasePosts.filter(p => !localIds.has(p.id));
+                            
+                            if (newFirebasePosts.length > 0) {
+                                console.log(`✅ CommunityTab: ${newFirebasePosts.length}개의 새 클리퍼 글 병합`);
+                                this.posts = [...newFirebasePosts, ...this.posts];
+                                // 4. 병합된 리스트를 LocalStorage에 저장
+                                this.savePostsToLocal(); 
+                            }
+                            
+                            // 5. Firebase 데이터 삭제 (가져오기 완료)
+                            await database.ref(this.firebasePath).remove();
+                        }
                     }
-                    
-                    // 정렬
-                    this.posts.sort((a, b) => {
-                        if (a.isPinned && !b.isPinned) return -1;
-                        if (!a.isPinned && b.isPinned) return 1;
-                        return b.date - a.date;
-                    });
-                    
-                    this.renderPostList();
-                }, (error) => {
-                    console.error(`[${this.tabId}] Firebase 리스너 오류:`, error);
-                });
+                } catch (error) {
+                    console.error('글 로드 실패, LocalStorage만 사용:', error);
+                    this.posts = JSON.parse(localStorage.getItem(this.dataKey) || '[]');
+                }
                 
-                this.firebaseListenerActive = true;
+                // 6. 최종 렌더링
+                this.renderPostList();
             }
             
             renderPostList() {
@@ -3372,15 +3302,15 @@
                     const dateTrigger = itemElement.querySelector('.community-menu-trigger');
                     if (dateTrigger) {
                         dateTrigger.dataset.isPinned = safePost.isPinned;
-                    contextMenuUtil.attachToElement(dateTrigger, (action) => {
-                        if (action === 'delete') {
+                        contextMenuUtil.attachToElement(dateTrigger, (action) => {
+                            if (action === 'delete') {
                                 this.deletePost(safePost.id);
-                        } else if (action === 'edit') {
+                            } else if (action === 'edit') {
                                 this.editPost(safePost.id);
                             } else if (action === 'pin') {
                                 this.pinPost(safePost.id);
-                        }
-                    });
+                            }
+                        });
                     }
                 });
             }
@@ -3427,71 +3357,49 @@
                     return;
                 }
 
-                if (!database) {
-                    alert('Firebase 연결 오류');
-                    return;
-                }
-
                 if (this.editingPostId) {
                     // 수정
                     const post = this.posts.find(p => p.id === this.editingPostId);
-                    const postData = {
-                        id: this.editingPostId,
-                        title,
-                        memo,
-                        link,
-                        date: Date.now(),
-                        isPinned: post ? post.isPinned : false
-                    };
-                    
-                    database.ref(`${this.firebasePath}/${this.editingPostId}`).set(postData)
-                        .then(() => {
-                            this.closeModal();
-                        })
-                        .catch(e => {
-                            console.error('업데이트 실패:', e);
-                            alert('저장에 실패했습니다.');
-                        });
+                    if (post) {
+                        post.title = title;
+                        post.memo = memo;
+                        post.link = link;
+                        post.date = Date.now();
+                    }
                 } else {
                     // 새 글
-                    const newPostRef = database.ref(this.firebasePath).push();
-                    const newId = newPostRef.key;
-                    
+                    const newId = Date.now();
                     const newPost = {
                         id: newId,
                         title,
                         memo,
                         link,
-                        date: Date.now(),
+                        date: newId,
                         isPinned: false
                     };
-                    
-                    newPostRef.set(newPost)
-                        .then(() => {
-                            this.closeModal();
-                        })
-                        .catch(e => {
-                            console.error('저장 실패:', e);
-                            alert('저장에 실패했습니다.');
-                        });
+                    this.posts.push(newPost);
                 }
+
+                this.savePostsToLocal(); // LocalStorage에 저장
+                this.renderPostList(); // 목록 새로고침
+                this.closeModal();
             }
             
             pinPost(postId) {
                 const post = this.posts.find(p => p.id === postId);
                 if (!post) return;
-
-                const newPinnedState = !post.isPinned;
-                database.ref(`${this.firebasePath}/${postId}/isPinned`).set(newPinnedState)
-                    .catch(e => {
-                        console.error('핀 업데이트 실패:', e);
-                        alert('핀 상태 변경에 실패했습니다.');
-                    });
+                
+                // 로컬 데이터 변경
+                post.isPinned = !post.isPinned;
+                
+                // LocalStorage에 저장 (savePostsToLocal이 정렬까지 담당)
+                this.savePostsToLocal();
+                this.renderPostList();
             }
             
             deletePost(postId) {
                 if (!confirm('이 게시글을 삭제하시겠습니까?')) return;
-                
+
                 const postIndex = this.posts.findIndex(p => p.id === postId);
                 if (postIndex === -1) return;
 
@@ -3503,12 +3411,12 @@
                     post: postData
                 }, this.tabId);
 
-                // 2. Firebase에서 삭제
-                database.ref(`${this.firebasePath}/${postId}`).remove()
-                    .catch(e => {
-                        console.error('삭제 실패:', e);
-                        alert('삭제에 실패했습니다.');
-                    });
+                // 2. LocalStorage 배열에서 삭제
+                this.posts.splice(postIndex, 1);
+
+                // 3. LocalStorage에 저장
+                this.savePostsToLocal();
+                this.renderPostList();
             }
         }
     </script>
