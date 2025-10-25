@@ -1147,7 +1147,20 @@
                     
                     for (const key in data) {
                         if (data.hasOwnProperty(key)) {
-                            originalSetItem.call(localStorage, key, data[key]);
+                            const value = data[key];
+                            
+                            // ⚠️ communityTabData, editorTabData는 LocalStorage에 저장하지 않음 (Firebase-first)
+                            if (key.startsWith('communityTabData-') || key.startsWith('editorTabData-')) {
+                                console.log(`⏭️ ${key}: Firebase-first 탭이므로 LocalStorage에 저장 안 함`);
+                                continue;
+                            }
+                            
+                            // 객체는 JSON.stringify() 처리
+                            if (typeof value === 'object' && value !== null) {
+                                originalSetItem.call(localStorage, key, JSON.stringify(value));
+                            } else {
+                                originalSetItem.call(localStorage, key, value);
+                            }
                         }
                     }
                     
