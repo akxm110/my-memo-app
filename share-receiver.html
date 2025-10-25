@@ -365,33 +365,56 @@
                     return;
                 }
                 
-                const itemRef = userRef.child(dataKey);
-                const snapshot = await itemRef.once('value');
-                let items = [];
-                
-                if (snapshot.exists()) {
-                    try {
-                        const val = snapshot.val();
-                        items = typeof val === 'string' ? JSON.parse(val) : val;
-                        if (!Array.isArray(items)) items = [];
-                    } catch (e) {
-                        console.error('데이터 파싱 오류:', e);
-                        items = [];
-                    }
+                // Community/Editor 탭은 Firebase-first 방식 (push 사용)
+                if (location === 'community' || location === 'editor') {
+                    const newPostRef = database.ref(`users/${userId}/${dataKey}`).push();
+                    const newId = newPostRef.key;
+                    
+                    const newPost = {
+                        id: newId,
+                        title: title,
+                        link: url,
+                        memo: memo,
+                        date: Date.now(),
+                        isPinned: false
+                    };
+                    
+                    await newPostRef.set(newPost);
+                    
+                    console.log('✅ [share-receiver] Firebase push 성공:', newId);
                 }
+                // Favorites/Memo 탭은 기존 방식 유지 (LocalStorage-first)
+                else {
+                    const itemRef = userRef.child(dataKey);
+                    const snapshot = await itemRef.once('value');
+                    let items = [];
+                    
+                    if (snapshot.exists()) {
+                        try {
+                            const val = snapshot.val();
+                            items = typeof val === 'string' ? JSON.parse(val) : val;
+                            if (!Array.isArray(items)) items = [];
+                        } catch (e) {
+                            console.error('데이터 파싱 오류:', e);
+                            items = [];
+                        }
+                    }
 
-                const newItem = {
-                    id: Date.now(),
-                    title: title,
-                    link: url,
-                    memo: memo,
-                    date: new Date().toISOString(),
-                    image: null
-                };
+                    const newItem = {
+                        id: Date.now(),
+                        title: title,
+                        link: url,
+                        memo: memo,
+                        date: new Date().toISOString(),
+                        image: null
+                    };
 
-                items.unshift(newItem);
-                
-                await itemRef.set(JSON.stringify(items));
+                    items.unshift(newItem);
+                    
+                    await itemRef.set(JSON.stringify(items));
+                    
+                    console.log('✅ [share-receiver] 배열 방식 저장 성공');
+                }
 
                 // 성공 메시지 표시
                 const successMessage = document.getElementById('successMessage');
