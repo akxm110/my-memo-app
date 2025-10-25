@@ -3114,7 +3114,18 @@
                     post: postData
                 }, this.tabId);
                 
-                // 2. Firebase에서 삭제
+                // 2. 보고 있던 글이면 뷰 초기화
+                if (this.currentPostId === postId) {
+                    this.currentPostId = null;
+                    this.showList();
+                }
+                
+                // 3. 로컬 배열에서 즉시 제거 (UI 즉시 업데이트)
+                this.posts.splice(postIndex, 1);
+                this.renderPostList();
+                console.log('✅ [EditorTab] UI 즉시 업데이트 완료');
+                
+                // 4. Firebase에서 삭제
                 database.ref(`${this.firebasePath}/${postId}`).remove()
                     .then(() => {
                         console.log('✅ [EditorTab] Firebase 삭제 성공');
@@ -3122,13 +3133,13 @@
                     .catch(e => {
                         console.error('❌ [EditorTab] Firebase 삭제 실패:', e);
                         alert('삭제에 실패했습니다.');
+                        // Firebase 삭제 실패 시 로컬 배열 복원
+                        this.posts.splice(postIndex, 0, postData);
+                        this.renderPostList();
+                        if (this.currentPostId === postId) {
+                            this.viewPost(postId);
+                        }
                     });
-                
-                // 3. 보고 있던 글이면 뷰 초기화
-                if (this.currentPostId === postId) {
-                    this.currentPostId = null;
-                    this.showList();
-                }
             }
         }
 
@@ -3461,7 +3472,12 @@
                     post: postData
                 }, this.tabId);
 
-                // 2. Firebase에서 삭제
+                // 2. 로컬 배열에서 즉시 제거 (UI 즉시 업데이트)
+                this.posts.splice(postIndex, 1);
+                this.renderPostList();
+                console.log('✅ [CommunityTab] UI 즉시 업데이트 완료');
+
+                // 3. Firebase에서 삭제
                 database.ref(`${this.firebasePath}/${postId}`).remove()
                     .then(() => {
                         console.log('✅ [CommunityTab] Firebase 삭제 성공');
@@ -3469,6 +3485,9 @@
                     .catch(e => {
                         console.error('❌ [CommunityTab] Firebase 삭제 실패:', e);
                         alert('삭제에 실패했습니다.');
+                        // Firebase 삭제 실패 시 로컬 배열 복원
+                        this.posts.splice(postIndex, 0, postData);
+                        this.renderPostList();
                     });
             }
         }
