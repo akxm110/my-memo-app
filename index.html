@@ -399,6 +399,7 @@
             -webkit-box-orient: vertical;
             overflow: hidden;
             text-overflow: ellipsis;
+            max-height: 2.8em;
         }
         .fav-list-container .col-title * { 
             font-size: inherit !important; 
@@ -407,7 +408,7 @@
         }
         .fav-list-container .col-link { flex: 0 0 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .fav-list-container .col-memo { flex: 0 0 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .fav-list-container .col-date { flex: 0 0 100px; text-align: center; font-size: 13px; color: #6c757d; }
+        .fav-list-container .col-date { display: none; }
         .fav-list-container .col-actions { flex: 0 0 120px; text-align: right; }
         
         .fav-image-preview-container {
@@ -910,6 +911,7 @@
                 -webkit-box-orient: vertical;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                max-height: 2.8em;
             }
             
             #video-tab-content .col-title *,
@@ -934,12 +936,14 @@
                 padding-right: 8px;
             }
             
-            /* 메모, 링크, 동작 버튼 숨기기 */
+            /* 메모, 링크, 동작 버튼, 날짜 숨기기 */
             #video-tab-content .col-memo,
             #video-tab-content .col-actions,
+            #video-tab-content .col-date,
             .fav-list-container .col-link,
             .fav-list-container .col-memo,
-            .fav-list-container .col-actions {
+            .fav-list-container .col-actions,
+            .fav-list-container .col-date {
                 display: none !important;
             }
             
