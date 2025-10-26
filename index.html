@@ -389,12 +389,12 @@
         .fav-list-container .col-thumbnail { flex: 0 0 90px; text-align: center; }
         .fav-list-container .col-title { 
             flex: 0 0 200px; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-            white-space: nowrap; 
             font-size: 14px !important; 
             font-weight: normal !important;
-            line-height: normal !important;
+            line-height: 1.4 !important;
+            word-break: break-word;
+            white-space: normal;
+            padding: 8px 0;
         }
         .fav-list-container .col-title * { 
             font-size: inherit !important; 
@@ -893,16 +893,15 @@
             #video-tab-content .col-title,
             .fav-list-container .col-title {
                 flex: 1;
-                padding: 0 8px;
+                padding: 8px;
                 cursor: pointer;
                 color: #007bff;
                 text-decoration: none;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
+                word-break: break-word;
+                white-space: normal;
                 font-size: 14px !important;
                 font-weight: normal !important;
-                line-height: normal !important;
+                line-height: 1.4 !important;
             }
             
             #video-tab-content .col-title *,
