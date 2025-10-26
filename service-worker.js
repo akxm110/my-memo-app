@@ -1,5 +1,5 @@
 // 서비스 워커 버전 - 항상 최신 코드 사용
-const CACHE_NAME = 'thumbnail-memo-v77-full-title';
+const CACHE_NAME = 'thumbnail-memo-v78-title-2lines';
 const urlsToCache = [
   '/my-memo-app/',
   '/my-memo-app/index.html',
@@ -11,7 +11,7 @@ const urlsToCache = [
 
 // 설치 이벤트
 self.addEventListener('install', event => {
-  console.log('🔧 Service Worker v77 설치 중...');
+  console.log('🔧 Service Worker v78 설치 중...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -19,7 +19,7 @@ self.addEventListener('install', event => {
         return cache.addAll(urlsToCache);
       })
       .then(() => {
-        console.log('✅ Service Worker v77 설치 완료, 즉시 활성화');
+        console.log('✅ Service Worker v78 설치 완료, 즉시 활성화');
         return self.skipWaiting();
       })
   );
@@ -27,7 +27,7 @@ self.addEventListener('install', event => {
 
 // 활성화 이벤트 - 모든 이전 캐시 삭제
 self.addEventListener('activate', event => {
-  console.log('🚀 Service Worker v77 활성화 중...');
+  console.log('🚀 Service Worker v78 활성화 중...');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       console.log('🗑️ 이전 캐시 삭제:', cacheNames.filter(name => name !== CACHE_NAME));
@@ -39,7 +39,7 @@ self.addEventListener('activate', event => {
         })
       );
     }).then(() => {
-      console.log('✅ Service Worker v77 완전 활성화, 모든 탭 제어');
+      console.log('✅ Service Worker v78 완전 활성화, 모든 탭 제어');
       return self.clients.claim();
     })
   );
