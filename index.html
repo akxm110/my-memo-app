@@ -1912,7 +1912,7 @@
             // 2. Threads - 서버 API 호출
             if (url.includes('threads.net')) {
                 try {
-                    const API_URL = "http://localhost:3000/preview"; // dev: localhost, prod: /preview
+                    const API_URL = "/preview"; // 상대경로 사용 (서버 배포 후 작동)
                     const response = await fetch(`${API_URL}?url=${encodeURIComponent(url)}`);
                     if (response.ok) {
                         const data = await response.json();
