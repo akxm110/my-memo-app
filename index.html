@@ -1912,7 +1912,7 @@
             // 2. Threads - 서버 API 호출
             if (url.includes('threads.net')) {
                 try {
-                    const API_URL = "http://localhost:3000/preview"; // 배포 후 URL 변경
+                    const API_URL = "http://localhost:3000/preview"; // dev: localhost, prod: /preview
                     const response = await fetch(`${API_URL}?url=${encodeURIComponent(url)}`);
                     if (response.ok) {
                         const data = await response.json();
@@ -2322,10 +2322,10 @@
                 const link = fav.link;
                 let thumbnailHTML = '<div class="no-thumbnail">N/A</div>';
                 if (image) {
-                    thumbnailHTML = `<div class="thumbnail-container"><img src="${image}" data-custom-image="${image}"></div>`;
+                    thumbnailHTML = `<div class="thumbnail-container"><img referrerpolicy="no-referrer" src="${image}" data-custom-image="${image}"></div>`;
                 } else if (link) {
                     const thumbnailUrl = await fetchThumbnailUrl(link);
-                    if (thumbnailUrl) thumbnailHTML = `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${link.includes('/shorts/') ? 'is-short' : ''}"></div>`;
+                    if (thumbnailUrl) thumbnailHTML = `<div class="thumbnail-container"><img referrerpolicy="no-referrer" src="${thumbnailUrl}" class="${link.includes('/shorts/') ? 'is-short' : ''}"></div>`;
                 }
                 
                 // [수정] 핀 아이콘 추가
