@@ -1912,7 +1912,7 @@
             // 2) Threads → Vercel 프록시
             if (url.includes('threads.net')) {
                 try {
-                    const API_URL = 'https://preview-server-f0zvfxyhm-lees-projects-8a29ca2d.vercel.app/preview';
+                    const API_URL = 'https://preview-server-4x7rq3cnk-lees-projects-8a29ca2d.vercel.app/api/preview';
                     const r = await fetch(`${API_URL}?url=${encodeURIComponent(url)}`);
                     if (r.ok) {
                         const data = await r.json();
