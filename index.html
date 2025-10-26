@@ -387,7 +387,20 @@
             cursor: pointer; font-size: 16px; font-weight: bold; height: 38px;
         }
         .fav-list-container .col-thumbnail { flex: 0 0 90px; text-align: center; }
-        .fav-list-container .col-title { flex: 0 0 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .fav-list-container .col-title { 
+            flex: 0 0 200px; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            white-space: nowrap; 
+            font-size: 14px !important; 
+            font-weight: normal !important;
+            line-height: normal !important;
+        }
+        .fav-list-container .col-title * { 
+            font-size: inherit !important; 
+            font-weight: inherit !important;
+            line-height: inherit !important;
+        }
         .fav-list-container .col-link { flex: 0 0 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .fav-list-container .col-memo { flex: 0 0 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .fav-list-container .col-date { flex: 0 0 100px; text-align: center; font-size: 13px; color: #6c757d; }
@@ -887,6 +900,16 @@
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+                font-size: 14px !important;
+                font-weight: normal !important;
+                line-height: normal !important;
+            }
+            
+            #video-tab-content .col-title *,
+            .fav-list-container .col-title * {
+                font-size: inherit !important;
+                font-weight: inherit !important;
+                line-height: inherit !important;
             }
             
             #video-tab-content .col-title:hover,
@@ -3133,8 +3156,8 @@
                 }, this.tabId);
                 
                 // 2. 보고 있던 글이면 뷰 초기화
-                if (this.currentPostId === postId) {
-                    this.currentPostId = null;
+                        if (this.currentPostId === postId) {
+                            this.currentPostId = null;
                     this.showList();
                 }
                 
@@ -3399,7 +3422,7 @@
                     alert('제목을 입력해주세요.');
                     return;
                 }
-
+                
                 if (!database) {
                     alert('Firebase 연결 오류');
                     return;
@@ -3481,7 +3504,7 @@
                     alert('삭제 실패: 글을 찾을 수 없습니다. 콘솔을 확인해주세요.');
                     return;
                 }
-
+                
                 // 1. 휴지통에 추가
                 const postData = this.posts[postIndex];
                 trashManager.addToTrash('community', {
