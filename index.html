@@ -1905,25 +1905,25 @@
         async function fetchThumbnailUrl(url) {
             if (!url) return null;
             
-            // 1. YouTube - 기존 방식 유지 (빠르고 안정적)
+            // 1) YouTube
             const youtubeId = getYoutubeVideoId(url);
             if (youtubeId) return `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
             
-            // 2. Threads - 서버 API 호출
+            // 2) Threads → Vercel 프록시
             if (url.includes('threads.net')) {
                 try {
-                    const API_URL = "/preview"; // 상대경로 사용 (서버 배포 후 작동)
-                    const response = await fetch(`${API_URL}?url=${encodeURIComponent(url)}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        return data.image || null;
+                    const API_URL = 'https://preview-server-f0zvfxyhm-lees-projects-8a29ca2d.vercel.app/preview';
+                    const r = await fetch(`${API_URL}?url=${encodeURIComponent(url)}`);
+                    if (r.ok) {
+                        const data = await r.json();
+                        if (data && data.image) return data.image;
                     }
-                } catch (error) { 
-                    console.error('Threads thumbnail fetch error:', error); 
+                } catch (e) {
+                    console.error('Threads thumbnail fetch error:', e);
                 }
             }
             
-            // 3. TikTok - 기존 방식 유지
+            // 3) TikTok
             if (url.includes('tiktok.com')) {
                 try {
                     const response = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
