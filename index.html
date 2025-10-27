@@ -4,11 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>비디오 & 메모 관리자</title>
-    
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    
     <style>
         body {
             font-family: "Malgun Gothic", "맑은 고딕", sans-serif;
@@ -290,35 +285,6 @@
              background-color: #fff; cursor: pointer;
         }
         .tab-management button:hover { background-color: #f8f9fa; }
-
-        .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-top: 20px;
-            gap: 5px;
-        }
-        .page-btn {
-            padding: 8px 12px;
-            border: 1px solid #dee2e6;
-            background-color: #fff;
-            cursor: pointer;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        .page-btn:hover {
-            background-color: #f8f9fa;
-        }
-        .page-btn.active {
-            background-color: #28a745;
-            color: white;
-            border-color: #28a745;
-            font-weight: bold;
-        }
-        .page-btn.disabled {
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
     </style>
 </head>
 <body>
@@ -359,8 +325,6 @@
             <div class="actions">
                  <button id="delete-all-btn">전체 삭제</button>
             </div>
-            
-            <!-- MODIFIED: Restored two-column layout -->
             <div class="lists-wrapper">
                 <div id="items-container-left" class="items-list">
                     <div class="list-header">
@@ -381,8 +345,6 @@
                     </div>
                 </div>
             </div>
-            <div id="video-pagination-controls" class="pagination"></div>
-
         </div>
         <div id="memo-tab-content" class="tab-content">
             <div class="memo-editor">
@@ -401,71 +363,10 @@
     <a id="download-anchor" style="position: absolute; top: -9999px; left: -9999px;"></a>
 
     <script>
-        // ===== FIREBASE 초기화 =====
-        const firebaseConfig = {
-            apiKey: "AIzaSyDV9wWRsEiS0pAsl1Xw9ee1fQ5Yf9N5mto",
-            authDomain: "my-memo-app-6311c.firebaseapp.com",
-            projectId: "my-memo-app-6311c",
-            storageBucket: "my-memo-app-6311c.firebasestorage.app",
-            messagingSenderId: "345865782837",
-            appId: "1:345865782837:web:a9147e6468ff400953937c",
-            databaseURL: "https://my-memo-app-6311c-default-rtdb.firebaseio.com"
-        };
-        
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        const userId = 'user1';
-        
-        // Firebase 동기화 함수 (간단 버전)
-        function syncData() {
-            const data = {};
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                data[key] = localStorage.getItem(key);
-            }
-            db.ref('users/' + userId).set(data);
-            console.log('✅ Firebase 동기화 완료');
-        }
-        
-        // localStorage 변경 감지
-        const originalSetItem = localStorage.setItem;
-        localStorage.setItem = function(key, value) {
-            originalSetItem.call(this, key, value);
-            setTimeout(syncData, 500);
-        };
-        
-        // Firebase에서 데이터 로드
-        db.ref('users/' + userId).once('value').then(snapshot => {
-            const data = snapshot.val();
-            if (data) {
-                for (const key in data) {
-                    originalSetItem.call(localStorage, key, data[key]);
-                }
-                console.log('✅ Firebase 데이터 로드 완료');
-            }
-        });
-        
-        // 실시간 동기화 리스너
-        db.ref('users/' + userId).on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                let changed = false;
-                for (const key in data) {
-                    if (localStorage.getItem(key) !== data[key]) {
-                        changed = true;
-                        originalSetItem.call(localStorage, key, data[key]);
-                    }
-                }
-                if (changed) {
-                    console.log('🔄 다른 기기에서 변경 감지');
-                    location.reload();
-                }
-            }
-        });
-        
-        document.addEventListener('DOMContentLoaded', () => {
+        // --- COMMON ---
+        document.addEventListener('DOMContentLoaded', async () => {
             TabManager.init();
-            initializeVideoTab();
+            await loadItems();
             loadMemos();
             setupBackupAndRestore();
         });
@@ -475,6 +376,12 @@
         function setupBackupAndRestore() {
             const exportBtn = document.getElementById('export-data-btn');
             const importBtn = document.getElementById('import-data-btn');
+
+            if (!exportBtn || !importBtn) {
+                console.error("Backup/Restore buttons not found!");
+                return;
+            }
+
             exportBtn.addEventListener('click', exportData);
             importBtn.addEventListener('click', () => {
                 const fileInput = document.createElement('input');
@@ -482,7 +389,7 @@
                 fileInput.accept = '.json, .txt';
                 fileInput.style.display = 'none';
                 fileInput.onchange = importData;
-                document.body.appendChild(fileInput);
+                document.body.appendChild(fileInput); // Add to DOM to ensure it works on all browsers
                 fileInput.click();
                 document.body.removeChild(fileInput);
             });
@@ -490,7 +397,11 @@
 
         async function exportData() {
             try {
-                if (localStorage.length === 0) return alert('백업할 데이터가 없습니다.');
+                if (localStorage.length === 0) {
+                    alert('백업할 데이터가 없습니다.');
+                    return;
+                }
+
                 const backupData = {};
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
@@ -498,27 +409,38 @@
                 }
                 const dataStr = JSON.stringify(backupData, null, 2);
                 const blob = new Blob([dataStr], { type: 'application/json' });
+                
                 const date = new Date();
                 const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
                 const filename = `memo-backup-${dateStr}.json`;
 
+                // Modern, reliable way: File System Access API
                 if (window.showSaveFilePicker) {
                     const handle = await window.showSaveFilePicker({
                         suggestedName: filename,
-                        types: [{ description: 'JSON Backup File', accept: { 'application/json': ['.json'] } }],
+                        types: [{
+                            description: 'JSON Backup File',
+                            accept: { 'application/json': ['.json'] },
+                        }],
                     });
                     const writable = await handle.createWritable();
                     await writable.write(blob);
                     await writable.close();
                 } else {
-                    if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+                    // Fallback for older browsers
+                    if (currentObjectUrl) {
+                        URL.revokeObjectURL(currentObjectUrl);
+                    }
                     currentObjectUrl = URL.createObjectURL(blob);
+                    
                     const downloadAnchor = document.getElementById('download-anchor');
                     downloadAnchor.href = currentObjectUrl;
                     downloadAnchor.download = filename;
                     downloadAnchor.click();
                 }
+
             } catch (error) {
+                // AbortError occurs if the user closes the save dialog, which is not a real error.
                 if (error.name !== 'AbortError') {
                     alert('데이터 내보내기 중 오류가 발생했습니다: ' + error.message);
                     console.error(error);
@@ -529,15 +451,25 @@
         function importData(event) {
             const file = event.target.files[0];
             if (!file) return;
-            if (!confirm('데이터를 가져오면 현재 모든 내용이 덮어씌워집니다. 계속하시겠습니까?')) return;
+
+            if (!confirm('데이터를 가져오면 현재 모든 내용이 덮어씌워집니다. 계속하시겠습니까?')) {
+                return;
+            }
+
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
                     const backupData = JSON.parse(e.target.result);
-                    if (typeof backupData !== 'object' || backupData === null) throw new Error('Invalid backup file format.');
+                    // Basic validation
+                    if (typeof backupData !== 'object' || backupData === null) {
+                        throw new Error('Invalid backup file format.');
+                    }
+                    
                     localStorage.clear();
                     for (const key in backupData) {
-                        if (Object.hasOwnProperty.call(backupData, key)) localStorage.setItem(key, backupData[key]);
+                        if (Object.hasOwnProperty.call(backupData, key)) {
+                            localStorage.setItem(key, backupData[key]);
+                        }
                     }
                     alert('데이터를 성공적으로 복원했습니다. 페이지를 새로고침합니다.');
                     location.reload();
@@ -565,38 +497,29 @@
             return str.replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match]));
         }
 
-        function getReliableYoutubeThumbnailUrl(videoId) {
-            return new Promise((resolve) => {
-                if (!videoId) {
-                    resolve(null);
-                    return;
-                }
-                const maxResUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-                const hqUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-
-                const img = new Image();
-                img.onload = function() {
-                    if (this.naturalWidth > 121) {
-                        resolve(maxResUrl);
-                    } else {
-                        resolve(hqUrl);
-                    }
-                };
-                img.onerror = function() {
-                    resolve(hqUrl);
-                };
-                img.src = maxResUrl;
-            });
+        async function fetchThumbnailUrl(url) {
+            if (!url) return null;
+            const youtubeId = getYoutubeVideoId(url);
+            if (youtubeId) return `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
+            if (url.includes('tiktok.com')) {
+                try {
+                    const response = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
+                    if (response.ok) return (await response.json()).thumbnail_url;
+                } catch (error) { console.error('TikTok thumbnail fetch error:', error); }
+            }
+            return null;
         }
 
         function formatVideoMemo(text) {
             if (!text) return '-';
             const youtubeUrlRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)[^\s<]+)/g;
+            
             let linkCount = 0;
             const formattedText = escapeHTML(text).replace(youtubeUrlRegex, (url) => {
                 linkCount++;
                 return `<a href="${url}" target="_blank" class="memo-link">링크 ${linkCount}</a>`;
             });
+
             return formattedText.replace(/\n/g, '<br>');
         }
 
@@ -612,178 +535,146 @@
         // --- VIDEO MEMO LOGIC ---
         const addBtn = document.getElementById('add-btn');
         const deleteAllBtn = document.getElementById('delete-all-btn');
+        const itemsContainerLeft = document.getElementById('items-container-left');
+        const itemsContainerRight = document.getElementById('items-container-right');
         const videoDataKey = 'videoMemoData';
         let currentlyEditingItem = null;
-        let allVideoItems = [];
-        let currentPage = 1;
-        const itemsPerPage = 20;
-
-        function initializeVideoTab() {
-            allVideoItems = JSON.parse(localStorage.getItem(videoDataKey) || '[]');
-            renderVideoPage();
-        }
 
         addBtn.addEventListener('click', async () => {
-            if (currentlyEditingItem) await updateItem(currentlyEditingItem);
-            else await addItem();
+            if (currentlyEditingItem) {
+                await updateItem(currentlyEditingItem);
+            } else {
+                await addItem();
+            }
         });
-
         deleteAllBtn.addEventListener('click', () => {
-            if (confirm('모든 비디오 항목을 삭제하시겠습니까?')) {
-                allVideoItems = [];
-                saveItems();
-                currentPage = 1;
-                renderVideoPage();
+            if (confirm('모든 항목을 삭제하시겠습니까?')) {
+                itemsContainerLeft.querySelectorAll('.list-item').forEach(i => i.remove());
+                itemsContainerRight.querySelectorAll('.list-item').forEach(i => i.remove());
+                saveItems(); renumberItems();
             }
         });
-        
+
         function saveItems() {
-            localStorage.setItem(videoDataKey, JSON.stringify(allVideoItems));
+            const items = [];
+            document.querySelectorAll('#video-tab-content .list-item').forEach(el => {
+                items.push({
+                    title: el.querySelector('.col-title').textContent,
+                    link: el.querySelector('.link-button').href,
+                    memo: el.querySelector('.col-memo').dataset.rawMemo || ''
+                });
+            });
+            localStorage.setItem(videoDataKey, JSON.stringify(items));
         }
 
-        function renderVideoPage() {
-            const leftContainer = document.getElementById('items-container-left');
-            const rightContainer = document.getElementById('items-container-right');
-
-            leftContainer.querySelectorAll('.list-item').forEach(item => item.remove());
-            rightContainer.querySelectorAll('.list-item').forEach(item => item.remove());
-
-            const startIndex = (currentPage - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const pageItems = allVideoItems.slice(startIndex, endIndex);
-
-            pageItems.forEach(async (item, index) => {
-                const displayIndex = startIndex + index + 1;
-                const targetContainer = index < 10 ? leftContainer : rightContainer;
-                await createItemDOM(item, displayIndex, targetContainer);
-            });
-
-            renderPagination();
-        }
-
-        function renderPagination() {
-            const controlsContainer = document.getElementById('video-pagination-controls');
-            controlsContainer.innerHTML = '';
-            const totalPages = Math.ceil(allVideoItems.length / itemsPerPage) || 1;
-            
-            if (allVideoItems.length === 0) return;
-
-            const prevBtn = document.createElement('button');
-            prevBtn.className = 'page-btn';
-            prevBtn.textContent = '이전';
-            if (currentPage === 1) prevBtn.classList.add('disabled');
-            prevBtn.addEventListener('click', () => {
-                if (currentPage > 1) { currentPage--; renderVideoPage(); }
-            });
-            controlsContainer.appendChild(prevBtn);
-
-            for (let i = 1; i <= totalPages; i++) {
-                const pageBtn = document.createElement('button');
-                pageBtn.className = 'page-btn';
-                pageBtn.textContent = i;
-                if (i === currentPage) pageBtn.classList.add('active');
-                pageBtn.addEventListener('click', () => { currentPage = i; renderVideoPage(); });
-                controlsContainer.appendChild(pageBtn);
+        async function loadItems() {
+            const items = JSON.parse(localStorage.getItem(videoDataKey) || '[]');
+            for (const item of items) {
+                await createItemDOM(item.title, item.link, item.memo);
             }
-
-            const nextBtn = document.createElement('button');
-            nextBtn.className = 'page-btn';
-            nextBtn.textContent = '다음';
-            if (currentPage === totalPages) nextBtn.classList.add('disabled');
-            nextBtn.addEventListener('click', () => {
-                if (currentPage < totalPages) { currentPage++; renderVideoPage(); }
-            });
-            controlsContainer.appendChild(nextBtn);
         }
 
-        async function createItemDOM(item, displayIndex, container) {
+        function renumberItems() {
+            document.querySelectorAll('#video-tab-content .list-item').forEach((el, index) => {
+                el.querySelector('.col-index').textContent = index + 1;
+            });
+        }
+
+        async function createItemDOM(title, link, memo) {
+            if (document.querySelectorAll('#video-tab-content .list-item').length >= 20) return false;
+            const targetContainer = itemsContainerLeft.querySelectorAll('.list-item').length < 10 ? itemsContainerLeft : itemsContainerRight;
             const itemElement = document.createElement('div');
             itemElement.className = 'list-item';
-            itemElement.dataset.id = item.id;
-            
-            const videoId = getYoutubeVideoId(item.link);
-            const thumbnailUrl = await getReliableYoutubeThumbnailUrl(videoId);
 
-            let thumbnailHTML = `<div class="no-thumbnail">N/A</div>`;
-            if (thumbnailUrl) {
-                thumbnailHTML = `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${item.link.includes('/shorts/') ? 'is-short' : ''}"></div>`;
-            }
-            
+            const thumbnailUrl = await fetchThumbnailUrl(link);
+            const isShort = link.includes('/shorts/');
+            const thumbnailHTML = thumbnailUrl
+                ? `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${isShort ? 'is-short' : ''}"></div>`
+                : `<div class="no-thumbnail">N/A</div>`;
+
             itemElement.innerHTML = `
-                <div class="item-col col-index">${displayIndex}</div>
-                <div class="item-col col-title">${escapeHTML(item.title)}</div>
+                <div class="item-col col-index"></div>
+                <div class="item-col col-title">${escapeHTML(title)}</div>
                 <div class="item-col col-thumbnail">
-                    <div class="thumbnail-wrapper">${thumbnailHTML}<a href="${escapeHTML(item.link)}" target="_blank" class="link-button">링크 보기</a></div>
+                    <div class="thumbnail-wrapper">${thumbnailHTML}<a href="${escapeHTML(link)}" target="_blank" class="link-button">링크 보기</a></div>
                 </div>
-                <div class="item-col col-memo">${formatVideoMemo(item.memo)}</div>
+                <div class="item-col col-memo">${formatVideoMemo(memo)}</div>
                 <div class="item-col col-actions action-buttons">
                     <button class="btn-edit">수정</button><button class="btn-delete">삭제</button>
                 </div>`;
-            container.appendChild(itemElement);
-            itemElement.querySelector('.col-memo').dataset.rawMemo = item.memo;
+            targetContainer.appendChild(itemElement);
+            itemElement.querySelector('.col-memo').dataset.rawMemo = memo;
 
-            itemElement.querySelector('.btn-delete').addEventListener('click', () => deleteItem(item.id));
-            itemElement.querySelector('.btn-edit').addEventListener('click', () => editItem(item.id));
-        }
+            const img = itemElement.querySelector('.thumbnail-container img');
+            const youtubeId = getYoutubeVideoId(link);
+            if (img && youtubeId) {
+                img.onerror = function() {
+                    this.onerror = null; // Prevent infinite loops
+                    this.src = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+                };
+            }
 
-        function deleteItem(itemId) {
-            allVideoItems = allVideoItems.filter(item => item.id !== itemId);
-            saveItems();
-            const totalPages = Math.ceil(allVideoItems.length / itemsPerPage) || 1;
-            if (currentPage > totalPages) currentPage = totalPages;
-            renderVideoPage();
+            itemElement.querySelector('.btn-delete').addEventListener('click', () => { itemElement.remove(); saveItems(); renumberItems(); });
+            itemElement.querySelector('.btn-edit').addEventListener('click', () => editItem(itemElement));
+            renumberItems();
+            return true;
         }
 
         async function addItem() {
             const titleInput = document.getElementById('title-input'), linkInput = document.getElementById('link-input'), memoInput = document.getElementById('memo-input');
             const title = titleInput.value.trim(), link = linkInput.value.trim(), memo = memoInput.value.trim();
             if (!title || !link) return alert('제목과 링크를 입력해주세요.');
-            
-            const newItem = { id: Date.now(), title, link, memo };
-            allVideoItems.push(newItem);
-            saveItems();
-
-            currentPage = Math.ceil(allVideoItems.length / itemsPerPage);
-            renderVideoPage();
-
-            titleInput.value = linkInput.value = memoInput.value = '';
-            titleInput.focus();
+            const success = await createItemDOM(title, link, memo);
+            if (success) {
+                saveItems();
+                titleInput.value = linkInput.value = memoInput.value = '';
+                titleInput.focus();
+            }
         }
         
-        function editItem(itemId) {
-            const itemToEdit = allVideoItems.find(item => item.id === itemId);
-            if (!itemToEdit) return;
-
-            document.getElementById('title-input').value = itemToEdit.title;
-            document.getElementById('link-input').value = itemToEdit.link;
-            document.getElementById('memo-input').value = itemToEdit.memo;
-            
+        function editItem(itemElement) {
+            document.getElementById('title-input').value = itemElement.querySelector('.col-title').textContent;
+            document.getElementById('link-input').value = itemElement.querySelector('.link-button').href;
+            const memo = itemElement.querySelector('.col-memo').dataset.rawMemo;
+            document.getElementById('memo-input').value = memo === '-' ? '' : memo;
             addBtn.textContent = '수정 완료';
-            currentlyEditingItem = itemId;
+            currentlyEditingItem = itemElement;
             document.querySelector('.input-section').scrollIntoView({ behavior: 'smooth' });
         }
 
-        async function updateItem(itemId) {
-            const itemIndex = allVideoItems.findIndex(item => item.id === itemId);
-            if (itemIndex === -1) return;
-
-            const title = document.getElementById('title-input').value.trim();
-            const link = document.getElementById('link-input').value.trim();
-            const memo = document.getElementById('memo-input').value.trim();
+        async function updateItem(itemElement) {
+            const title = document.getElementById('title-input').value.trim(), link = document.getElementById('link-input').value.trim(), memo = document.getElementById('memo-input').value.trim();
             if (!title || !link) return alert('제목과 링크를 입력해주세요.');
+            itemElement.querySelector('.col-title').textContent = title;
+            itemElement.querySelector('.link-button').href = link;
+            itemElement.querySelector('.col-memo').innerHTML = formatVideoMemo(memo);
+            itemElement.querySelector('.col-memo').dataset.rawMemo = memo;
+            
+            const thumbnailUrl = await fetchThumbnailUrl(link);
+            const thumbnailWrapper = itemElement.querySelector('.thumbnail-wrapper');
+            const isShort = link.includes('/shorts/');
 
-            allVideoItems[itemIndex] = { ...allVideoItems[itemIndex], title, link, memo };
+            const thumbnailHTML = thumbnailUrl
+                ? `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${isShort ? 'is-short' : ''}"></div><a href="${escapeHTML(link)}" target="_blank" class="link-button">링크 보기</a>`
+                : `<div class="no-thumbnail">N/A</div><a href="${escapeHTML(link)}" target="_blank" class="link-button">링크 보기</a>`;
+            thumbnailWrapper.innerHTML = thumbnailHTML;
+
+            const newImg = thumbnailWrapper.querySelector('.thumbnail-container img');
+            const youtubeId = getYoutubeVideoId(link);
+            if (newImg && youtubeId) {
+                newImg.onerror = function() {
+                    this.onerror = null; // Prevent infinite loops
+                    this.src = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+                };
+            }
+
             saveItems();
-            renderVideoPage();
-
-            document.getElementById('title-input').value = '';
-            document.getElementById('link-input').value = '';
-            document.getElementById('memo-input').value = '';
+            document.getElementById('title-input').value = document.getElementById('link-input').value = document.getElementById('memo-input').value = '';
             addBtn.textContent = '추가';
             currentlyEditingItem = null;
         }
 
-        // --- PLAIN MEMO LOGIC (Unchanged) ---
+        // --- PLAIN MEMO LOGIC ---
         const memoTextarea = document.getElementById('memo-textarea'), memoAddBtn = document.getElementById('memo-add-btn');
         const memoDeleteAllBtn = document.getElementById('memo-delete-all-btn'), memoListContainer = document.getElementById('memo-list-container');
         const charCounter = document.getElementById('char-counter'), memoDataKey = 'plainMemosData';
@@ -827,7 +718,7 @@
             memoTextarea.value = ''; memoAddBtn.textContent = '메모 추가'; currentlyEditingMemo = null;
         }
 
-        // --- DYNAMIC TAB MANAGER (Unchanged) ---
+        // --- DYNAMIC TAB MANAGER ---
         const TabManager = {
             tabsContainer: document.querySelector('.tabs'),
             contentContainer: document.querySelector('.container'),
@@ -870,23 +761,32 @@
             },
             renameTab() {
                 const activeTabEl = this.tabsContainer.querySelector('.tab.active');
-                if (!activeTabEl || !activeTabEl.classList.contains('dynamic-tab')) return alert('기본 탭은 이름을 변경할 수 없습니다.');
+                if (!activeTabEl || !activeTabEl.classList.contains('dynamic-tab')) {
+                    return alert('기본 탭은 이름을 변경할 수 없습니다.');
+                }
                 const oldName = activeTabEl.textContent.trim();
                 const tabId = activeTabEl.dataset.tabTarget.substring(1);
+
                 const tabData = this.tabs.find(t => t.id === tabId);
                 if (tabData) {
                     const newName = prompt(`'${oldName}' 탭의 새 이름을 입력하세요:`, oldName);
                     if (newName && newName.trim() && newName.trim() !== oldName) {
                         tabData.name = newName.trim();
-                        this.saveTabs(); this.render();
+                        this.saveTabs();
+                        this.render();
                     }
-                } else alert('오류: 해당 탭 정보를 찾을 수 없습니다.');
+                } else {
+                    alert('오류: 해당 탭 정보를 찾을 수 없습니다.');
+                }
             },
             deleteTab() {
                 const activeTabEl = this.tabsContainer.querySelector('.tab.active');
-                if (!activeTabEl || !activeTabEl.classList.contains('dynamic-tab')) return alert('기본 탭은 삭제할 수 없습니다.');
+                if (!activeTabEl || !activeTabEl.classList.contains('dynamic-tab')) {
+                    return alert('기본 탭은 삭제할 수 없습니다.');
+                }
                 const tabName = activeTabEl.textContent.trim();
                 const tabId = activeTabEl.dataset.tabTarget.substring(1);
+
                 const tabIndex = this.tabs.findIndex(t => t.id === tabId);
                 if (tabIndex > -1) {
                     if (confirm(`'${tabName}' 탭과 모든 데이터를 정말로 삭제하시겠습니까?`)) {
@@ -895,7 +795,9 @@
                         this.saveTabs();
                         this.render();
                     }
-                } else alert('오류: 해당 탭 정보를 찾을 수 없습니다.');
+                } else {
+                    alert('오류: 해당 탭 정보를 찾을 수 없습니다.');
+                }
             }
         };
 
@@ -978,11 +880,8 @@
                 if (image) {
                     thumbnailHTML = `<div class="thumbnail-container"><img src="${image}" data-custom-image="${image}"></div>`;
                 } else if (link) {
-                    const videoId = getYoutubeVideoId(link);
-                    const thumbnailUrl = await getReliableYoutubeThumbnailUrl(videoId);
-                    if (thumbnailUrl) {
-                        thumbnailHTML = `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${link.includes('/shorts/') ? 'is-short' : ''}"></div>`;
-                    }
+                    const thumbnailUrl = await fetchThumbnailUrl(link);
+                    if (thumbnailUrl) thumbnailHTML = `<div class="thumbnail-container"><img src="${thumbnailUrl}" class="${link.includes('/shorts/') ? 'is-short' : ''}"></div>`;
                 }
                 const displayedMemo = fav.memo.length > 30 ? fav.memo.substring(0, 30) + '...' : fav.memo;
                 itemElement.innerHTML = `
@@ -1030,19 +929,9 @@
                 };
                 if (!newFav.title) return alert('제목을 입력해주세요.');
                 
-                const parent = itemElement.parentNode;
-                const nextSibling = itemElement.nextSibling;
-                
-                itemElement.remove();
                 await this.createFavoriteDOM(newFav);
-
-                const newElement = parent.lastChild; 
-                if (nextSibling) {
-                    parent.insertBefore(newElement, nextSibling);
-                }
-
+                itemElement.remove();
                 this.saveFavorites();
-                this.renumberFavorites();
 
                 this.titleInput.value = this.linkInput.value = this.memoInput.value = '';
                 this.clearImagePreview();
@@ -1053,4 +942,3 @@
     </script>
 </body>
 </html>
-
