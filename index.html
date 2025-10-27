@@ -396,7 +396,10 @@
             overflow-wrap: break-word;
             padding: 8px 0;
             white-space: normal;
+            display: flex; align-items: center; gap: 8px;
         }
+        .fav-list-container .col-title .title-text { flex: 1; }
+        .fav-list-container .col-title .inline-actions { display: flex; gap: 6px; }
         .fav-list-container .col-title * { 
             font-size: inherit !important; 
             font-weight: inherit !important;
@@ -904,6 +907,37 @@
                 font-weight: normal !important;
                 line-height: 1.4 !important;
                 white-space: normal;
+                display: flex !important;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .fav-list-container .col-title .title-text {
+                flex: 1;
+            }
+            
+            .fav-list-container .col-title .inline-actions {
+                display: flex;
+                gap: 4px;
+            }
+            
+            .fav-list-container .col-title .inline-actions button {
+                padding: 4px 8px;
+                font-size: 12px;
+                border: 1px solid #ddd;
+                background: white;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            
+            .fav-list-container .col-title .btn-edit {
+                color: #007bff;
+                border-color: #007bff;
+            }
+            
+            .fav-list-container .col-title .btn-delete {
+                color: #dc3545;
+                border-color: #dc3545;
             }
             
             #video-tab-content .col-title *,
@@ -1259,7 +1293,6 @@
                 this.menu.className = 'context-menu';
                 this.menu.id = 'common-context-menu';
                 this.menu.innerHTML = `
-                    <div class="context-menu-item" data-action="pin">📌 고정하기</div>
                     <div class="context-menu-item" data-action="edit">수정</div>
                     <div class="context-menu-item delete" data-action="delete">삭제</div>`;
                 document.body.appendChild(this.menu);
@@ -1283,11 +1316,7 @@
             show(x, y, callback, isPinned = false) {
                 this.currentCallback = callback;
                 
-                // [수정] 고정 상태에 따라 버튼 텍스트 동적 변경
-                const pinButton = this.menu.querySelector('[data-action="pin"]');
-                if (pinButton) {
-                    pinButton.textContent = isPinned ? '고정 취소' : '📌 고정하기';
-                }
+                // 핀 버튼 제거됨
                 
                 this.menu.classList.add('active');
                 
@@ -2244,14 +2273,13 @@
             }
             saveFavorites() {
                 const favs = Array.from(this.listContainer.querySelectorAll('.list-item')).map(el => {
-                    const title = el.querySelector('.col-title').textContent;
+                    const title = el.querySelector('.title-text').textContent;
                     return {
-                        title: title.startsWith('📌 ') ? title.substring(2) : title, // 핀 아이콘 제거하고 저장
-                    link: el.querySelector('.col-link a')?.href || '',
+                        title: title,
+                        link: el.querySelector('.col-link a')?.href || '',
                         memo: el.querySelector('.col-memo')?.dataset.fullMemo || '',
                         image: el.querySelector('.thumbnail-container img')?.dataset.customImage || null,
-                        date: el.querySelector('.col-date')?.textContent || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }),
-                        isPinned: el.dataset.isPinned === 'true'
+                        date: el.querySelector('.col-date')?.textContent || new Date().toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' })
                     };
                 });
                 localStorage.setItem(this.dataKey, JSON.stringify(favs));
@@ -2300,13 +2328,7 @@
                         favs = localData;
                     }
                     
-                    // [수정] 핀 기준으로 1차 정렬 (고정된 항목이 위로)
-                    favs.sort((a, b) => {
-                        if (a.isPinned && !b.isPinned) return -1;
-                        if (!a.isPinned && b.isPinned) return 1;
-                        return 0; // 같은 상태면 기존 순서 유지
-                    });
-                    
+                    // 고정 기능 제거: 순서대로 표시
                     favs.forEach(fav => this.createFavoriteDOM(fav));
                 } catch (error) {
                     console.error('즐겨찾기 데이터 로드 실패:', error);
@@ -2317,7 +2339,6 @@
             async createFavoriteDOM(fav) {
                 const itemElement = document.createElement('div');
                 itemElement.className = 'list-item';
-                itemElement.dataset.isPinned = fav.isPinned || false;
                 const image = fav.image;
                 const link = fav.link;
                 let thumbnailHTML = '<div class="no-thumbnail">N/A</div>';
@@ -2328,8 +2349,7 @@
                     if (thumbnailUrl) thumbnailHTML = `<div class="thumbnail-container"><img referrerpolicy="no-referrer" src="${thumbnailUrl}" class="${link.includes('/shorts/') ? 'is-short' : ''}"></div>`;
                 }
                 
-                // [수정] 핀 아이콘 추가
-                const pinIcon = fav.isPinned ? '📌 ' : '';
+                // 고정 기능 제거
                 
                 // 링크 30자 제한
                 const displayedLink = link && link.length > 30 ? link.substring(0, 30) + '...' : link;
@@ -2344,11 +2364,11 @@
                 
                 itemElement.innerHTML = `
                     <div class="item-col col-thumbnail">${thumbnailHTML}</div>
-                    <div class="item-col col-title">${pinIcon}${escapeHTML(fav.title)}</div>
+                    <div class="item-col col-title"><span class="title-text">${escapeHTML(fav.title)}</span><span class="inline-actions"><button class="btn-edit">수정</button><button class="btn-delete">삭제</button></span></div>
                     <div class="item-col col-link">${linkHTML}</div>
                     ${memoHTML}
-                    <div class="item-col col-date">${dateStr}</div>
-                    <div class="item-col col-actions action-buttons"><button class="btn-edit">수정</button><button class="btn-delete">삭제</button></div>`;
+                    <div class="item-col col-date" style="display:none;">${dateStr}</div>
+                    <div class="item-col col-actions action-buttons" style="display:none;"></div>`;
                 
                 // insertIndex가 있으면 특정 위치에 삽입, 없으면 끝에 추가
                 if (fav.insertIndex !== undefined && fav.insertIndex !== null) {
@@ -2362,14 +2382,47 @@
                     this.listContainer.appendChild(itemElement);
                 }
                 
-                // 모바일: 제목 클릭 시 링크로 이동
-                itemElement.querySelector('.col-title').addEventListener('click', () => {
+                // 인라인 버튼 클릭 이벤트
+                const titleEl = itemElement.querySelector('.col-title');
+                const titleTextEl = titleEl.querySelector('.title-text');
+                const editBtn = titleEl.querySelector('.btn-edit');
+                const deleteBtn = titleEl.querySelector('.btn-delete');
+                
+                editBtn.addEventListener('click', (e) => { 
+                    e.stopPropagation(); 
+                    this.editFavorite(itemElement); 
+                });
+                
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (!confirm('삭제하시겠습니까?')) return;
+                    const allItems = Array.from(this.listContainer.querySelectorAll('.list-item'));
+                    const itemIndex = allItems.indexOf(itemElement);
+                    const titleText = titleTextEl.textContent;
+                    trashManager.addToTrash('favorite', {
+                        tabId: this.tabId,
+                        index: itemIndex,
+                        item: {
+                            title: titleText,
+                            link: itemElement.querySelector('.col-link a')?.href || '',
+                            memo: itemElement.querySelector('.col-memo')?.dataset.fullMemo || '',
+                            image: itemElement.querySelector('.thumbnail-container img')?.dataset.customImage || null,
+                            date: itemElement.querySelector('.col-date')?.textContent
+                        }
+                    });
+                    itemElement.remove();
+                    this.saveFavorites();
+                    this.renumberFavorites();
+                });
+                
+                // 모바일: 제목 텍스트 클릭 시 링크로 이동
+                titleTextEl.addEventListener('click', () => {
                     if (window.innerWidth <= 768 && link) {
                         window.open(link, '_blank');
                     }
                 });
                 
-                // 우클릭 & Long Press 메뉴
+                // 우클릭 & Long Press 메뉴 (즐겨찾기: 고정 제거)
                 contextMenuUtil.attachToElement(itemElement, (action) => {
                     if (action === 'delete') {
                         // 현재 위치(인덱스) 찾기
@@ -2377,17 +2430,16 @@
                         const itemIndex = allItems.indexOf(itemElement);
                         
                         // 휴지통에 추가 (위치 포함)
-                        const titleText = itemElement.querySelector('.col-title').textContent;
+                        const titleText = itemElement.querySelector('.title-text').textContent;
                         trashManager.addToTrash('favorite', {
                             tabId: this.tabId,
                             index: itemIndex,
                             item: {
-                                title: titleText.startsWith('📌 ') ? titleText.substring(2) : titleText,
+                                title: titleText,
                                 link: itemElement.querySelector('.col-link a')?.href || '',
                                 memo: itemElement.querySelector('.col-memo')?.dataset.fullMemo || '',
                                 image: itemElement.querySelector('.thumbnail-container img')?.dataset.customImage || null,
-                                date: itemElement.querySelector('.col-date')?.textContent,
-                                isPinned: itemElement.dataset.isPinned === 'true'
+                                date: itemElement.querySelector('.col-date')?.textContent
                             }
                         });
                         
@@ -2396,25 +2448,6 @@
                         this.renumberFavorites();
                     } else if (action === 'edit') {
                         this.editFavorite(itemElement);
-                    } else if (action === 'pin') {
-                        // 고정/해제 토글
-                        const currentState = itemElement.dataset.isPinned === 'true';
-                        itemElement.dataset.isPinned = !currentState;
-                        
-                        const titleEl = itemElement.querySelector('.col-title');
-                        let titleText = titleEl.textContent;
-                        if (currentState) {
-                            // 고정 해제: 핀 아이콘 제거
-                            titleEl.textContent = titleText.startsWith('📌 ') ? titleText.substring(2) : titleText;
-                        } else {
-                            // 고정: 핀 아이콘 추가
-                            titleEl.textContent = '📌 ' + titleText;
-                        }
-                        
-                        this.saveFavorites();
-                        // 목록 다시 로드해서 정렬 반영
-                        this.listContainer.querySelectorAll('.list-item').forEach(el => el.remove());
-                        this.loadFavorites();
                     }
                 });
                 
@@ -2434,17 +2467,51 @@
                 });
             }
             editFavorite(itemElement) {
-                const fav = {
-                    title: itemElement.querySelector('.col-title').textContent,
-                    link: itemElement.querySelector('.col-link a')?.href || '',
-                    memo: itemElement.querySelector('.col-memo')?.dataset.fullMemo || '',
-                    image: itemElement.querySelector('.thumbnail-container img')?.dataset.customImage
-                };
-                this.titleInput.value = fav.title; this.linkInput.value = fav.link; this.memoInput.value = fav.memo;
-                if (fav.image) { this.currentImage = fav.image; this.imagePreview.src = fav.image; this.imageClearBtn.style.display = 'inline'; }
-                else { this.clearImagePreview(); }
-                this.addBtn.textContent = '수정 완료';
-                this.currentlyEditingFav = itemElement; this.titleInput.focus();
+                const titleText = itemElement.querySelector('.title-text').textContent;
+                const link = itemElement.querySelector('.col-link a')?.href || '';
+                const memo = itemElement.querySelector('.col-memo')?.dataset.fullMemo || '';
+                const image = itemElement.querySelector('.thumbnail-container img')?.dataset.customImage;
+                
+                // 모바일: prompt로 수정, PC: 입력창에 로드
+                if (window.innerWidth <= 768) {
+                    const newTitle = prompt('제목을 수정하세요:', titleText);
+                    if (newTitle === null) return; // 취소
+                    if (!newTitle.trim()) return alert('제목을 입력해주세요.');
+                    
+                    const newLink = prompt('링크를 수정하세요 (선택):', link);
+                    if (newLink === null) return;
+                    
+                    const newMemo = prompt('메모를 수정하세요 (선택):', memo);
+                    if (newMemo === null) return;
+                    
+                    // 즉시 업데이트
+                    const newFav = {
+                        title: newTitle.trim(),
+                        link: newLink ? newLink.trim() : '',
+                        memo: newMemo ? newMemo.trim() : '',
+                        image: image
+                    };
+                    
+                    this.createFavoriteDOM(newFav).then(() => {
+                        itemElement.remove();
+                        this.saveFavorites();
+                    });
+                } else {
+                    // PC: 기존 방식
+                    this.titleInput.value = titleText;
+                    this.linkInput.value = link;
+                    this.memoInput.value = memo;
+                    if (image) {
+                        this.currentImage = image;
+                        this.imagePreview.src = image;
+                        this.imageClearBtn.style.display = 'inline';
+                    } else {
+                        this.clearImagePreview();
+                    }
+                    this.addBtn.textContent = '수정 완료';
+                    this.currentlyEditingFav = itemElement;
+                    this.titleInput.focus();
+                }
             }
             async updateFavorite(itemElement) {
                 const newFav = {
