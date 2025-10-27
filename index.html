@@ -2085,23 +2085,60 @@
             contentContainer: document.querySelector('.container'),
             tabConfigKey: 'dynamicTabsConfig',
             tabs: [],
+            firebaseListenerActive: false,
             init() {
-                this.loadTabs(); this.render();
+                this.initFirebaseListener();
                 document.getElementById('add-tab-btn').addEventListener('click', () => this.addTab());
                 document.getElementById('rename-tab-btn').addEventListener('click', () => this.renameTab());
                 document.getElementById('delete-tab-btn').addEventListener('click', () => this.deleteTab());
             },
-            loadTabs() {
+            initFirebaseListener() {
+                if (!database || !userRef) {
+                    console.warn('Firebase 미연결, LocalStorage로 탭 로드');
+                    this.loadTabsFromLocalStorage();
+                    return;
+                }
+                
+                if (this.firebaseListenerActive) return;
+                this.firebaseListenerActive = true;
+                
+                // Firebase 실시간 리스너
+                userRef.child(this.tabConfigKey).on('value', (snapshot) => {
+                    if (snapshot.exists()) {
+                        const firebaseTabs = snapshot.val();
+                        this.tabs = Array.isArray(firebaseTabs) ? firebaseTabs : [{ id: `tab-${Date.now()}`, name: '⭐ 즐겨찾기' }];
+                        console.log('✅ Firebase에서 탭 로드:', this.tabs.length);
+                    } else {
+                        // Firebase에 데이터 없으면 LocalStorage에서 로드
+                        const saved = JSON.parse(localStorage.getItem(this.tabConfigKey) || '[]');
+                        this.tabs = saved && saved.length ? saved : [{ id: `tab-${Date.now()}`, name: '⭐ 즐겨찾기' }];
+                        // Firebase에 초기 데이터 저장
+                        this.saveTabs();
+                    }
+                    this.render();
+                });
+            },
+            loadTabsFromLocalStorage() {
                 try {
                     const saved = JSON.parse(localStorage.getItem(this.tabConfigKey) || '[]');
                     this.tabs = saved && saved.length ? saved : [{ id: `tab-${Date.now()}`, name: '⭐ 즐겨찾기' }];
+                    this.render();
                 } catch (error) {
                     console.error('탭 로드 실패, 초기화:', error);
                     this.tabs = [{ id: `tab-${Date.now()}`, name: '⭐ 즐겨찾기' }];
                     this.saveTabs();
+                    this.render();
                 }
             },
-            saveTabs() { localStorage.setItem(this.tabConfigKey, JSON.stringify(this.tabs)); },
+            saveTabs() { 
+                localStorage.setItem(this.tabConfigKey, JSON.stringify(this.tabs));
+                // Firebase에도 저장
+                if (database && userRef) {
+                    userRef.child(this.tabConfigKey).set(this.tabs)
+                        .then(() => console.log('✅ 탭 설정 Firebase 저장 완료'))
+                        .catch(err => console.error('❌ 탭 설정 Firebase 저장 실패:', err));
+                }
+            },
             render() {
                 this.tabsContainer.querySelectorAll('.dynamic-tab').forEach(t => t.remove());
                 this.contentContainer.querySelectorAll('.dynamic-tab-content').forEach(c => c.remove());
