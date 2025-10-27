@@ -1183,8 +1183,9 @@
                 });
         }
 
-        // localStorage.setItem 오버라이드 (자동 동기화)
+        // localStorage 오버라이드 (자동 동기화)
         const originalSetItem = localStorage.setItem;
+        const originalGetItem = localStorage.getItem;
         let syncTimer = null;
 
         localStorage.setItem = function(key, value) {
