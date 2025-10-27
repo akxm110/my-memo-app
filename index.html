@@ -1288,6 +1288,47 @@
                     }
                     
                     console.log('✅ Firebase 데이터 병합 완료');
+
+                    // [복구 보조] 데이터는 있는데 탭이 없는 경우 탭 자동 생성
+                    try {
+                        const tabsRaw = originalGetItem.call(localStorage, 'dynamicTabsConfig') || '[]';
+                        const tabs = Array.isArray(tabsRaw) ? tabsRaw : (JSON.parse(tabsRaw).filter ? JSON.parse(tabsRaw) : []);
+                        const existingIds = new Set((tabs || []).map(t => t.id));
+
+                        const ensureTab = (tabId, type) => {
+                            if (!existingIds.has(tabId)) {
+                                const defaultName = type === 'memo' ? '📝 복구 메모' : '⭐ 복구 즐겨찾기';
+                                tabs.push({ id: tabId, name: defaultName, type });
+                                existingIds.add(tabId);
+                                console.log(`➕ 탭 자동 생성: ${tabId} (${type})`);
+                            }
+                        };
+
+                        // favoritesData-*, memoTabData-* 키 검사
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const k = localStorage.key(i);
+                            if (!k) continue;
+                            if (k.startsWith('favoritesData-')) {
+                                const tabId = k.replace('favoritesData-', '');
+                                const arr = JSON.parse(localStorage.getItem(k) || '[]');
+                                if (Array.isArray(arr) && arr.length > 0) ensureTab(tabId, 'favorites');
+                            }
+                            if (k.startsWith('memoTabData-')) {
+                                const tabId = k.replace('memoTabData-', '');
+                                const arr = JSON.parse(localStorage.getItem(k) || '[]');
+                                if (Array.isArray(arr) && arr.length > 0) ensureTab(tabId, 'memo');
+                            }
+                        }
+
+                        // 변경이 있으면 저장 및 Firebase 반영
+                        originalSetItem.call(localStorage, 'dynamicTabsConfig', JSON.stringify(tabs));
+                        if (database && userRef) {
+                            await userRef.child('dynamicTabsConfig').set(tabs);
+                            console.log('✅ 복구용 자동 생성 탭 Firebase 반영 완료');
+                        }
+                    } catch (e) {
+                        console.warn('복구용 탭 생성 중 경고:', e);
+                    }
                 } else {
                     console.log('ℹ️ Firebase에 저장된 데이터가 없습니다. 로컬 데이터를 업로드합니다.');
                     syncToFirebase(); // 로컬 데이터를 Firebase에 업로드
