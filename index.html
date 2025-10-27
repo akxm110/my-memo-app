@@ -1291,8 +1291,18 @@
 
                     // [복구 보조] 데이터는 있는데 탭이 없는 경우 탭 자동 생성
                     try {
-                        const tabsRaw = originalGetItem.call(localStorage, 'dynamicTabsConfig') || '[]';
-                        const tabs = Array.isArray(tabsRaw) ? tabsRaw : (JSON.parse(tabsRaw).filter ? JSON.parse(tabsRaw) : []);
+                        const tabsRaw = originalGetItem.call(localStorage, 'dynamicTabsConfig');
+                        let tabs = [];
+                        try {
+                            if (typeof tabsRaw === 'string' && tabsRaw.trim()) {
+                                const parsed = JSON.parse(tabsRaw);
+                                tabs = Array.isArray(parsed) ? parsed : [];
+                            } else if (Array.isArray(tabsRaw)) {
+                                tabs = tabsRaw;
+                            } else if (tabsRaw && typeof tabsRaw === 'object') {
+                                tabs = Array.isArray(tabsRaw) ? tabsRaw : [];
+                            }
+                        } catch (_) { tabs = []; }
                         const existingIds = new Set((tabs || []).map(t => t.id));
 
                         const ensureTab = (tabId, type) => {
