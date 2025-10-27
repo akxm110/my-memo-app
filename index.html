@@ -1211,31 +1211,79 @@
                     console.log('📥 Firebase에서 데이터 로드 중 (병합 모드)...');
                     
                     for (const key in data) {
-                        if (data.hasOwnProperty(key)) {
-                            const value = data[key];
-                            
-                            // ⚠️ communityTabData, editorTabData는 LocalStorage에 저장하지 않음 (Firebase-first)
-                            if (key.startsWith('communityTabData-') || key.startsWith('editorTabData-')) {
-                                console.log(`⏭️ ${key}: Firebase-first 탭이므로 LocalStorage에 저장 안 함`);
+                        if (!Object.prototype.hasOwnProperty.call(data, key)) continue;
+                        const value = data[key];
+
+                        // ⚠️ communityTabData, editorTabData는 LocalStorage에 저장하지 않음 (Firebase-first)
+                        if (key.startsWith('communityTabData-') || key.startsWith('editorTabData-')) {
+                            console.log(`⏭️ ${key}: Firebase-first 탭이므로 LocalStorage에 저장 안 함`);
+                            continue;
+                        }
+
+                        // dynamicTabsConfig는 항상 Firebase 값을 우선 적용
+                        if (key === 'dynamicTabsConfig') {
+                            const toStore = typeof value === 'object' ? JSON.stringify(value) : value;
+                            originalSetItem.call(localStorage, key, toStore);
+                            console.log('✅ dynamicTabsConfig: Firebase → LocalStorage 동기화');
+                            continue;
+                        }
+
+                        const existingRaw = originalGetItem.call(localStorage, key);
+
+                        // 문자열/객체 모두 배열로 정상화
+                        const parseArray = (v) => {
+                            if (v == null) return [];
+                            try {
+                                if (Array.isArray(v)) return v;
+                                if (typeof v === 'string') {
+                                    const parsed = JSON.parse(v);
+                                    return Array.isArray(parsed) ? parsed : [];
+                                }
+                                return [];
+                            } catch { return []; }
+                        };
+
+                        // 즐겨찾기/메모 계열은 병합 로직 적용
+                        if (key.startsWith('favoritesData-') || key.startsWith('memoTabData-') || key === 'plainMemosData') {
+                            const localArr = parseArray(existingRaw);
+                            const firebaseArr = parseArray(value);
+
+                            // 로컬이 비었고 Firebase가 있으면 Firebase로 복구
+                            if (localArr.length === 0 && firebaseArr.length > 0) {
+                                originalSetItem.call(localStorage, key, JSON.stringify(firebaseArr));
+                                console.log(`✅ ${key}: Firebase → LocalStorage 복구 (${firebaseArr.length}건)`);
                                 continue;
                             }
-                            
-                            // 기존 LocalStorage 데이터 확인
-                            const existingValue = originalGetItem.call(localStorage, key);
-                            
-                            // Firebase 데이터가 있고, LocalStorage에 없거나 비어있을 때만 덮어쓰기
-                            if (!existingValue || existingValue === '[]' || existingValue === 'null') {
-                                // 객체는 JSON.stringify() 처리
-                                if (typeof value === 'object' && value !== null) {
-                                    originalSetItem.call(localStorage, key, JSON.stringify(value));
-                                    console.log(`✅ ${key}: Firebase → LocalStorage (기존 데이터 없음)`);
-                                } else {
-                                    originalSetItem.call(localStorage, key, value);
-                                    console.log(`✅ ${key}: Firebase → LocalStorage (기존 데이터 없음)`);
-                                }
-                            } else {
-                                console.log(`⏭️ ${key}: LocalStorage 데이터 유지 (기존 데이터 존재)`);
+
+                            // 둘 다 있으면 합치되, 중복 제거(링크 또는 제목 기준)
+                            if (localArr.length > 0 && firebaseArr.length > 0) {
+                                const toKey = (item) => (item && (item.id || item.link || item.title || JSON.stringify(item)));
+                                const seen = new Set();
+                                const merged = [];
+                                [...firebaseArr, ...localArr].forEach((it) => {
+                                    const k = toKey(it);
+                                    if (!seen.has(k)) { seen.add(k); merged.push(it); }
+                                });
+                                originalSetItem.call(localStorage, key, JSON.stringify(merged));
+                                console.log(`✅ ${key}: Firebase+Local 병합 (${merged.length}건)`);
+                                continue;
                             }
+
+                            // 그 외에는 기존값 유지
+                            console.log(`⏭️ ${key}: 변경 없음 (Local ${localArr.length} / FB ${firebaseArr.length})`);
+                            continue;
+                        }
+
+                        // 그 외 키들: 기존 값이 없거나 비어있으면 Firebase 값 적용
+                        if (!existingRaw || existingRaw === '[]' || existingRaw === 'null' || existingRaw === '') {
+                            if (typeof value === 'object' && value !== null) {
+                                originalSetItem.call(localStorage, key, JSON.stringify(value));
+                            } else {
+                                originalSetItem.call(localStorage, key, value);
+                            }
+                            console.log(`✅ ${key}: Firebase → LocalStorage (기존 없음)`);
+                        } else {
+                            console.log(`⏭️ ${key}: LocalStorage 유지`);
                         }
                     }
                     
