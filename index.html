@@ -1207,7 +1207,7 @@
                 const data = snapshot.val();
                 
                 if (data) {
-                    console.log('📥 Firebase에서 데이터 로드 중...');
+                    console.log('📥 Firebase에서 데이터 로드 중 (병합 모드)...');
                     
                     for (const key in data) {
                         if (data.hasOwnProperty(key)) {
@@ -1219,16 +1219,26 @@
                                 continue;
                             }
                             
-                            // 객체는 JSON.stringify() 처리
-                            if (typeof value === 'object' && value !== null) {
-                                originalSetItem.call(localStorage, key, JSON.stringify(value));
+                            // 기존 LocalStorage 데이터 확인
+                            const existingValue = originalGetItem.call(localStorage, key);
+                            
+                            // Firebase 데이터가 있고, LocalStorage에 없거나 비어있을 때만 덮어쓰기
+                            if (!existingValue || existingValue === '[]' || existingValue === 'null') {
+                                // 객체는 JSON.stringify() 처리
+                                if (typeof value === 'object' && value !== null) {
+                                    originalSetItem.call(localStorage, key, JSON.stringify(value));
+                                    console.log(`✅ ${key}: Firebase → LocalStorage (기존 데이터 없음)`);
+                                } else {
+                                    originalSetItem.call(localStorage, key, value);
+                                    console.log(`✅ ${key}: Firebase → LocalStorage (기존 데이터 없음)`);
+                                }
                             } else {
-                                originalSetItem.call(localStorage, key, value);
+                                console.log(`⏭️ ${key}: LocalStorage 데이터 유지 (기존 데이터 존재)`);
                             }
                         }
                     }
                     
-                    console.log('✅ Firebase 데이터 로드 완료');
+                    console.log('✅ Firebase 데이터 병합 완료');
                 } else {
                     console.log('ℹ️ Firebase에 저장된 데이터가 없습니다. 로컬 데이터를 업로드합니다.');
                     syncToFirebase(); // 로컬 데이터를 Firebase에 업로드
